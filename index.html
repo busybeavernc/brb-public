@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download Doppleganger</title>
+<meta name="description" content="Doppleganger records a seamless loop of you and switches between it and your live webcam in Zoom, Teams and Meet. A seamless switch.">
+<link rel="icon" href="assets/icon.png" type="image/png">
+<meta property="og:title" content="Doppleganger - A seamless switch.">
+<meta property="og:description" content="Record a seamless loop of yourself and switch between it and your live webcam in any meeting.">
+<meta property="og:image" content="https://busybeavernc.github.io/doppleganger-public/assets/logo.png">
+<style>
+  :root {
+    --midnight: #111827; --surface: #1A2233; --surface-hi: #232D42; --border: #2B3650;
+    --violet: #7C3AED; --violet-dark: #5B21B6; --aqua: #2DD4BF; --cloud: #F8FAFC; --muted: #94A3B8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--midnight); color: var(--cloud);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  .logo { width: min(360px, 80vw); height: auto; display: block; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; margin: 32px 0 8px; }
+  .lede { color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
+  .primary { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .primary .for { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 650;
+    border-radius: 10px; padding: 14px 22px; color: var(--cloud); background: var(--violet);
+    border: 1px solid var(--violet); transition: background .15s; }
+  .btn:hover { background: var(--violet-dark); }
+  .btn:focus-visible, a:focus-visible { outline: 3px solid var(--aqua); outline-offset: 2px; }
+  .btn.secondary { background: transparent; border-color: var(--border); font-weight: 550; }
+  .btn.secondary:hover { background: var(--surface-hi); }
+  .btn small { font-weight: 400; color: #DDD6FE; }
+  .btn.secondary small { color: var(--muted); }
+  .note { color: var(--muted); font-size: .9rem; margin: 14px 0 0; }
+  .note a, .steps a, footer a { color: var(--aqua); }
+  h2 { font-size: 1.1rem; margin: 40px 0 12px; }
+  .all { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .all .btn { justify-content: space-between; width: 100%; }
+  .steps { background: var(--surface); border-radius: 14px; padding: 20px 24px; margin-top: 16px; display: none; }
+  .steps.show { display: block; }
+  .steps ol { margin: 8px 0 0; padding-left: 20px; }
+  .steps li { margin: 6px 0; }
+  .tag { display: inline-block; font-size: .75rem; font-weight: 700; letter-spacing: .04em; color: var(--midnight);
+    background: var(--aqua); border-radius: 6px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+  footer { margin-top: 48px; color: var(--muted); font-size: .85rem; }
+  .missing { opacity: .45; pointer-events: none; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="assets/logo.png" alt="Doppleganger - A seamless switch.">
+  <h1>Step away from the camera. Nobody notices.</h1>
+  <p class="lede">Doppleganger records a short, seamless loop of you, then lets you cut between it and your live webcam
+    in Zoom, Teams or Meet with one key.</p>
+
+  <section class="primary" aria-live="polite">
+    <p class="for" id="for">Choose your computer below.</p>
+    <a class="btn" id="main-btn" href="#all">Download</a>
+    <p class="note" id="main-note"></p>
+  </section>
+
+  <div class="steps" id="steps-win">
+    <strong>Installing on Windows</strong>
+    <ol>
+      <li>Open <b>DopplegangerSetup.exe</b>. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>.</li>
+      <li>The setup guide adds the Doppleganger camera, helps you pick your webcam and record your first loop.</li>
+      <li>In Zoom or Teams, choose <b>Doppleganger</b> as your camera.</li>
+    </ol>
+  </div>
+  <div class="steps" id="steps-mac">
+    <strong>Installing on a Mac</strong>
+    <ol>
+      <li>Open the .dmg and drag <b>Doppleganger</b> onto <b>Applications</b>.</li>
+      <li>Open Doppleganger. The first time, macOS says it <i>"can't be opened because Apple cannot check it for
+        malicious software"</i> (the app isn't notarized by Apple yet). Click <b>OK</b>, then go to
+        <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. Open it again and
+        choose <b>Open</b>. You only do this once.</li>
+      <li>Install <a href="https://obsproject.com/download">OBS Studio</a> (free). Doppleganger uses its virtual camera,
+        and the setup guide walks you through the one-time steps.</li>
+      <li>In Zoom, Teams or Meet, choose <b>OBS Virtual Camera</b>.</li>
+    </ol>
+  </div>
+
+  <h2 id="all">All downloads</h2>
+  <div class="all">
+    <a class="btn secondary" data-asset="DopplegangerSetup.exe" href="https://github.com/busybeavernc/doppleganger-public/releases/latest/download/DopplegangerSetup.exe">
+      Windows <small>10 / 11</small></a>
+    <a class="btn secondary" data-asset="Doppleganger-mac-arm64.dmg" href="https://github.com/busybeavernc/doppleganger-public/releases/latest/download/Doppleganger-mac-arm64.dmg">
+      Mac <small>Apple Silicon (M1+)</small></a>
+    <a class="btn secondary" data-asset="Doppleganger-mac-x86_64.dmg" href="https://github.com/busybeavernc/doppleganger-public/releases/latest/download/Doppleganger-mac-x86_64.dmg">
+      Mac <small>Intel</small></a>
+  </div>
+  <p class="note">Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
+    "Processor: Intel" means Intel.</p>
+
+  <footer>
+    <span id="version">Latest version</span> ·
+    <a href="https://github.com/busybeavernc/doppleganger-public/releases/latest">Release notes</a> ·
+    <a href="https://github.com/busybeavernc/doppleganger-public#readme">How it works</a>
+  </footer>
+</main>
+<script>
+(function () {
+  var REPO = "busybeavernc/doppleganger-public";
+  var BASE = "https://github.com/" + REPO + "/releases/latest/download/";
+  var ua = navigator.userAgent || "";
+  var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+  var isWin = /Win/i.test(platform) || /Windows/i.test(ua);
+  var isMac = !isWin && (/Mac/i.test(platform) || /Macintosh/i.test(ua)) && !/iPhone|iPad/i.test(ua);
+  var isMobile = /Android|iPhone|iPad|Mobile/i.test(ua);
+
+  function macChip() {
+    // Browsers don't say which chip a Mac has; the graphics name is a good hint.
+    try {
+      var gl = document.createElement("canvas").getContext("webgl");
+      var ext = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      var r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
+      if (/Intel|AMD|Radeon|NVIDIA/i.test(r)) return "x86_64";
+    } catch (e) {}
+    return "arm64"; // every Mac sold since 2020-2023 is Apple Silicon
+  }
+
+  var forEl = document.getElementById("for"), btn = document.getElementById("main-btn"),
+      note = document.getElementById("main-note");
+  if (isWin) {
+    forEl.textContent = "For your Windows PC";
+    btn.href = BASE + "DopplegangerSetup.exe";
+    btn.innerHTML = "Download for Windows <small>DopplegangerSetup.exe</small>";
+    document.getElementById("steps-win").classList.add("show");
+  } else if (isMac) {
+    var chip = macChip();
+    var name = chip === "arm64" ? "Apple Silicon" : "Intel";
+    forEl.innerHTML = "For your Mac <span class=\"tag\">" + name.toUpperCase() + "</span>";
+    btn.href = BASE + "Doppleganger-mac-" + chip + ".dmg";
+    btn.innerHTML = "Download for Mac <small>" + name + "</small>";
+    note.innerHTML = "Wrong chip? Pick the other Mac download below.";
+    document.getElementById("steps-mac").classList.add("show");
+  } else {
+    forEl.textContent = isMobile ? "Doppleganger runs on Windows and Mac computers. Send this page to yourself and open it there."
+                                 : "Doppleganger runs on Windows and Mac. Pick your computer below.";
+    btn.style.display = "none";
+  }
+
+  // Show the version, and grey out any download the latest release doesn't have yet.
+  fetch("https://api.github.com/repos/" + REPO + "/releases/latest")
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel) return;
+      document.getElementById("version").textContent = "Version " + String(rel.tag_name || "").replace(/^v/, "");
+      var have = {};
+      (rel.assets || []).forEach(function (a) { have[a.name] = true; });
+      document.querySelectorAll("[data-asset]").forEach(function (a) {
+        if (!have[a.getAttribute("data-asset")]) { a.classList.add("missing"); a.title = "Coming soon"; }
+      });
+      var main = btn.href.split("/").pop();
+      if (main === "Doppleganger-mac-arm64.dmg" && !have[main] && have["Doppleganger-mac-x86_64.dmg"]) {
+        // No Apple Silicon build in this release yet: the Intel build runs on M-series Macs via Rosetta.
+        btn.href = BASE + "Doppleganger-mac-x86_64.dmg";
+        btn.innerHTML = "Download for Mac <small>Intel build, runs on Apple Silicon</small>";
+        note.innerHTML = "The native Apple Silicon build is on its way. This one works on every Mac; "
+          + "if macOS offers to install Rosetta, click Install.";
+        main = "Doppleganger-mac-x86_64.dmg";
+      }
+      if (btn.style.display !== "none" && !have[main]) {
+        btn.classList.add("missing");
+        note.textContent = "This download isn't in the latest release yet - check back shortly.";
+      }
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>
