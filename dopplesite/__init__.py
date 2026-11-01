@@ -8,13 +8,14 @@ from datetime import timedelta
 from flask import Flask, abort, g, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import hhauth, releases, settings, users
+from . import hhauth, releases, settings
 
 log = logging.getLogger('dopplesite')
 ROOT = settings.ROOT
 
 
 def create_app() -> Flask:
+    from . import users   # imported here so `python -m dopplesite.users` runs cleanly
     app = Flask(__name__, static_folder=os.path.join(ROOT, 'static'), static_url_path='/static')
     app.config['SECRET_KEY'] = settings.get('SECRET_KEY', 'dev-only-change-me')
     app.config.update(
