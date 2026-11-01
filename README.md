@@ -3,7 +3,7 @@
 **Doppleganger** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in Zoom, Teams or any browser meeting — without anyone noticing. Windows 10/11 and macOS 12+.
 
 
-**Download: [busybeavernc.github.io/doppleganger-public](https://busybeavernc.github.io/doppleganger-public/)** (picks the right file for your Windows PC or Mac), or grab a file from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest).
+**Download: [doppleganger.happyhacks.io](https://doppleganger.happyhacks.io/)** (picks the right file for your Windows PC or Mac), or grab a file from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest).
 
 This repository only hosts Doppleganger's downloads and documentation.
 
