@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · Doppleganger{% endblock %}
+{% block content %}
+<section class="page wrap">
+  <h1>{{ title }}</h1>
+  <p class="lede">{{ body }}</p>
+  {% if action %}<p><a class="btn" href="{{ action[1] }}">{{ action[0] }}</a></p>{% endif %}
+  <p class="note"><a href="/">Back to Doppleganger</a></p>
+</section>
+{% endblock %}

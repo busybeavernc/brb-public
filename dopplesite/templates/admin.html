@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Admin · Doppleganger{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="wrap">
+    <div class="admin-head">
+      <h1>Admin</h1>
+      <form method="post" action="{{ url_for('admin.logout') }}"><span class="who">{{ who }}</span>
+        <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Sign out</button></form>
+    </div>
+
+    <div class="admin-card" id="appcard">
+      <div class="admin-card-head">
+        <h2>Doppleganger app</h2>
+        <span id="appTag" class="tag dim">checking…</span>
+        <span class="sp"></span>
+        <button class="linkbtn" type="button" id="appRefresh">Check GitHub again</button>
+      </div>
+      <dl class="kv" id="appInfo"><dt>Latest release</dt><dd>…</dd></dl>
+      <div class="stats" id="appStats"></div>
+      <p class="hint">Releases are built by GitHub Actions in the code repository and published to the public
+        downloads repository shown above. The download buttons always point at the latest release.</p>
+    </div>
+
+    <div class="admin-card" id="upd">
+      <div class="admin-card-head">
+        <h2>Website</h2>
+        <span id="updTag" class="tag">checking…</span>
+        <span class="sp"></span>
+        <button class="linkbtn" type="button" id="updRefresh">Check GitHub again</button>
+      </div>
+      <dl class="kv" id="updInfo"><dt>Running</dt><dd>…</dd></dl>
+      <div id="updErr"></div>
+      <div id="updNew"></div>
+      <div class="row">
+        <button class="btn" type="button" id="updRun" disabled>Update website</button>
+        <button class="linkbtn" type="button" id="updShowLog" hidden>Show the last output</button>
+      </div>
+      <pre class="updlog" id="updLog" hidden></pre>
+      <p class="hint">Updating runs the same command as over SSH (<code>sudo doppleganger-deploy</code>): it pulls <code>main</code> from GitHub, installs, runs the tests and restarts the site. The site is down for a few seconds at the end.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const CSRF = {{ csrf()|tojson }};
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const when = t => t ? new Date(t * 1000).toLocaleString() : '';
+  let poll;
+
+  async function api(path, method = 'GET') {
+    const r = await fetch(path, { method, headers: { 'X-CSRF-Token': CSRF }, credentials: 'same-origin' });
+    if (r.status === 401) { location.href = '/admin/login'; throw new Error('signed out'); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
+    return d;
+  }
+
+  async function load(fetchGit = true) {
+    const v = await api('/admin/api/updates' + (fetchGit ? '' : '?fetch=0'));
+    const n = (v.behind || []).length;
+    const tag = $('#updTag');
+    tag.className = 'tag' + (v.running ? ' warn' : n ? ' ok' : '');
+    tag.textContent = v.running ? 'updating…' : n ? `${n} new` : 'up to date';
+    const last = v.started ? `<dt>Last update</dt><dd>${esc(when(v.started))}${v.exit === 0 ? ' · <span class="tag ok">finished</span>' : v.exit != null ? ` · <span class="tag bad">${v.exit === -1 ? 'stopped' : 'failed (' + v.exit + ')'}</span>` : ''}</dd>` : '';
+    $('#updInfo').innerHTML = `<dt>Branch</dt><dd>${esc(v.branch)}</dd><dt>Running</dt><dd><span class="mono">${esc(v.commit || '?')}</span> ${esc(v.subject || '')}</dd>${last}`;
+    $('#updErr').innerHTML = v.error ? `<p class="msg err">Couldn't check GitHub: ${esc(v.error)}</p>` : '';
+    $('#updNew').innerHTML = n ? `<h3>New on GitHub</h3><ul class="commits">${v.behind.map(c => `<li><span class="mono">${esc(c.commit)}</span> ${esc(c.subject)}</li>`).join('')}</ul>` : '';
+    $('#updRun').disabled = !!v.running || !v.exists;
+    $('#updShowLog').hidden = !v.started;
+    if (v.running) watch(0);
+  }
+
+  function watch(from) {
+    const box = $('#updLog');
+    box.hidden = false; if (!from) box.textContent = '';
+    clearTimeout(poll);
+    const tick = async off => {
+      let r;
+      try { r = await api('/admin/api/updates/log?from=' + off); }
+      catch (e) { poll = setTimeout(() => tick(off), 3000); return; }   // the site restarting mid-update: keep trying
+      if (r.log) { box.textContent += r.log; box.scrollTop = box.scrollHeight; }
+      if (r.running) { poll = setTimeout(() => tick(r.offset), 1500); return; }
+      box.textContent += r.exit === 0 ? '\n✓ Finished.' : `\n✗ ${r.exit === -1 ? 'Stopped before it finished.' : 'Failed (exit ' + r.exit + ').'}`;
+      box.scrollTop = box.scrollHeight;
+      setTimeout(() => load(false).catch(() => {}), 800);
+    };
+    tick(from);
+  }
+
+  $('#updRefresh').addEventListener('click', () => { $('#updTag').textContent = 'checking…'; load(true).catch(e => alert(e.message)); });
+  $('#updShowLog').addEventListener('click', () => watch(0));
+  $('#updRun').addEventListener('click', async () => {
+    if (!confirm('Update the website?\n\nPulls main from GitHub, installs, runs the tests and restarts (a few seconds of downtime).')) return;
+    $('#updRun').disabled = true;
+    try { await api('/admin/api/updates', 'POST'); $('#updTag').className = 'tag warn'; $('#updTag').textContent = 'updating…'; watch(0); }
+    catch (e) { alert(e.message); $('#updRun').disabled = false; }
+  });
+
+  load(true).catch(e => { $('#updErr').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+
+  async function loadApp(fresh = false) {
+    const a = await api('/admin/api/app' + (fresh ? '?fresh=1' : ''));
+    const r = a.release;
+    const ready = a.platforms.filter(p => p.ready).length;
+    const tag = $('#appTag');
+    tag.className = 'tag ' + (!r ? 'bad' : ready === a.platforms.length ? 'ok' : 'warn');
+    tag.textContent = !r ? 'no release found' : `v${r.version}`;
+    $('#appInfo').innerHTML =
+      `<dt>Downloads repo</dt><dd><a href="https://github.com/${esc(a.repo)}/releases">${esc(a.repo)}</a></dd>` +
+      (r ? `<dt>Latest release</dt><dd><a href="${esc(r.url)}">v${esc(r.version)}</a> · ${esc(new Date(r.published).toLocaleString())}</dd>` :
+           `<dt>Latest release</dt><dd>Couldn't read it from GitHub (no release yet, or GitHub unreachable).</dd>`) +
+      `<dt>Downloads</dt><dd>${a.platforms.map(p => `<span class="tag ${p.ready ? 'ok' : 'dim'}">${esc(p.label)}</span>`).join(' ')}</dd>` +
+      `<dt>Sign-in</dt><dd>${a.sso ? 'Sign in with Happy Hacks is on' : 'Happy Hacks sign-in is not set up yet (HAPPYHACKS_ settings in .env)'}</dd>`;
+    const s = a.stats, by = s.by_platform || {};
+    $('#appStats').innerHTML = [
+      [s.recent, `downloads, last ${s.days} days`], [by.windows || 0, 'Windows'], [by['mac-arm64'] || 0, 'Mac · Apple Silicon'],
+      [by['mac-intel'] || 0, 'Mac · Intel'], [s.total, 'downloads, all time'], [s.users, 'signed-in people']
+    ].map(([n, l]) => `<div class="stat"><b>${n}</b><span>${esc(l)}</span></div>`).join('');
+  }
+  $('#appRefresh').addEventListener('click', () => loadApp(true).catch(e => alert(e.message)));
+  loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Doppleganger · A seamless switch.{% endblock %}</title>
+  <meta name="description" content="Doppleganger records a short, seamless loop of you and switches between it and your live webcam in Zoom, Teams or Meet. For Windows and Mac.">
+  <meta name="theme-color" content="#111827">
+  <meta property="og:title" content="Doppleganger · A seamless switch.">
+  <meta property="og:description" content="Record a seamless loop of yourself and switch between it and your live webcam in any meeting.">
+  <meta property="og:image" content="https://doppleganger.happyhacks.io/static/img/logo.png">
+  <link rel="icon" href="{{ asset('favicon-32.png') }}" sizes="32x32" type="image/png">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;550;650;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ asset('css/site.css') }}">
+</head>
+<body>
+  <header class="nav-bar">
+    <div class="wrap nav">
+      <a class="brand" href="/" aria-label="Doppleganger home">
+        <img src="{{ asset('img/icon.png') }}" alt="" width="30" height="30"><span>Doppleganger</span>
+      </a>
+      <nav>
+        <a href="/#download">Download</a>
+        <a href="{{ url_for('guide') }}">Guide</a>
+        {% if user %}
+          {% if user.role == 'admin' %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
+          <a class="who" href="{{ account_url }}" title="Your Happy Hacks account">{{ (user.name or user.email or 'Account').split()[0] }}</a>
+          <form method="post" action="{{ url_for('signout') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
+            <button class="linkbtn" type="submit">Sign out</button></form>
+        {% elif sso %}
+          <a href="{{ url_for('hh_start', next=request.path) }}">Sign in</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>Doppleganger · A seamless switch.</span>
+      <span class="sp"></span>
+      <a href="https://happyhacks.io">A product of Happy Hacks</a>
+    </div>
+  </footer>
+</body>
+</html>

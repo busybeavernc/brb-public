@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero wrap">
+  <img class="logo" src="{{ asset('img/logo.png') }}" alt="Doppleganger - A seamless switch." width="380" height="79">
+  <h1>Step away from the camera. Nobody notices.</h1>
+  <p class="lede">Doppleganger records a short, seamless loop of you, then lets you cut between it and your live webcam
+    in Zoom, Teams or Meet with one key.</p>
+
+  <div class="card" id="download" aria-live="polite">
+    <p class="for" id="for">Choose your computer below.</p>
+    {% if need_signin %}
+      <a class="btn big" href="{{ url_for('hh_start', next='/#download') }}">Sign in with Happy Hacks to download</a>
+      <p class="note">Free. One Happy Hacks account works for every Happy Hacks app.
+        <a href="{{ url_for('hh_start', next='/#download', signup=1) }}">Create an account</a></p>
+    {% else %}
+      <a class="btn big" id="main-btn" href="#all" hidden>Download</a>
+      <p class="note" id="main-note"></p>
+    {% endif %}
+  </div>
+
+  <div class="steps" id="steps-windows">
+    <strong>Installing on Windows</strong>
+    <ol>
+      <li>Open <b>DopplegangerSetup.exe</b>. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>.</li>
+      <li>The setup guide adds the Doppleganger camera, helps you pick your webcam and record your first loop.</li>
+      <li>In Zoom or Teams, choose <b>Doppleganger</b> as your camera.</li>
+    </ol>
+  </div>
+  <div class="steps" id="steps-mac">
+    <strong>Installing on a Mac</strong>
+    <ol>
+      <li>Open the .dmg and drag <b>Doppleganger</b> onto <b>Applications</b>.</li>
+      <li>Open Doppleganger. The first time, macOS says it <i>"can't be opened because Apple cannot check it for malicious
+        software"</i> (the app isn't notarized by Apple yet). Click <b>OK</b>, then go to <b>System Settings → Privacy &amp;
+        Security</b>, scroll down and click <b>Open Anyway</b>. Open it again and choose <b>Open</b>. You only do this once.</li>
+      <li>Install <a href="https://obsproject.com/download">OBS Studio</a> (free). Doppleganger uses its virtual camera;
+        the setup guide walks you through it, and through allowing the camera and hotkeys.</li>
+      <li>In Zoom, Teams or Meet, choose <b>OBS Virtual Camera</b>.</li>
+    </ol>
+  </div>
+
+  <h2 id="all">All downloads</h2>
+  <div class="all">
+    {% for key, p in platforms.items() %}
+      <a class="btn secondary{% if not available[key] %} missing{% endif %}" data-platform="{{ key }}"
+         href="{{ url_for('download', platform=key) }}"{% if not available[key] %} title="Coming soon" aria-disabled="true"{% endif %}>
+        {{ p.label }} <small>{{ p.detail }}{% if sizes[key] %} · {{ sizes[key] }} MB{% endif %}</small></a>
+    {% endfor %}
+  </div>
+  <p class="note">Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
+    "Processor: Intel" means Intel.</p>
+
+  <h2>What it does</h2>
+  <div class="features">
+    <div class="feature"><h3><span class="dot"></span>A loop that doesn't look like one</h3>
+      <p>Record 1-3 minutes of yourself. Doppleganger matches the end to the start so it repeats seamlessly.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Cut with one key</h3>
+      <p>Tap F9 to switch between live and loop. Hold it and Doppleganger cuts the moment you're lined up.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Line up in seconds</h3>
+      <p>Outlines of you and the loop show you exactly where to sit before you cut back.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Quiet and invisible</h3>
+      <p>Your microphone is muted while the loop plays, and Doppleganger never shows up in screen shares.</p></div>
+  </div>
+
+  <p class="note" style="margin-top:36px">
+    {% if release and release.version %}Latest version {{ release.version }}{% if release.published %}, released {{ release.published[:10] }}{% endif %} ·
+      <a href="{{ release.url }}">Release notes</a> ·{% endif %}
+    <a href="{{ url_for('guide') }}">Setup guide</a>
+  </p>
+</section>
+
+{% if not need_signin %}
+<script>
+(function () {
+  var ua = navigator.userAgent || "";
+  var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+  var isWin = /Win/i.test(platform) || /Windows/i.test(ua);
+  var isMac = !isWin && (/Mac/i.test(platform) || /Macintosh/i.test(ua)) && !/iPhone|iPad/i.test(ua);
+  var isMobile = /Android|iPhone|iPad|Mobile/i.test(ua);
+  var have = {{ available|tojson }};
+
+  function macChip() {
+    // Browsers don't say which chip a Mac has; the graphics name is a good hint.
+    try {
+      var gl = document.createElement("canvas").getContext("webgl");
+      var ext = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      var r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
+      if (/Intel|AMD|Radeon|NVIDIA/i.test(r)) return "mac-intel";
+    } catch (e) {}
+    return "mac-arm64";
+  }
+  var forEl = document.getElementById("for"), btn = document.getElementById("main-btn"), note = document.getElementById("main-note");
+  function offer(key, title, sub) {
+    btn.href = "/download/" + key;
+    btn.innerHTML = title + " <small>" + sub + "</small>";
+    btn.hidden = false;
+  }
+  if (isWin) {
+    forEl.textContent = "For your Windows PC";
+    offer("windows", "Download for Windows", "DopplegangerSetup.exe");
+    document.getElementById("steps-windows").classList.add("show");
+  } else if (isMac) {
+    var chip = macChip();
+    if (chip === "mac-arm64" && !have["mac-arm64"] && have["mac-intel"]) {
+      chip = "mac-intel";   // no Apple Silicon build in this release yet: the Intel one runs via Rosetta
+      note.textContent = "The native Apple Silicon build is on its way. This one works on every Mac; if macOS offers to install Rosetta, click Install.";
+    } else {
+      note.textContent = "Wrong chip? Pick the other Mac download below.";
+    }
+    var name = chip === "mac-arm64" ? "Apple Silicon" : "Intel";
+    forEl.innerHTML = 'For your Mac <span class="tag">' + name.toUpperCase() + '</span>';
+    offer(chip, "Download for Mac", name);
+    document.getElementById("steps-mac").classList.add("show");
+  } else {
+    forEl.textContent = isMobile ? "Doppleganger runs on Windows and Mac computers. Send this page to yourself and open it there."
+                                 : "Doppleganger runs on Windows and Mac. Pick your computer below.";
+  }
+  var key = btn.getAttribute("href").split("/").pop();
+  if (!btn.hidden && !have[key]) {
+    btn.classList.add("missing");
+    note.textContent = "This download isn't in the latest release yet - check back shortly.";
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

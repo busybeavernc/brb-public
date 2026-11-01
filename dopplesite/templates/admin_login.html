@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Admin · Doppleganger{% endblock %}
+{% block content %}
+<section class="page wrap">
+  <h1>Admin</h1>
+  {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+  {% if not_admin %}<p class="msg">{{ not_admin }} is signed in, but isn't a Doppleganger admin. Ask an admin to add you
+    (ADMIN_CONTACTS), or use the admin password.</p>{% endif %}
+  {% if sso and not not_admin %}
+    <p><a class="btn" href="{{ url_for('hh_start', next='/admin') }}">Sign in with Happy Hacks</a></p>
+  {% endif %}
+  {% if password_on %}
+    <p class="or">{% if sso %}Or use the admin password{% else %}Admin password{% endif %}</p>
+    <form method="post">
+      <label class="field">Password<input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn secondary" type="submit">Open admin</button>
+    </form>
+  {% elif not sso %}
+    <p class="msg">Neither Happy Hacks sign-in nor ADMIN_PASSWORD is set up in .env.</p>
+  {% endif %}
+</section>
+{% endblock %}
