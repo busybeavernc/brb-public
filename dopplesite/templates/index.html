@@ -2,9 +2,12 @@
 {% block content %}
 <section class="hero wrap">
   <img class="logo" src="{{ asset('img/logo.png') }}" alt="Doppleganger - A seamless switch." width="380" height="79">
-  <h1>Step away from the camera. Nobody notices.</h1>
-  <p class="lede">Doppleganger records a short, seamless loop of you, then lets you cut between it and your live webcam
-    in Zoom, Teams or Meet with one key.</p>
+  <h1>Step away for a moment. Keep the meeting calm.</h1>
+  <p class="lede">Need a quick restroom break or a coffee refill during a long meeting or training? Doppleganger shows a
+    short, natural loop of you while you're away, so your camera doesn't suddenly go dark and nobody is distracted.
+    One key brings your live camera back.</p>
+  <p class="compat">Works with <b>Google Meet</b> · <b>Microsoft Teams</b> · <b>Webex</b> · <b>Zoom</b> and other video
+    meeting apps that let you choose a camera.</p>
 
   <div class="card" id="download" aria-live="polite">
     <p class="for" id="for">Choose your computer below.</p>
@@ -23,7 +26,7 @@
     <ol>
       <li>Open <b>DopplegangerSetup.exe</b>. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>.</li>
       <li>The installer adds the HappyHacks Virtual Camera (Windows asks for permission once); the setup guide helps you pick your webcam and record your first loop.</li>
-      <li>In Zoom or Teams, choose <b>HappyHacks Virtual Camera</b> as your camera.</li>
+      <li>In your meeting app's video settings, choose <b>HappyHacks Virtual Camera</b> as your camera.</li>
     </ol>
   </div>
   <div class="steps" id="steps-mac">
@@ -35,7 +38,7 @@
         Security</b>, scroll down and click <b>Open Anyway</b>. Open it again and choose <b>Open</b>. You only do this once.</li>
       <li>Install <a href="https://obsproject.com/download">OBS Studio</a> (free). Doppleganger uses its virtual camera;
         the setup guide walks you through it, and through allowing the camera and hotkeys.</li>
-      <li>In Zoom, Teams or Meet, choose <b>OBS Virtual Camera</b>.</li>
+      <li>In your meeting app's video settings, choose <b>OBS Virtual Camera</b>.</li>
     </ol>
   </div>
 
@@ -47,7 +50,8 @@
         {{ p.label }} <small>{{ p.detail }}{% if sizes[key] %} · {{ sizes[key] }} MB{% endif %}</small></a>
     {% endfor %}
   </div>
-  <p class="note">Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
+  <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>.
+    Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
     "Processor: Intel" means Intel.</p>
 
   <h2 id="pricing">Free to try, {{ price }}/month for unlimited</h2>
@@ -71,21 +75,35 @@
 
   <h2>What it does</h2>
   <div class="features">
-    <div class="feature"><h3><span class="dot"></span>A loop that doesn't look like one</h3>
-      <p>Record 1-3 minutes of yourself. Doppleganger matches the end to the start so it repeats seamlessly.</p></div>
-    <div class="feature"><h3><span class="dot"></span>Cut with one key</h3>
-      <p>Tap F9 to switch between live and loop. Hold it and Doppleganger cuts the moment you're lined up.</p></div>
-    <div class="feature"><h3><span class="dot"></span>Line up in seconds</h3>
-      <p>Outlines of you and the loop show you exactly where to sit before you cut back.</p></div>
-    <div class="feature"><h3><span class="dot"></span>Quiet and invisible</h3>
-      <p>Your microphone is muted while the loop plays, and Doppleganger never shows up in screen shares.</p></div>
+    <div class="feature"><h3><span class="dot"></span>A calm stand-in</h3>
+      <p>Record a minute or two of yourself listening. Doppleganger joins the end to the start so the loop plays smoothly,
+        without a jump.</p></div>
+    <div class="feature"><h3><span class="dot"></span>One key, either way</h3>
+      <p>Tap F9 as you step away and again when you're back. Hold it, and Doppleganger switches the moment you're lined up.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Back in the same spot</h3>
+      <p>Outlines of you and the loop show where to sit, so coming back is smooth too.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Quiet while you're away</h3>
+      <p>Your microphone is muted while the loop plays, so a coffee grinder or a barking dog never reaches the meeting.</p></div>
+  </div>
+
+  <h2 id="intended-use">Made for short breaks</h2>
+  <div class="card use">
+    <p>Doppleganger is a courtesy tool: it saves everyone the distraction of a camera switching off, an empty chair or
+      a kitchen in the background while you take a moment. Use it for brief breaks in meetings, classes and trainings
+      where stepping away is fine.</p>
+    <p>It is <b>not</b> for faking attendance or participation, or for getting around attendance checks, identity
+      checks, proctored exams, interviews or any meeting where your live presence is required. Follow your organizer's,
+      employer's or school's rules; when in doubt, simply turn your camera off.
+      <a href="{{ url_for('eula') }}">Read the EULA</a>.</p>
   </div>
 
   <p class="note" style="margin-top:36px">
     {% if release and release.version %}Latest version {{ release.version }}{% if release.published %}, released {{ release.published[:10] }}{% endif %} ·
       <a href="{{ release.url }}">Release notes</a> ·{% endif %}
-    <a href="{{ url_for('guide') }}">Setup guide</a>
+    <a href="{{ url_for('guide') }}">Setup guide</a> · <a href="{{ url_for('eula') }}">EULA</a>
   </p>
+  <p class="note tm">Zoom, Microsoft Teams, Google Meet and Webex are trademarks of their respective owners.
+    Doppleganger is not affiliated with or endorsed by them.</p>
 </section>
 
 {% if not need_signin %}

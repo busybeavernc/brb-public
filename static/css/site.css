@@ -135,3 +135,8 @@ code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }
 .inline-form input, .inline-form select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--midnight); color: var(--cloud); }
 .early { background: rgba(45, 212, 191, .1); border: 1px solid rgba(45, 212, 191, .35); border-radius: 10px; padding: 10px 12px; font-size: .92rem; }
 .was { color: var(--muted); font-size: 1.2rem; font-weight: 500; }
+.compat { color: var(--muted); margin: -12px 0 26px; }
+.compat b { color: var(--cloud); font-weight: 600; }
+.card.use p { margin: 0 0 10px; color: var(--cloud); }
+.card.use p:last-child { margin-bottom: 0; color: var(--muted); }
+.note.tm { font-size: .78rem; opacity: .8; }

@@ -1,6 +1,8 @@
 <p align="center"><img src="assets/logo.png" alt="Doppleganger — A seamless switch." width="420"></p>
 
-**Doppleganger** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in Zoom, Teams or any browser meeting — without anyone noticing. Windows 10/11 and macOS 12+.
+**Doppleganger** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in a video meeting, so you can step away for a moment (a restroom break, a coffee refill) without your camera going dark and distracting everyone. Works with Google Meet, Microsoft Teams, Webex, Zoom and other meeting apps that let you choose a camera. Windows 10/11 and macOS 12+.
+
+It's meant for short, courteous breaks, not for faking attendance or getting around attendance checks, identity checks, exams or any meeting where your live presence is required; see the [EULA](https://doppleganger.happyhacks.io/eula).
 
 
 **Download: [doppleganger.happyhacks.io](https://doppleganger.happyhacks.io/)** (picks the right file for your Windows PC or Mac), or grab a file from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest).
@@ -13,7 +15,7 @@
     1. **Add the HappyHacks Virtual Camera** (the installer does this; Windows asks for permission once).
     2. **Choose your webcam.**
     3. **Record your first loop.**
-    4. **Pick "HappyHacks Virtual Camera" as your camera** in Zoom/Teams.
+    4. **Pick "HappyHacks Virtual Camera" as your camera** in your meeting app.
 
 You can reopen the guide any time from the *Setup guide* button. OBS Studio is not needed.
 
@@ -27,10 +29,10 @@ Your loops and settings live in `%APPDATA%\Doppleganger` and are kept if you uni
     1. Install OBS Studio 30 or newer.
     2. Open OBS, click **Start Virtual Camera**, and allow the camera extension in *System Settings → General → Login Items & Extensions → Camera Extensions*.
     3. Click **Stop Virtual Camera** and quit OBS. You don't need to open it again.
-5. In Zoom, Teams or Meet, choose **OBS Virtual Camera**. Keep OBS's own virtual camera stopped while Doppleganger is running.
+5. In your meeting app's video settings, choose **OBS Virtual Camera**. Keep OBS's own virtual camera stopped while Doppleganger is running.
 6. **Allow Doppleganger on your Mac.** The setup guide has a page for this. It shows a ✓ for each permission once it's on, and its buttons open the right Settings page:
     - **Camera** (*Privacy & Security → Camera*): turn on Doppleganger. macOS usually asks the first time it starts.
-    - **Input Monitoring** (*Privacy & Security → Input Monitoring*): this lets the hotkeys work while Zoom is in front. Turn on Doppleganger; if it isn't listed, click **+** and pick it from Applications. When macOS offers **Quit & Reopen**, accept, or use the guide's **Reopen Doppleganger** button. On most Mac keyboards the hotkeys are **fn+F9** and **fn+F10**.
+    - **Input Monitoring** (*Privacy & Security → Input Monitoring*): this lets the hotkeys work while your meeting app is in front. Turn on Doppleganger; if it isn't listed, click **+** and pick it from Applications. When macOS offers **Quit & Reopen**, accept, or use the guide's **Reopen Doppleganger** button. On most Mac keyboards the hotkeys are **fn+F9** and **fn+F10**.
     - **OBS camera extension** (*General → Login Items & Extensions → Camera Extensions*): from step 4.
 
    Doppleganger isn't signed by Apple yet, so macOS can treat an update as a new app and ask again. If the hotkeys stop working after an update, switch Input Monitoring off and on for Doppleganger.
@@ -54,25 +56,25 @@ Release files are signed with a self-signed "Doppleganger" certificate (`doppleg
 | Area | What it does |
 |---|---|
 | **Toolbar** | *Settings*, *Setup Guide*, and *View*: Normal or Mini Bar, larger / smaller text. |
-| **LIVE / LOOP** | What Zoom sees right now. LIVE is Aqua, LOOP is Violet; GLITCH appears in amber while a fake bad connection is running. The preview shows it too: a pulsing **ON AIR** sign and a border in the same colour. While recording, the badge turns red with the time (● REC 0:42 / 1:30). |
+| **LIVE / LOOP** | What your meeting sees right now. LIVE is Aqua, LOOP is Violet; GLITCH appears in amber while the glitch effect is running. The preview shows it too: a pulsing **ON AIR** sign and a border in the same colour. While recording, the badge turns red with the time (● REC 0:42 / 1:30). |
 | **Sync** | How seamless a cut would be right now (Aqua = in sync). |
 | **Cut button** | **Tap:** cut immediately (hard cut). **Hold:** Doppleganger waits and cuts by itself the moment you're in sync; let go first to cancel. The button wears the colour of where you're cutting *to*. |
 | **Glitch / Record loop** | See below. |
 | **Webcam** | Pick which camera is your live feed (virtual cameras are never offered). |
 | **Loops** | Your loop library: thumbnails, names (*Rename*), *Use*, *Delete*. A ⚠ appears when a loop's lighting doesn't match your room right now (darker, brighter, different colour). |
-| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter, Cut and Glitch, to park beside Zoom. Drag it by the logo; *Full view* brings the window back. |
+| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter, Cut and Glitch, to park beside your meeting. Drag it by the logo; *Full view* brings the window back. |
 | **Settings** | License, text size, privacy, crossfade, guides, outlines, overlay strength, **recording length (60-600 s, default 90)**, the camera, updates. |
 
 **Hidden from screen sharing:** Doppleganger's windows (main, mini bar, setup, settings) are excluded from screen capture. When you share your screen, viewers see what's behind them. This also hides them from your own screenshots. Turn it off in *Settings → Privacy*.
 
 **Silence while on the LOOP:** loops never contain sound, since Doppleganger only handles video. While the LOOP is on air, Doppleganger also **mutes your microphone** at the Windows level, so nothing you say or no background noise goes out, and unmutes it the moment you cut back to live. It only touches microphones that were unmuted, and if the app is ever closed unexpectedly while muted, your mic is restored the next time it starts. Turn it off in *Settings → Privacy*.
 
-## Hotkeys (work while Zoom is focused)
+## Hotkeys (work while your meeting app is in front)
 
 | Key | Action |
 |---|---|
 | **F9** | **Tap** = cut now. **Hold** = cut when in sync |
-| **F10** | Fake a bad connection (glitch) |
+| **F10** | Glitch effect (a stuttering picture that gives you a few seconds to settle back in) |
 | Space | Same as F9 (tap/hold), while the Doppleganger window is focused |
 | R | Record a loop; press again (or Esc) to **cancel** a recording in progress. Nothing is saved |
 | B / K / C | Glitch / next webcam / calibrate the room (optional) |
@@ -122,15 +124,15 @@ The app finds the frame in the final seconds that best matches the first, ends t
 - **After that**, the preview shows the off-air feed faded over the on-air one: the loop while you're LIVE, your camera while the LOOP is on air. Line up until the aqua border appears, or hold F9.
 - **Outlines** (O, or the checkbox under the sync meter): an aqua line traces you live and a violet line traces the loop, or the frozen picture during a glitch. When the two lines sit on top of each other, the cut is seamless.
 
-## Called on unexpectedly? Fake a bad connection
+## Glitch effect
 
-Press **F10**. Zoom's picture turns jerky and random: frozen frames, uneven bursts, and the occasional sharp in-between frame. It never goes blurry or blocky and never drops out. Your preview keeps the overlay, so you can line up with the frozen picture. Then press (or hold) **F9**: the next jump reveals you live, with a few catch-up steps before it runs smoothly. F10 again also ends it, and it stops by itself after 30 s.
+Need a few seconds to sit back down? Press **F10**. The picture your meeting sees turns jerky and random: frozen frames, uneven bursts, and the occasional sharp in-between frame. It never goes blurry or blocky and never drops out. Your preview keeps the overlay, so you can line up with the frozen picture. Then press (or hold) **F9**: the next jump reveals you live, with a few catch-up steps before it runs smoothly. F10 again also ends it, and it stops by itself after 30 s.
 
 ## The HappyHacks Virtual Camera
 
 A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\Doppleganger`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
 
-Zoom, Teams and browsers list it as **HappyHacks Virtual Camera** (older versions called it "Doppleganger": pick the new name once in Zoom). The installer adds it, and Doppleganger installs or updates it by itself when needed (Windows asks for permission). On Windows Doppleganger always uses it, never OBS, unless you set `output_camera` to `obs`. Zoom can select it any time. Whenever the Doppleganger app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start Doppleganger when Windows starts*; it opens minimized.
+Meeting apps and browsers list it as **HappyHacks Virtual Camera** (older versions called it "Doppleganger": pick the new name once in your meeting app). The installer adds it, and Doppleganger installs or updates it by itself when needed (Windows asks for permission). On Windows Doppleganger always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the Doppleganger app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start Doppleganger when Windows starts*; it opens minimized.
 
 ## Settings file
 

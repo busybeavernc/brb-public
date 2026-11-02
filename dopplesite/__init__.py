@@ -79,7 +79,14 @@ def create_app() -> Flask:
 
     @app.route('/guide')
     def guide():
-        return render_template('guide.html', guide_html=_guide_html())
+        return render_template('guide.html', guide_html=_md_html('GUIDE.md'), title='Setup guide',
+                               lede='Everything about installing and using Doppleganger.')
+
+    @app.route('/terms')
+    @app.route('/eula')          # the main address (url_for uses the route registered first, i.e. the lower one)
+    def eula():
+        return render_template('guide.html', guide_html=_md_html('EULA.md'), title='End User License Agreement',
+                               lede='The terms for using Doppleganger.')
 
     @app.route('/download/<platform>')
     def download(platform):
@@ -149,20 +156,22 @@ def create_app() -> Flask:
     return app
 
 
-_guide = {'mtime': None, 'html': ''}
+_md = {}
 
 
-def _guide_html():
-    """GUIDE.md (the user guide, also shown on GitHub) as HTML, re-read when it changes."""
-    path = os.path.join(ROOT, 'GUIDE.md')
+def _md_html(name):
+    """A Markdown file of this repository (GUIDE.md, EULA.md) as HTML, re-read when it changes."""
+    path = os.path.join(ROOT, name)
     try:
         mtime = os.path.getmtime(path)
     except OSError:
-        return '<p>The guide is missing.</p>'
-    if mtime != _guide['mtime']:
+        return '<p>This page is missing.</p>'
+    if _md.get(name, (None,))[0] != mtime:
         import markdown
         with open(path, encoding='utf-8') as fh:
             text = fh.read()
         text = text.split('\n', 1)[1] if text.startswith('<p align="center">') else text   # the logo is in the page header
-        _guide.update(mtime=mtime, html=markdown.markdown(text, extensions=['tables', 'sane_lists', 'toc']))
-    return _guide['html']
+        if text.lstrip().startswith('# '):   # the page has its own title
+            text = text.lstrip().split('\n', 1)[1]
+        _md[name] = (mtime, markdown.markdown(text, extensions=['tables', 'sane_lists', 'toc']))
+    return _md[name][1]
