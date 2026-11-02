@@ -56,13 +56,13 @@ Release files are signed with a self-signed "BRB" certificate (`doppleganger-pub
 | Area | What it does |
 |---|---|
 | **Toolbar** | *Settings*, *Setup Guide*, and *View*: Normal or Mini Bar, larger / smaller text. |
-| **LIVE / LOOP** | What your meeting sees right now. LIVE is green, LOOP is apricot; GLITCH appears in amber while the glitch effect is running. The preview shows it too: a pulsing **ON AIR** sign and a border in the same colour. While recording, the badge turns red with the time (● REC 0:42 / 1:30). |
+| **LIVE / LOOP** | What your meeting sees right now. LIVE is green, LOOP is apricot. The preview shows it too: a pulsing **ON AIR** sign and a border in the same colour. While recording, the badge turns red with the time (● REC 0:42 / 1:30). |
 | **Sync** | How seamless a cut would be right now (green = in sync). |
 | **Cut button** | **Tap:** cut immediately (hard cut). **Hold:** BRB waits and cuts by itself the moment you're in sync; let go first to cancel. The button wears the colour of where you're cutting *to*. |
-| **Glitch / Record loop** | See below. |
+| **Mini Bar (F10) / Record loop (R)** | Switch to the Mini Bar; record a new loop (see below). |
 | **Webcam** | Pick which camera is your live feed (virtual cameras are never offered). |
 | **Loops** | Your loop library: thumbnails, names (*Rename*), *Use*, *Delete*. A ⚠ appears when a loop's lighting doesn't match your room right now (darker, brighter, different colour). |
-| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter, Cut and Glitch, to park beside your meeting. Drag it by the logo; *Full view* brings the window back. |
+| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter and Cut, to park beside your meeting. Drag it by the logo; *Full view*, **F10** or **M** brings the window back. |
 | **Settings** | License, text size, privacy, crossfade, guides, outlines, overlay strength, **recording length (60-600 s, default 90)**, the camera, updates. |
 
 **Hidden from screen sharing:** BRB's windows (main, mini bar, setup, settings) are excluded from screen capture. When you share your screen, viewers see what's behind them. This also hides them from your own screenshots. Turn it off in *Settings → Privacy*.
@@ -74,10 +74,11 @@ Release files are signed with a self-signed "BRB" certificate (`doppleganger-pub
 | Key | Action |
 |---|---|
 | **F9** | **Tap** = cut now. **Hold** = cut when in sync |
-| **F10** | Glitch effect (a stuttering picture that gives you a few seconds to settle back in) |
+| **F10** | Switch between the full window and the Mini Bar |
 | Space | Same as F9 (tap/hold), while the BRB window is focused |
 | R | Record a loop; press again (or Esc) to **cancel** a recording in progress. Nothing is saved |
-| B / K / C | Glitch / next webcam / calibrate the room (optional) |
+| M | Same as F10, while a BRB window is focused |
+| K / C | Next webcam / calibrate the room (optional) |
 | E | End the recording now (final stretch) |
 | O | Show or hide the live (green) and loop (apricot) **outlines** |
 | G / M | Show or hide guides / switch to the mini bar |
@@ -122,18 +123,14 @@ The app finds the frame in the final seconds that best matches the first, ends t
 
 - **Before the first cut**, the loop's start pose shows as a soft apricot shape with your green outline on top (with outlines on). Line them up ("In start pose – cut is seamless"), then cut, or just *hold* F9 and let BRB cut when you're there. The white silhouette appears only while recording.
 - **After that**, the preview shows the off-air feed faded over the on-air one: the loop while you're LIVE, your camera while the LOOP is on air. Line up until the green border appears, or hold F9.
-- **Outlines** (O, or the checkbox under the sync meter): an green line traces you live and a apricot line traces the loop, or the frozen picture during a glitch. When the two lines sit on top of each other, the cut is seamless.
-
-## Glitch effect
-
-Need a few seconds to sit back down? Press **F10**. The picture your meeting sees turns jerky and random: frozen frames, uneven bursts, and the occasional sharp in-between frame. It never goes blurry or blocky and never drops out. Your preview keeps the overlay, so you can line up with the frozen picture. Then press (or hold) **F9**: the next jump reveals you live, with a few catch-up steps before it runs smoothly. F10 again also ends it, and it stops by itself after 30 s.
+- **Outlines** (O, or the checkbox under the sync meter): a green line traces you live and a apricot line traces the loop. When the two lines sit on top of each other, the cut is seamless.
 
 ## The HappyHacks Virtual Camera
 
-A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\BRB`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
+A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\Doppleganger`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
 
-Meeting apps and browsers list it as **HappyHacks Virtual Camera** (older versions called it "BRB": pick the new name once in your meeting app). The installer adds it, and BRB installs or updates it by itself when needed (Windows asks for permission). On Windows BRB always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the BRB app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start BRB when Windows starts*; it opens minimized.
+Meeting apps and browsers list it as **HappyHacks Virtual Camera** (older versions called it "Doppleganger": pick the new name once in your meeting app). The installer adds it, and BRB installs or updates it by itself when needed (Windows asks for permission). On Windows BRB always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the BRB app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start BRB when Windows starts*; it opens minimized.
 
 ## Settings file
 
-`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`doppleganger`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `glitch_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `glitch_max_seconds`, `mute_mic_on_loop`, `hide_from_screen_share`, `auto_update`.
+`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`doppleganger`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `view_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `mute_mic_on_loop`, `hide_from_screen_share`, `auto_update`.

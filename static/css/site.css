@@ -242,7 +242,7 @@ code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }
 .shot { margin: 0; border-radius: 16px; overflow: hidden; background: var(--paper); border: 1px solid var(--line);
   box-shadow: 0 14px 40px rgba(36, 75, 75, .14); }
 .shot img { display: block; width: 100%; height: auto; }
-.shot.mini { max-width: 448px; justify-self: center; }
+.shot.mini { max-width: 402px; justify-self: center; }
 .meet { background: #1F2A2A; border-radius: 18px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
   box-shadow: 0 14px 40px rgba(36, 75, 75, .18); }
 .tile { position: relative; aspect-ratio: 249 / 184; border-radius: 10px; overflow: hidden; display: grid; place-items: center; }
