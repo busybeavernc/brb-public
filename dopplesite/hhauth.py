@@ -1,7 +1,7 @@
 """Sign in with Happy Hacks: one account for every Happy Hacks app (same flow as zipzip's autofill/hhauth.py).
 
 Turned on by three settings in .env, printed by this command on the Happy Hacks server:
-    python -m happyhacks.sso add doppleganger "Doppleganger" https://doppleganger.happyhacks.io/auth/happyhacks/callback
+    python -m happyhacks.sso add doppleganger "BRB" https://brb.happyhacks.io/auth/happyhacks/callback
   HAPPYHACKS_URL=https://happyhacks.io   HAPPYHACKS_CLIENT_ID=doppleganger   HAPPYHACKS_CLIENT_SECRET=...
 
 The flow (authorization code + PKCE):

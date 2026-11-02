@@ -65,7 +65,9 @@ class SiteTests(Base):
         r = self.c.get('/')
         self.assertEqual(r.status_code, 200)
         page = r.get_data(as_text=True)
-        self.assertIn('Step away for a moment', page)
+        self.assertIn('Be right back.', page)
+        self.assertIn('Need a moment?', page)
+        self.assertNotIn('Doppleganger<', page)
         self.assertIn('not</b> for faking attendance', page)
         self.assertIn('/eula', page)
         self.assertIn('Latest version 0.1.30', page)
@@ -89,12 +91,18 @@ class SiteTests(Base):
         self.assertEqual(st['by_platform'], {'windows': 2, 'mac-arm64': 1})
         self.assertEqual(st['total'], 3)
 
+    def test_brb_build_preferred_over_old_name(self):
+        rel = dict(RELEASE, assets=dict(RELEASE['assets'], **{'BRBSetup.exe': {'url': 'https://dl/brb.exe', 'size': 1}}))
+        releases.reset()
+        with mock.patch.object(releases, '_fetch', return_value=rel):
+            self.assertEqual(self.c.get('/download/windows').headers['Location'], 'https://dl/brb.exe')
+
     def test_github_down_still_downloads(self):
         releases.reset()
         with mock.patch.object(releases, '_fetch', side_effect=OSError('down')):
             r = self.c.get('/download/mac-intel')
         self.assertEqual(r.status_code, 302)
-        self.assertIn('/releases/latest/download/Doppleganger-mac-x86_64.dmg', r.headers['Location'])
+        self.assertIn('/releases/latest/download/BRB-mac-x86_64.dmg', r.headers['Location'])
 
     def test_sign_in_with_happy_hacks(self):
         r = self.sign_in_with_hh({'id': 'hh1', 'name': 'Pat Doe', 'email': 'pat@example.com', 'email_verified': True}, '/guide')
@@ -134,7 +142,7 @@ class AdminTests(Base):
     def test_ordinary_user_is_not_admin(self):
         self.sign_in_with_hh({'id': 'hh5', 'name': 'Pat', 'email': 'pat@example.com', 'email_verified': True})
         self.assertEqual(self.c.get('/admin').status_code, 302)
-        self.assertIn("isn't a Doppleganger admin", self.c.get('/admin/login').get_data(as_text=True))
+        self.assertIn("isn't a BRB admin", self.c.get('/admin/login').get_data(as_text=True))
 
     def test_admin_contact_becomes_admin_only_when_confirmed(self):
         self.sign_in_with_hh({'id': 'hh6', 'name': 'Boss', 'email': 'boss@example.com', 'email_verified': False})

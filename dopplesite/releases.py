@@ -1,4 +1,4 @@
-"""The latest Doppleganger release on GitHub, and the download link for each kind of computer.
+"""The latest BRB release on GitHub, and the download link for each kind of computer.
 
 Read from the GitHub API (cached for a few minutes per worker). If GitHub can't be reached, the download buttons
 still work: they use GitHub's permanent "latest release" links, just without the version number on the page.
@@ -12,10 +12,13 @@ import urllib.request
 from . import settings
 
 PLATFORMS = {
-    'windows': {'asset': 'DopplegangerSetup.exe', 'label': 'Windows', 'detail': 'Windows 10 / 11'},
-    'mac-arm64': {'asset': 'Doppleganger-mac-arm64.dmg', 'label': 'Mac', 'detail': 'Apple Silicon (M1 and newer)'},
-    'mac-intel': {'asset': 'Doppleganger-mac-x86_64.dmg', 'label': 'Mac', 'detail': 'Intel'},
+    'windows': {'asset': 'BRBSetup.exe', 'label': 'Windows', 'detail': 'Windows 10 / 11'},
+    'mac-arm64': {'asset': 'BRB-mac-arm64.dmg', 'label': 'Mac', 'detail': 'Apple Silicon (M1 and newer)'},
+    'mac-intel': {'asset': 'BRB-mac-x86_64.dmg', 'label': 'Mac', 'detail': 'Intel'},
 }
+# names the downloads had before the rename to BRB (still offered until a BRB build of that kind is released)
+OLD_ASSETS = {'windows': 'DopplegangerSetup.exe', 'mac-arm64': 'Doppleganger-mac-arm64.dmg',
+              'mac-intel': 'Doppleganger-mac-x86_64.dmg'}
 CACHE_SECONDS = 300
 
 _lock = threading.Lock()
@@ -85,6 +88,11 @@ def reset():
         _cache.update(at=0.0, data=None)
 
 
+def _asset(rel, platform):
+    """This platform's download in the release info: the BRB build, else the one from before the rename."""
+    return rel['assets'].get(PLATFORMS[platform]['asset']) or rel['assets'].get(OLD_ASSETS.get(platform, ''))
+
+
 def link(platform):
     """(url, version) for a platform's download, or (None, None) if this release doesn't have it."""
     p = PLATFORMS.get(platform)
@@ -93,7 +101,7 @@ def link(platform):
     rel = latest()
     if rel is None:   # GitHub API unreachable: GitHub's permanent latest-release link
         return f'https://github.com/{settings.releases_repo()}/releases/latest/download/{p["asset"]}', ''
-    a = rel['assets'].get(p['asset'])
+    a = _asset(rel, platform)
     return (a['url'], a.get('version') or rel['version']) if a else (None, None)
 
 
@@ -102,10 +110,10 @@ def available():
     rel = latest()
     if rel is None:
         return {k: True for k in PLATFORMS}
-    return {k: p['asset'] in rel['assets'] for k, p in PLATFORMS.items()}
+    return {k: _asset(rel, k) is not None for k in PLATFORMS}
 
 
 def size_mb(platform):
     rel = latest()
-    a = rel and rel['assets'].get(PLATFORMS[platform]['asset'])
+    a = rel and _asset(rel, platform)
     return round(a['size'] / 1e6) if a and a.get('size') else None

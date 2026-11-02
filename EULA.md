@@ -1,12 +1,12 @@
-# Doppleganger End User License Agreement
+# BRB (Be Right Back) End User License Agreement
 
 **Version 1 · Effective November 2, 2026**
 
-This End User License Agreement ("Agreement") is between you and Happy Hacks ("Happy Hacks", "we", "us"), the maker of Doppleganger (the "Software"). By installing, opening or using the Software, or by buying a subscription, you agree to this Agreement. If you don't agree, don't install or use the Software.
+This End User License Agreement ("Agreement") is between you and Happy Hacks ("Happy Hacks", "we", "us"), the maker of BRB (Be Right Back, formerly called Doppleganger; the "Software"). By installing, opening or using the Software, or by buying a subscription, you agree to this Agreement. If you don't agree, don't install or use the Software.
 
-## 1. What Doppleganger is for
+## 1. What BRB is for
 
-Doppleganger is a courtesy tool for video meetings, classes and trainings. It lets you **step away for a moment without disrupting everyone else**: a quick restroom break, refilling your coffee, answering the door, or settling a child or a pet. Instead of your camera suddenly switching off or showing an empty chair, the other participants see a calm, ordinary picture of you until you're back.
+BRB is a courtesy tool for video meetings, classes and trainings. It lets you **step away for a moment without disrupting everyone else**: a quick restroom break, refilling your coffee, answering the door, or settling a child or a pet. Instead of your camera suddenly switching off or showing an empty chair, the other participants see a calm, ordinary picture of you until you're back.
 
 It is meant for **short, occasional breaks** in meetings where being away briefly is acceptable.
 
@@ -21,30 +21,30 @@ You agree **not** to use the Software to:
 5. break the terms of service of your meeting platform, or the policies of your employer, school, client or the meeting's organizer; or
 6. break any law.
 
-**You are responsible for how you use the Software.** Follow the rules that apply to each meeting you join. If you are unsure whether a short break with Doppleganger is acceptable, ask the organizer, or simply turn your camera off instead.
+**You are responsible for how you use the Software.** Follow the rules that apply to each meeting you join. If you are unsure whether a short break with BRB is acceptable, ask the organizer, or simply turn your camera off instead.
 
 ## 3. Your license
 
 Happy Hacks grants you a personal, non-exclusive, non-transferable, revocable license to install and use the Software on computers you own or control, in line with this Agreement.
 
-- **Free use:** each computer includes a limited amount of free LOOP time, as described on doppleganger.happyhacks.io.
+- **Free use:** each computer includes a limited amount of free LOOP time, as described on brb.happyhacks.io.
 - **License keys:** a license key (from a subscription or given to you by Happy Hacks) gives unlimited LOOP time on the number of computers it allows, normally one. License keys are for your own use; don't share, sell or publish them.
 
 You may not: copy the Software except as needed to use it; sell, rent, lend or sublicense it; reverse engineer, decompile or disassemble it, except where the law expressly allows this despite this restriction; or remove, disable or work around its licensing, time limits or device checks.
 
 ## 4. Subscriptions and payments
 
-Doppleganger Unlimited is a monthly subscription paid through Square at the price shown when you subscribe. It renews each month until you cancel. You can cancel at any time on doppleganger.happyhacks.io/license; your key then keeps working until the end of the month you've paid for. Payments already made are not refunded, except where the law requires it. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
+BRB Unlimited is a monthly subscription paid through Square at the price shown when you subscribe. It renews each month until you cancel. You can cancel at any time on brb.happyhacks.io/license; your key then keeps working until the end of the month you've paid for. Payments already made are not refunded, except where the law requires it. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
 
 ## 5. Your information
 
-To check free time and license keys, the Software sends doppleganger.happyhacks.io a one-way scrambled identifier of your computer (based on its hardware), your computer's name, its operating system and app version, and your license key, if you have one. When you sign in with Happy Hacks or subscribe, we keep your name and email address, and Square processes your payment. We use this information only to provide and support Doppleganger, and we don't sell it.
+To check free time and license keys, the Software sends brb.happyhacks.io a one-way scrambled identifier of your computer (based on its hardware), your computer's name, its operating system and app version, and your license key, if you have one. When you sign in with Happy Hacks or subscribe, we keep your name and email address, and Square processes your payment. We use this information only to provide and support BRB, and we don't sell it.
 
 Your video, your loops and your recordings stay on your computer. The Software does not upload them.
 
 ## 6. Other people's products
 
-Doppleganger works with Zoom, Microsoft Teams, Google Meet, Webex and other video meeting apps through a standard virtual camera. Those names are trademarks of their respective owners. Doppleganger is not affiliated with, endorsed by or sponsored by any of them. On a Mac, Doppleganger uses OBS Studio's virtual camera; OBS Studio is separate software with its own license.
+BRB works with Zoom, Microsoft Teams, Google Meet, Webex and other video meeting apps through a standard virtual camera. Those names are trademarks of their respective owners. BRB is not affiliated with, endorsed by or sponsored by any of them. On a Mac, BRB uses OBS Studio's virtual camera; OBS Studio is separate software with its own license.
 
 ## 7. Updates
 

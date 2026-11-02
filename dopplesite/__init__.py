@@ -1,4 +1,4 @@
-"""doppleganger.happyhacks.io: Doppleganger's website. Download page, setup guide, Sign in with Happy Hacks, /admin."""
+"""brb.happyhacks.io: the website of BRB (Be Right Back; formerly Doppleganger). Download page, setup guide, Sign in with Happy Hacks, /admin."""
 import hmac
 import logging
 import os
@@ -80,13 +80,13 @@ def create_app() -> Flask:
     @app.route('/guide')
     def guide():
         return render_template('guide.html', guide_html=_md_html('GUIDE.md'), title='Setup guide',
-                               lede='Everything about installing and using Doppleganger.')
+                               lede='Everything about installing and using BRB.')
 
     @app.route('/terms')
     @app.route('/eula')          # the main address (url_for uses the route registered first, i.e. the lower one)
     def eula():
         return render_template('guide.html', guide_html=_md_html('EULA.md'), title='End User License Agreement',
-                               lede='The terms for using Doppleganger.')
+                               lede='The terms for using BRB.')
 
     @app.route('/download/<platform>')
     def download(platform):

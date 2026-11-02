@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Admin · Doppleganger{% endblock %}
+{% block title %}Admin · BRB{% endblock %}
 {% block content %}
-<section class="page wrap">
+<section class="page wrap narrow">
   <h1>Admin</h1>
   {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
-  {% if not_admin %}<p class="msg">{{ not_admin }} is signed in, but isn't a Doppleganger admin. Ask an admin to add you
+  {% if not_admin %}<p class="msg">{{ not_admin }} is signed in, but isn't a BRB admin. Ask an admin to add you
     (ADMIN_CONTACTS), or use the admin password.</p>{% endif %}
   {% if sso and not not_admin %}
     <p><a class="btn" href="{{ url_for('hh_start', next='/admin') }}">Sign in with Happy Hacks</a></p>

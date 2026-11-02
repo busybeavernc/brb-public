@@ -182,8 +182,8 @@ def all_licenses(q='', limit=200):
 # ------------------------------------------------------------------ computers and free time
 def touch_device(device_id, name='', platform='', app_version='', ip=''):
     if not DEVICE_ID.match(str(device_id or '')):
-        raise LicenseError('This copy of Doppleganger sent a device id the server does not recognise. '
-                           'Update Doppleganger and try again.', 'bad_device')
+        raise LicenseError('This copy of BRB sent a device id the server does not recognise. '
+                           'Update BRB and try again.', 'bad_device')
     now = time.time()
     con = db()
     if con.execute('SELECT 1 FROM devices WHERE id=?', (device_id,)).fetchone():
@@ -225,7 +225,7 @@ def _license_for(device_id, key):
     if len(lic['devices']) >= lic['max_devices']:
         n = lic['max_devices']
         return None, (f"This license key is already in use on {'another computer' if n == 1 else f'{n} other computers'}. "
-                      'To move it to this computer, contact support from doppleganger.happyhacks.io/license.')
+                      'To move it to this computer, contact support from brb.happyhacks.io/license.')
     con.execute('INSERT INTO license_devices (license_id, device_id, added_at, last_seen) VALUES (?,?,?,?)',
                 (lic['id'], device_id, now, now))
     con.commit()

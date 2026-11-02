@@ -1,4 +1,4 @@
-"""Doppleganger Unlimited: a $5/month Square subscription that comes with a license key (same Square setup as zipzip).
+"""BRB Unlimited: a $5/month Square subscription that comes with a license key (same Square setup as zipzip).
 
 Settings (.env). SQUARE_ENV picks which set is used; both can sit in .env side by side:
     SQUARE_ENV=sandbox                              sandbox (test cards, no real money) or production
@@ -8,7 +8,7 @@ Settings (.env). SQUARE_ENV picks which set is used; both can sit in .env side b
     SQUARE_PRODUCTION_ACCESS_TOKEN=...              the same three for production
     SQUARE_PRODUCTION_LOCATION_ID=...
     SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY=...
-    SQUARE_WEBHOOK_URL=https://doppleganger.happyhacks.io/api/square/webhook   (the exact URL Square posts to)
+    SQUARE_WEBHOOK_URL=https://brb.happyhacks.io/api/square/webhook   (the exact URL Square posts to)
     SUBSCRIPTION_PRICE_CENTS=500
     EARLY_PRICE_CENTS=250                            early-bird price: subscribing while the computer still has free time
 
@@ -37,11 +37,11 @@ from . import licenses, settings, users
 log = logging.getLogger('dopplesite')
 API_VERSION = '2024-12-18'
 HOSTS = {'sandbox': 'https://connect.squareupsandbox.com', 'production': 'https://connect.squareup.com'}
-PLAN_NAME = 'Doppleganger Unlimited'
+PLAN_NAME = 'BRB Unlimited'
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS square_catalog (env TEXT NOT NULL, price_cents INTEGER NOT NULL, variation_id TEXT NOT NULL,
-  created_at REAL NOT NULL, PRIMARY KEY (env, price_cents));
+  created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited', PRIMARY KEY (variation_id));
 CREATE TABLE IF NOT EXISTS square_checkouts (id TEXT PRIMARY KEY, env TEXT NOT NULL, user_id TEXT NOT NULL, email TEXT NOT NULL,
   link_id TEXT, url TEXT, status TEXT NOT NULL DEFAULT 'open', created_at REAL NOT NULL,
   price_cents INTEGER NOT NULL DEFAULT 0, device_id TEXT);
@@ -59,6 +59,14 @@ def db():
     con = licenses.db()
     if id(con) not in _ready:
         con.executescript(SCHEMA)
+        cols = [r[1] for r in con.execute('PRAGMA table_info(square_catalog)')]
+        if 'plan_name' not in cols:   # before the rename to BRB: one plan per price, keyed by (env, price)
+            con.executescript("""ALTER TABLE square_catalog RENAME TO square_catalog_old;
+              CREATE TABLE square_catalog (env TEXT NOT NULL, price_cents INTEGER NOT NULL, variation_id TEXT NOT NULL,
+                created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited', PRIMARY KEY (variation_id));
+              INSERT INTO square_catalog (env, price_cents, variation_id, created_at)
+                SELECT env, price_cents, variation_id, created_at FROM square_catalog_old;
+              DROP TABLE square_catalog_old;""")
         _ready.add(id(con))
     return con
 
@@ -131,7 +139,8 @@ def location():
 def plan_variation(cents=None):
     """The monthly plan in Square's catalog at this price (created there the first time)."""
     cents = price_cents() if cents is None else int(cents)
-    row = db().execute('SELECT variation_id FROM square_catalog WHERE env=? AND price_cents=?', (env(), cents)).fetchone()
+    row = db().execute('SELECT variation_id FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?',
+                       (env(), cents, PLAN_NAME)).fetchone()
     if row:
         return row['variation_id']
     plan = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
@@ -142,8 +151,8 @@ def plan_variation(cents=None):
             'phases': [{'cadence': 'MONTHLY', 'ordinal': 0,
                         'pricing': {'type': 'STATIC', 'price_money': {'amount': cents, 'currency': 'USD'}}}]}}})['catalog_object']
     con = db()
-    con.execute('INSERT INTO square_catalog (env, price_cents, variation_id, created_at) VALUES (?,?,?,?)',
-                (env(), cents, var['id'], time.time()))
+    con.execute('INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name) VALUES (?,?,?,?,?)',
+                (env(), cents, var['id'], time.time(), PLAN_NAME))
     con.commit()
     return var['id']
 
@@ -160,7 +169,7 @@ def checkout(user, return_url, early_device=None):
             'checkout_options': {'redirect_url': f'{return_url}?c={cid}', 'ask_for_shipping_address': False,
                                  'subscription_plan_id': plan_variation(cents)},
             'pre_populated_data': {'buyer_email': user['email']},
-            'payment_note': f'Doppleganger {user["id"]} {cid}'}
+            'payment_note': f'BRB {user["id"]} {cid}'}
     link = call('POST', '/v2/online-checkout/payment-links', body).get('payment_link') or {}
     if not link.get('url'):
         raise SquareError("Square didn't return a checkout page.")

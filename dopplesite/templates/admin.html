@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin · Doppleganger{% endblock %}
+{% block title %}Admin · BRB{% endblock %}
 {% block content %}
 <section class="page">
   <div class="wrap">
@@ -11,7 +11,7 @@
 
     <div class="admin-card" id="appcard">
       <div class="admin-card-head">
-        <h2>Doppleganger app</h2>
+        <h2>BRB app</h2>
         <span id="appTag" class="tag dim">checking…</span>
         <span class="sp"></span>
         <button class="linkbtn" type="button" id="appRefresh">Check GitHub again</button>
@@ -48,7 +48,7 @@
         <input id="devQ" type="search" placeholder="Name, device id or IP…" style="font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--midnight);color:var(--cloud)">
       </div>
       <table class="keytable"><thead><tr><th>Computer</th><th>Free time left</th><th>Keys</th><th>Last seen</th><th></th></tr></thead><tbody id="devRows"><tr><td colspan="5">…</td></tr></tbody></table>
-      <p class="hint">Each computer is identified by its hardware, so reinstalling Doppleganger doesn't reset its free time.</p>
+      <p class="hint">Each computer is identified by its hardware, so reinstalling BRB doesn't reset its free time.</p>
     </div>
 
     <div class="admin-card" id="upd">
@@ -194,7 +194,7 @@
     try {
       if (b.dataset.copy) { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'copied'; return; }
       if (b.dataset.rm) { const [lid, did] = b.dataset.rm.split('|'); if (!confirm('Remove this computer from the key? The key will then work on the next computer that uses it.')) return; await post(`/admin/api/licenses/${lid}/devices/${did}/remove`); }
-      else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? Doppleganger stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
+      else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? BRB stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
       else if (b.dataset.devmax) { const [lid, n] = b.dataset.devmax.split('|'); const v = prompt('How many computers may use this key?', n); if (!v) return; await post(`/admin/api/licenses/${lid}`, { max_devices: parseInt(v, 10) }); }
       else if (b.dataset.free) { const v = prompt('Add how many minutes of free LOOP time? (negative takes time away)', '30'); if (!v) return; await post(`/admin/api/devices/${b.dataset.free}/free`, { minutes: parseFloat(v) }); }
       else if (b.dataset.reset) { if (!confirm('Reset this computer to a full free allowance?')) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }

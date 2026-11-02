@@ -21,7 +21,7 @@ def data_dir():
 
 
 def public_url():
-    return (get('PUBLIC_URL') or 'https://doppleganger.happyhacks.io').rstrip('/')
+    return (get('PUBLIC_URL') or 'https://brb.happyhacks.io').rstrip('/')
 
 
 def releases_repo():

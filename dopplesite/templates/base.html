@@ -3,29 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Doppleganger · A seamless switch.{% endblock %}</title>
-  <meta name="description" content="Step away from a video meeting for a moment without distracting anyone: Doppleganger shows a short, natural loop of you while you take a quick break. Works with the major meeting apps. For Windows and Mac.">
-  <meta name="theme-color" content="#111827">
-  <meta property="og:title" content="Doppleganger · A seamless switch.">
+  <title>{% block title %}BRB · Be Right Back{% endblock %}</title>
+  <meta name="description" content="Need a moment? Step away from a video meeting without distracting anyone: BRB (Be Right Back) shows a short, natural loop of you while you take a quick break. Works with the major meeting apps. For Windows and Mac.">
+  <meta name="theme-color" content="#244B4B">
+  <meta property="og:title" content="BRB · Be Right Back">
   <meta property="og:description" content="Take a quick break from a video meeting without distracting anyone. Works with the major meeting apps.">
-  <meta property="og:image" content="https://doppleganger.happyhacks.io/static/img/logo.png">
+  <meta property="og:image" content="https://brb.happyhacks.io/static/img/og.png">
   <link rel="icon" href="{{ asset('favicon-32.png') }}" sizes="32x32" type="image/png">
   <link rel="alternate icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;550;650;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ asset('css/site.css') }}">
 </head>
 <body>
   <header class="nav-bar">
     <div class="wrap nav">
-      <a class="brand" href="/" aria-label="Doppleganger home">
-        <img src="{{ asset('img/icon.png') }}" alt="" width="30" height="30"><span>Doppleganger</span>
+      <a class="brand" href="/" aria-label="BRB home">
+        {% include "_mark.svg" %}<span><b>BRB</b><small>Be Right Back</small></span>
       </a>
       <nav>
+        <a href="/#how">How it works</a>
         <a href="/#download">Download</a>
         <a href="{{ url_for('guide') }}">Guide</a>
+        <a href="/#faqs">FAQs</a>
         {% if user %}
           {% if user.role == 'admin' %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
           <a class="who" href="{{ account_url }}" title="Your Happy Hacks account">{{ (user.name or user.email or 'Account').split()[0] }}</a>
@@ -40,7 +42,7 @@
   <main>{% block content %}{% endblock %}</main>
   <footer class="foot">
     <div class="wrap foot-inner">
-      <span>Doppleganger · A seamless switch.</span>
+      <span>BRB · Be Right Back</span>
       <span class="sp"></span>
       <a href="{{ url_for('eula') }}">EULA</a>
       <a href="https://happyhacks.io">A product of Happy Hacks</a>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}License · Doppleganger{% endblock %}
+{% block title %}License · BRB{% endblock %}
 {% block content %}
-<section class="page wrap">
+<section class="page wrap narrow">
   <h1>Your license</h1>
   {% if notice == 'thanks' %}<p class="msg">Thank you! {% if keys %}Your license key is below.{% else %}Square is finishing your subscription; your key appears here within a minute. Reload the page if it doesn't.{% endif %}</p>{% endif %}
   {% if notice == 'canceled' %}<p class="msg">Your subscription is cancelled. Your key keeps working until the end of the month you've paid for.</p>{% endif %}
@@ -52,12 +52,12 @@
           {% for d in k.devices %}<br>· {{ d.name or 'A computer' }} ({{ d.platform }}){% endfor %}
         </p>
         {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
-          <form method="post" action="{{ url_for('api.cancel', lid=k.id) }}" onsubmit="return confirm('Cancel your Doppleganger subscription? Your key keeps working until the end of the month you have paid for.')">
+          <form method="post" action="{{ url_for('api.cancel', lid=k.id) }}" onsubmit="return confirm('Cancel your BRB subscription? Your key keeps working until the end of the month you have paid for.')">
             <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Cancel subscription</button></form>
         {% endif %}
       </div>
       {% endfor %}
-      <p class="note">To use a key: in Doppleganger, click <b>Get License Key</b> (or Settings → License), paste the key and click Apply.
+      <p class="note">To use a key: in BRB, click <b>Get License Key</b> (or Settings → License), paste the key and click Apply.
         A key works on one computer; to move it to a new one, <a href="mailto:support@happyhacks.io">contact support</a>.</p>
     {% else %}
       <p class="note">No license keys yet. Subscribe above, and your key appears here.</p>

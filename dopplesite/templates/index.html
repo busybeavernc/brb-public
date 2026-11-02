@@ -1,49 +1,85 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero wrap">
-  <img class="logo" src="{{ asset('img/logo.png') }}" alt="Doppleganger - A seamless switch." width="380" height="79">
-  <h1>Step away for a moment. Keep the meeting calm.</h1>
-  <p class="lede">Need a quick restroom break or a coffee refill during a long meeting or training? Doppleganger shows a
-    short, natural loop of you while you're away, so your camera doesn't suddenly go dark and nobody is distracted.
-    One key brings your live camera back.</p>
-  <p class="compat">Works with <b>Google Meet</b> · <b>Microsoft Teams</b> · <b>Webex</b> · <b>Zoom</b> and other video
-    meeting apps that let you choose a camera.</p>
+  <div>
+    <p class="eyebrow">Your virtual camera break companion.</p>
+    <h1>Need a moment?<br><span class="u">Be right back.</span></h1>
+    <p class="lede">Switch between your live camera and a short recorded loop of you when you need a quick break: a
+      restroom run, a coffee refill, a knock at the door. Your camera doesn't go dark, and nobody is distracted.</p>
+    <a class="btn big" href="#how">See BRB in action <span aria-hidden="true">→</span></a>
+    <p class="by">BY HAPPY HACKS</p>
+  </div>
+  <div class="scene" aria-label="Live camera, then the recorded loop, then back to live">
+    <div class="cam">
+      <div class="cam-top"><svg class="ic" viewBox="0 0 24 18" aria-hidden="true"><rect y="2" width="16" height="14" rx="3" fill="#244B4B"/><path d="M17.5 7.5l6-4v11l-6-4z" fill="#244B4B"/></svg> Live camera<span class="sp"></span><span class="live"></span></div>
+      <div class="cam-pic"><img src="{{ asset('img/flow/01-live.jpg') }}" alt="Smiling at the camera, live" width="241" height="233" loading="eager"></div>
+      <div class="cam-btns"><span class="on">Live</span><span>Loop</span></div>
+    </div>
+    <span class="arrow" aria-hidden="true">›</span>
+    <div class="cam mid">
+      <div class="cam-top"><svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#244B4B"/><path d="M7 5.5l6 3.5-6 3.5z" fill="#fff"/></svg> Recorded loop</div>
+      <div class="cam-pic"><img src="{{ asset('img/flow/02-loop.jpg') }}" alt="Listening, chin on hand: the recorded loop" width="241" height="233" loading="eager"></div>
+      <div class="cam-btns"><span>Live</span><span class="on">Loop</span></div>
+    </div>
+    <span class="arrow" aria-hidden="true">›</span>
+    <div class="cam">
+      <div class="cam-top"><svg class="ic" viewBox="0 0 24 18" aria-hidden="true"><rect y="2" width="16" height="14" rx="3" fill="#244B4B"/><path d="M17.5 7.5l6-4v11l-6-4z" fill="#244B4B"/></svg> Back to live<span class="sp"></span><span class="live"></span></div>
+      <div class="cam-pic"><img src="{{ asset('img/flow/03-back-to-live.jpg') }}" alt="Waving, back to live" width="241" height="233" loading="eager"></div>
+      <div class="cam-btns"><span class="on">Live</span><span>Loop</span></div>
+    </div>
+  </div>
+</section>
 
-  <div class="card" id="download" aria-live="polite">
-    <p class="for" id="for">Choose your computer below.</p>
-    {% if need_signin %}
-      <a class="btn big" href="{{ url_for('hh_start', next='/#download') }}">Sign in with Happy Hacks to download</a>
-      <p class="note">Free. One Happy Hacks account works for every Happy Hacks app.
-        <a href="{{ url_for('hh_start', next='/#download', signup=1) }}">Create an account</a></p>
-    {% else %}
-      <a class="btn big" id="main-btn" href="#all" hidden>Download</a>
-      <p class="note" id="main-note"></p>
-    {% endif %}
+<section class="wrap">
+  <div class="how" id="how">
+    <div><span class="n">1</span><div><h3>Record a short loop</h3><p>Record a minute or two of yourself listening. BRB joins
+      the end to the start so it plays smoothly.</p></div></div>
+    <div><span class="n">2</span><div><h3>Switch when you need a moment</h3><p>Tap F9 and your loop plays on your camera,
+      with your microphone muted, so you can step away briefly.</p></div></div>
+    <div><span class="n">3</span><div><h3>Return to live</h3><p>Back in your seat? Tap F9 again. Outlines show where to sit
+      so the switch is smooth.</p></div></div>
+  </div>
+  <p class="compat" style="margin-top:18px">Works with <b>Google Meet</b> · <b>Microsoft Teams</b> · <b>Webex</b> ·
+    <b>Zoom</b> and other video meeting apps that let you choose a camera.</p>
+
+  <h2 id="download">Download BRB</h2>
+  <div class="dl">
+    <div class="card" aria-live="polite">
+      <p class="for" id="for">Choose your computer below.</p>
+      {% if need_signin %}
+        <a class="btn big" href="{{ url_for('hh_start', next='/#download') }}">Sign in with Happy Hacks to download</a>
+        <p class="note">Free. One Happy Hacks account works for every Happy Hacks app.
+          <a href="{{ url_for('hh_start', next='/#download', signup=1) }}">Create an account</a></p>
+      {% else %}
+        <a class="btn big" id="main-btn" href="#all" hidden>Download</a>
+        <p class="note" id="main-note"></p>
+      {% endif %}
+    </div>
+    <div>
+      <div class="steps" id="steps-windows">
+        <strong>Installing on Windows</strong>
+        <ol>
+          <li>Open <b>BRBSetup.exe</b>. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>.</li>
+          <li>The installer adds the HappyHacks Virtual Camera (Windows asks for permission once); the setup guide helps you pick your webcam and record your first loop.</li>
+          <li>In your meeting app's video settings, choose <b>HappyHacks Virtual Camera</b> as your camera.</li>
+        </ol>
+      </div>
+      <div class="steps" id="steps-mac">
+        <strong>Installing on a Mac</strong>
+        <ol>
+          <li>Open the .dmg and drag <b>BRB</b> onto <b>Applications</b>.</li>
+          <li>Open BRB. The first time, macOS says it <i>"can't be opened because Apple cannot check it for malicious
+            software"</i> (the app isn't notarized by Apple yet). Click <b>OK</b>, then go to <b>System Settings → Privacy &amp;
+            Security</b>, scroll down and click <b>Open Anyway</b>. Open it again and choose <b>Open</b>. You only do this once.</li>
+          <li>Install <a href="https://obsproject.com/download">OBS Studio</a> (free). BRB uses its virtual camera;
+            the setup guide walks you through it, and through allowing the camera and hotkeys.</li>
+          <li>In your meeting app's video settings, choose <b>OBS Virtual Camera</b>.</li>
+        </ol>
+      </div>
+    </div>
   </div>
 
-  <div class="steps" id="steps-windows">
-    <strong>Installing on Windows</strong>
-    <ol>
-      <li>Open <b>DopplegangerSetup.exe</b>. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>.</li>
-      <li>The installer adds the HappyHacks Virtual Camera (Windows asks for permission once); the setup guide helps you pick your webcam and record your first loop.</li>
-      <li>In your meeting app's video settings, choose <b>HappyHacks Virtual Camera</b> as your camera.</li>
-    </ol>
-  </div>
-  <div class="steps" id="steps-mac">
-    <strong>Installing on a Mac</strong>
-    <ol>
-      <li>Open the .dmg and drag <b>Doppleganger</b> onto <b>Applications</b>.</li>
-      <li>Open Doppleganger. The first time, macOS says it <i>"can't be opened because Apple cannot check it for malicious
-        software"</i> (the app isn't notarized by Apple yet). Click <b>OK</b>, then go to <b>System Settings → Privacy &amp;
-        Security</b>, scroll down and click <b>Open Anyway</b>. Open it again and choose <b>Open</b>. You only do this once.</li>
-      <li>Install <a href="https://obsproject.com/download">OBS Studio</a> (free). Doppleganger uses its virtual camera;
-        the setup guide walks you through it, and through allowing the camera and hotkeys.</li>
-      <li>In your meeting app's video settings, choose <b>OBS Virtual Camera</b>.</li>
-    </ol>
-  </div>
-
-  <h2 id="all">All downloads</h2>
-  <div class="all">
+  <div class="all" id="all">
     {% for key, p in platforms.items() %}
       <a class="btn secondary{% if not available[key] %} missing{% endif %}" data-platform="{{ key }}"
          href="{{ url_for('download', platform=key) }}"{% if not available[key] %} title="Coming soon" aria-disabled="true"{% endif %}>
@@ -71,15 +107,14 @@
       <a class="btn" href="{{ url_for('api.license_page') }}">Get a license key</a>
     </div>
   </div>
-  <p class="note">Doppleganger checks your free time or license with this site, so it needs an internet connection while the LOOP is on air.</p>
+  <p class="note">BRB checks your free time or license with this site, so it needs an internet connection while the LOOP is on air.</p>
 
   <h2>What it does</h2>
   <div class="features">
     <div class="feature"><h3><span class="dot"></span>A calm stand-in</h3>
-      <p>Record a minute or two of yourself listening. Doppleganger joins the end to the start so the loop plays smoothly,
-        without a jump.</p></div>
+      <p>A natural loop of you listening, joined end to start so it plays without a jump.</p></div>
     <div class="feature"><h3><span class="dot"></span>One key, either way</h3>
-      <p>Tap F9 as you step away and again when you're back. Hold it, and Doppleganger switches the moment you're lined up.</p></div>
+      <p>Tap F9 as you step away and again when you're back. Hold it, and BRB switches the moment you're lined up.</p></div>
     <div class="feature"><h3><span class="dot"></span>Back in the same spot</h3>
       <p>Outlines of you and the loop show where to sit, so coming back is smooth too.</p></div>
     <div class="feature"><h3><span class="dot"></span>Quiet while you're away</h3>
@@ -88,7 +123,7 @@
 
   <h2 id="intended-use">Made for short breaks</h2>
   <div class="card use">
-    <p>Doppleganger is a courtesy tool: it saves everyone the distraction of a camera switching off, an empty chair or
+    <p>BRB is a courtesy tool: it saves everyone the distraction of a camera switching off, an empty chair or
       a kitchen in the background while you take a moment. Use it for brief breaks in meetings, classes and trainings
       where stepping away is fine.</p>
     <p>It is <b>not</b> for faking attendance or participation, or for getting around attendance checks, identity
@@ -97,13 +132,36 @@
       <a href="{{ url_for('eula') }}">Read the EULA</a>.</p>
   </div>
 
-  <p class="note" style="margin-top:36px">
+  <h2 id="faqs">FAQs</h2>
+  <div class="faq">
+    <details><summary>Which meeting apps does BRB work with?</summary>
+      <p>Any video meeting app that lets you choose a camera, including Google Meet, Microsoft Teams, Webex and Zoom. BRB
+        appears as a camera (HappyHacks Virtual Camera on Windows, OBS Virtual Camera on a Mac); pick it in your meeting
+        app's video settings.</p></details>
+    <details><summary>Is my video uploaded anywhere?</summary>
+      <p>No. Your camera, your loops and your recordings stay on your computer. BRB only checks your free time or license
+        key with this site.</p></details>
+    <details><summary>Why does it need an internet connection?</summary>
+      <p>Free LOOP time and license keys are checked with brb.happyhacks.io while the LOOP is on air, so reinstalling
+        doesn't reset free time. Your live camera works without a connection.</p></details>
+    <details><summary>How long can the loop be?</summary>
+      <p>You choose: from 1 to 10 minutes (90 seconds by default). Longer loops look more natural for longer breaks.</p></details>
+    <details><summary>Is it OK to use BRB in my meeting?</summary>
+      <p>BRB is meant for short, courteous breaks where stepping away is fine. Don't use it to fake attendance or in
+        exams, interviews or meetings that require your live presence. If you're unsure, ask the organizer or turn your
+        camera off.</p></details>
+    <details><summary>Can I cancel my subscription?</summary>
+      <p>Any time, on the <a href="{{ url_for('api.license_page') }}">license page</a>. Your key keeps working until the
+        end of the month you've paid for.</p></details>
+  </div>
+
+  <p class="note" style="margin-top:40px">
     {% if release and release.version %}Latest version {{ release.version }}{% if release.published %}, released {{ release.published[:10] }}{% endif %} ·
       <a href="{{ release.url }}">Release notes</a> ·{% endif %}
     <a href="{{ url_for('guide') }}">Setup guide</a> · <a href="{{ url_for('eula') }}">EULA</a>
   </p>
   <p class="note tm">Zoom, Microsoft Teams, Google Meet and Webex are trademarks of their respective owners.
-    Doppleganger is not affiliated with or endorsed by them.</p>
+    BRB is not affiliated with or endorsed by them. BRB was formerly called Doppleganger.</p>
 </section>
 
 {% if not need_signin %}
@@ -134,7 +192,7 @@
   }
   if (isWin) {
     forEl.textContent = "For your Windows PC";
-    offer("windows", "Download for Windows", "DopplegangerSetup.exe");
+    offer("windows", "Download for Windows", "Windows 10 / 11");
     document.getElementById("steps-windows").classList.add("show");
   } else if (isMac) {
     var chip = macChip();
@@ -149,8 +207,8 @@
     offer(chip, "Download for Mac", name);
     document.getElementById("steps-mac").classList.add("show");
   } else {
-    forEl.textContent = isMobile ? "Doppleganger runs on Windows and Mac computers. Send this page to yourself and open it there."
-                                 : "Doppleganger runs on Windows and Mac. Pick your computer below.";
+    forEl.textContent = isMobile ? "BRB runs on Windows and Mac computers. Send this page to yourself and open it there."
+                                 : "BRB runs on Windows and Mac. Pick your computer below.";
   }
   var key = btn.getAttribute("href").split("/").pop();
   if (!btn.hidden && !have[key]) {
