@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}See it in action · BRB{% endblock %}
+{% block content %}
+<section class="wrap see">
+  <div class="see-head">
+    <p class="eyebrow">See it in action</p>
+    <h1>A quick break, <span class="u">start to finish.</span></h1>
+    <p class="lede">Here's BRB on a Windows PC, step by step: record a loop once, step away whenever you need to, and
+      come back without anyone noticing a thing.</p>
+  </div>
+
+  <ol class="see-steps">
+    <li class="see-step">
+      <div class="see-text">
+        <span class="n">1</span>
+        <h2>Record your loop</h2>
+        <p>Press <b>R</b> and sit naturally, as if you're listening. A big timer and progress bar show how long is
+          left, and BRB tells you when to settle back into your starting pose so the end of the loop joins the start
+          without a jump.</p>
+        <p class="note">Do it once. Record a new loop any time your outfit or lighting changes.</p>
+      </div>
+      <figure class="shot"><img src="{{ asset('img/action/record.jpg') }}" width="1280" height="790" loading="lazy"
+        alt="BRB recording a loop: a REC 0:13 of 1:30 timer and progress bar over the webcam picture"></figure>
+    </li>
+
+    <li class="see-step">
+      <div class="see-text">
+        <span class="n">2</span>
+        <h2>Join your meeting as usual</h2>
+        <p>In your meeting app, choose <b>HappyHacks Virtual Camera</b>. You're <b>LIVE</b>: your meeting sees your
+          real camera, and the ON AIR sign and green border make that unmistakable.</p>
+        <p class="note">Works with Google Meet, Microsoft Teams, Webex, Zoom and other meeting apps.</p>
+      </div>
+      <figure class="shot"><img src="{{ asset('img/action/live.jpg') }}" width="1280" height="790" loading="lazy"
+        alt="BRB in LIVE mode, sending to the HappyHacks Virtual Camera, with an ON AIR LIVE sign"></figure>
+    </li>
+
+    <li class="see-step">
+      <div class="see-text">
+        <span class="n">3</span>
+        <h2>Need a moment? Switch to your loop</h2>
+        <p>One key press (<b>F9</b>) cuts to your loop. The border turns apricot, ON AIR says <b>LOOP</b>, and your
+          microphone is muted, so a coffee grinder or a barking dog never reaches the meeting.</p>
+        <p>Your preview shows your empty chair faded behind the loop, so you always know what's really happening.</p>
+      </div>
+      <figure class="shot"><img src="{{ asset('img/action/loop_away.jpg') }}" width="1280" height="790" loading="lazy"
+        alt="BRB in LOOP mode: the recorded loop is on air while the live camera shows an empty chair"></figure>
+    </li>
+
+    <li class="see-step meeting">
+      <div class="see-text">
+        <h2>Meanwhile, in the meeting</h2>
+        <p>Everyone else just sees you, listening calmly. No black tile, no empty chair, no "camera off" moment to
+          distract the speaker.</p>
+      </div>
+      <div class="meet" aria-label="A video meeting gallery: your tile shows your loop">
+        <div class="tile you"><img src="{{ asset('img/action/meeting-you.jpg') }}" alt="" width="249" height="184"><span>You</span></div>
+        <div class="tile t1"><b>JM</b><span>Jordan</span></div>
+        <div class="tile t2"><b>AK</b><span>Aisha</span></div>
+        <div class="tile t3"><b>RT</b><span>Rob</span></div>
+      </div>
+    </li>
+
+    <li class="see-step">
+      <div class="see-text">
+        <span class="n">4</span>
+        <h2>Back in your seat? Line up</h2>
+        <p>Outlines show where you are now (green) and where the loop is (apricot). Move until they sit on top of each
+          other, or simply <b>hold F9</b> and BRB switches the moment you're lined up.</p>
+      </div>
+      <figure class="shot"><img src="{{ asset('img/action/back_lineup.jpg') }}" width="1280" height="790" loading="lazy"
+        alt="BRB still in LOOP mode with green and apricot outlines for lining up before returning"></figure>
+    </li>
+
+    <li class="see-step">
+      <div class="see-text">
+        <span class="n">5</span>
+        <h2>And you're live again</h2>
+        <p>One more key press switches back to <b>LIVE</b> and turns your microphone back on. To everyone else, you
+          never left.</p>
+      </div>
+      <figure class="shot"><img src="{{ asset('img/action/live_again.jpg') }}" width="1280" height="790" loading="lazy"
+        alt="BRB back in LIVE mode, waving at the camera"></figure>
+    </li>
+
+    <li class="see-step">
+      <div class="see-text">
+        <h2>Tip: the Mini Bar</h2>
+        <p>Choose <b>View → Mini Bar</b> for a small always-on-top strip you can park beside your meeting, with a
+          live thumbnail and the switch button. BRB's windows never show up in your screen share.</p>
+      </div>
+      <figure class="shot mini"><img src="{{ asset('img/action/minibar.jpg') }}" width="448" height="143" loading="lazy"
+        alt="The BRB Mini Bar: a thumbnail, the LIVE badge and a Cut to loop button"></figure>
+    </li>
+  </ol>
+
+  <div class="see-cta card">
+    <h2>Ready for your next break?</h2>
+    <p>Free to try: {{ free_label_text() }} of LOOP time per computer. Unlimited for {{ price }}/month.</p>
+    <div class="row" style="justify-content:center">
+      <button class="btn big" type="button" data-download>Download Free</button>
+      <a class="btn secondary" href="/#pricing">See pricing</a>
+    </div>
+  </div>
+  <p class="note tm">Screens show BRB on Windows. Zoom, Microsoft Teams, Google Meet and Webex are trademarks of their
+    respective owners; BRB is not affiliated with or endorsed by them.</p>
+</section>
+{% endblock %}

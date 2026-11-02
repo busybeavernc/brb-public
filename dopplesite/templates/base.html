@@ -25,7 +25,8 @@
       </a>
       <nav>
         <a href="/#how">How it works</a>
-        <a href="/#download">Download</a>
+        <a href="{{ url_for('see_it') }}">See it in action</a>
+        <a href="/#pricing">Pricing</a>
         <a href="{{ url_for('guide') }}">Guide</a>
         <a href="/#faqs">FAQs</a>
         {% if user %}
@@ -37,6 +38,7 @@
           <a href="{{ url_for('hh_start', next=request.path) }}">Sign in</a>
         {% endif %}
       </nav>
+      <button class="btn btn-sm nav-dl" type="button" data-download>Download Free</button>
     </div>
   </header>
   <main>{% block content %}{% endblock %}</main>
@@ -48,5 +50,55 @@
       <a href="https://happyhacks.io">A product of Happy Hacks</a>
     </div>
   </footer>
+  {% set dl = download_info() %}
+  <dialog class="dl-modal" id="dl-modal" aria-labelledby="dl-title">
+    <form method="dialog" class="dl-close"><button class="x" value="cancel" aria-label="Close">×</button></form>
+    <span class="dl-mark">{% include "_mark.svg" %}</span>
+    <h2 id="dl-title">Download BRB</h2>
+    <p class="dl-for" id="dl-for">Free to try: {{ free_label_text() }} of LOOP time per computer.</p>
+    <div class="dl-actions">
+      <a class="btn big" id="dl-go" href="{{ url_for('download', platform='windows') }}">Download for Windows</a>
+      <form method="dialog"><button class="btn secondary" value="cancel">Cancel</button></form>
+    </div>
+    <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>.
+      Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.</p>
+    <p class="dl-other">Other computers:
+      {% for key, p in platforms.items() %}{% if dl.available[key] %}<a href="{{ url_for('download', platform=key) }}" data-platform="{{ key }}">{{ p.label }} ({{ p.detail }}{% if dl.sizes[key] %}, {{ dl.sizes[key] }} MB{% endif %})</a>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</p>
+  </dialog>
+  <script>
+  (function () {
+    var dlg = document.getElementById("dl-modal");
+    if (!dlg || !dlg.showModal) return;
+    var have = {{ dl.available|tojson }}, sizes = {{ dl.sizes|tojson }}, labels = {{ platforms|tojson }};
+    var ua = navigator.userAgent || "", plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+    var isWin = /Win/i.test(plat) || /Windows/i.test(ua);
+    var isMac = !isWin && (/Mac/i.test(plat) || /Macintosh/i.test(ua)) && !/iPhone|iPad/i.test(ua);
+    var key = null;
+    if (isWin) key = "windows";
+    else if (isMac) {
+      key = "mac-arm64";
+      try {
+        var gl = document.createElement("canvas").getContext("webgl"), ext = gl && gl.getExtension("WEBGL_debug_renderer_info");
+        if (ext && /Intel|AMD|Radeon|NVIDIA/i.test(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL))) key = "mac-intel";
+      } catch (e) {}
+      if (!have[key] && have["mac-intel"]) key = "mac-intel";
+    }
+    var go = document.getElementById("dl-go"), forEl = document.getElementById("dl-for");
+    if (key && have[key]) {
+      var p = labels[key];
+      go.href = "/download/" + key;
+      go.textContent = "Download for " + (key === "windows" ? "Windows" : "Mac (" + p.detail.replace(/ \(.*\)/, "") + ")");
+      forEl.textContent = (key === "windows" ? "" : "Mac · ") + p.detail + (sizes[key] ? " · " + sizes[key] + " MB" : "") + ". " + forEl.textContent;
+    } else {
+      go.hidden = true;
+      forEl.textContent = "BRB runs on Windows and Mac computers. Pick yours below, or open this page on your computer.";
+    }
+    document.querySelectorAll("[data-download]").forEach(function (b) {
+      b.addEventListener("click", function (ev) { ev.preventDefault(); dlg.showModal(); });
+    });
+    go.addEventListener("click", function () { setTimeout(function () { dlg.close(); }, 300); });
+    dlg.addEventListener("click", function (ev) { if (ev.target === dlg) dlg.close(); });   // click outside closes
+  })();
+  </script>
 </body>
 </html>

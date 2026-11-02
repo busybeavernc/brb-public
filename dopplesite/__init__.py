@@ -52,10 +52,20 @@ def create_app() -> Flask:
         if session.get('uid') and not g.user:
             session.pop('uid', None)
 
+    def free_label():
+        from . import licenses
+        mins = licenses.free_seconds() // 60
+        return (f'{mins // 60} hour' + ('s' if mins // 60 != 1 else '')) if mins % 60 == 0 and mins else f'{mins} minutes'
+
+    def download_info():
+        """For the Download Free dialog in the header: which downloads exist, and their sizes."""
+        return {'available': releases.available(), 'sizes': {p: releases.size_mb(p) for p in releases.PLATFORMS}}
+
     @app.context_processor
     def inject():
         return {'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
-                'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS}
+                'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
+                'free_label_text': free_label}
 
     @app.template_filter('datefmt')
     def datefmt(ts):
@@ -69,13 +79,16 @@ def create_app() -> Flask:
     @app.route('/')
     def index():
         rel = releases.latest()
-        from . import licenses, square
-        mins = licenses.free_seconds() // 60
-        free_label = (f'{mins // 60} hour' + ('s' if mins // 60 != 1 else '')) if mins % 60 == 0 and mins else f'{mins} minutes'
-        return render_template('index.html', release=rel, available=releases.available(), free_label=free_label,
+        from . import square
+        return render_template('index.html', release=rel, available=releases.available(), free_label=free_label(),
                                price=square.price_text(), early_price=square.price_text(square.early_price_cents()),
                                sizes={p: releases.size_mb(p) for p in releases.PLATFORMS},
                                need_signin=settings.flag('DOWNLOADS_REQUIRE_SIGNIN') and not g.user and hhauth.enabled())
+
+    @app.route('/see-it-in-action')
+    def see_it():
+        from . import square
+        return render_template('see.html', price=square.price_text())
 
     @app.route('/guide')
     def guide():

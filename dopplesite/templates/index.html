@@ -6,7 +6,7 @@
     <h1>Need a moment?<br><span class="u">Be right back.</span></h1>
     <p class="lede">Switch between your live camera and a short recorded loop of you when you need a quick break: a
       restroom run, a coffee refill, a knock at the door. Your camera doesn't go dark, and nobody is distracted.</p>
-    <a class="btn big" href="#how">See BRB in action <span aria-hidden="true">→</span></a>
+    <a class="btn big" href="{{ url_for('see_it') }}">See BRB in action <span aria-hidden="true">→</span></a>
     <p class="by">BY HAPPY HACKS</p>
   </div>
   <div class="scene" aria-label="Live camera, then the recorded loop, then back to live">
@@ -32,12 +32,12 @@
 
 <section class="wrap">
   <div class="how" id="how">
-    <div><span class="n">1</span><div><h3>Record a short loop</h3><p>Record a minute or two of yourself listening. BRB joins
-      the end to the start so it plays smoothly.</p></div></div>
-    <div><span class="n">2</span><div><h3>Switch when you need a moment</h3><p>Tap F9 and your loop plays on your camera,
-      with your microphone muted, so you can step away briefly.</p></div></div>
-    <div><span class="n">3</span><div><h3>Return to live</h3><p>Back in your seat? Tap F9 again. Outlines show where to sit
-      so the switch is smooth.</p></div></div>
+    <div><span class="n">1</span><div><h3>Record a short loop</h3><p>Record a minute or two of yourself listening. BRB helps
+      you create a seamless loop.</p></div></div>
+    <div><span class="n">2</span><div><h3>Switch when you need a moment</h3><p>A simple key press switches live mode to loop
+      mode. Your loop plays on your camera, with your microphone muted, so you can step away briefly.</p></div></div>
+    <div><span class="n">3</span><div><h3>Return to live</h3><p>Back in your seat? One more key press switches back
+      to LIVE mode. Outlines show where to sit so the switch is smooth.</p></div></div>
   </div>
   <p class="compat" style="margin-top:18px">Works with <b>Google Meet</b> · <b>Microsoft Teams</b> · <b>Webex</b> ·
     <b>Zoom</b> and other video meeting apps that let you choose a camera.</p>
@@ -111,8 +111,8 @@
 
   <h2>What it does</h2>
   <div class="features">
-    <div class="feature"><h3><span class="dot"></span>A calm stand-in</h3>
-      <p>A natural loop of you listening, joined end to start so it plays without a jump.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Like you never left</h3>
+      <p>A natural, seamless loop of you stands in while you're away.</p></div>
     <div class="feature"><h3><span class="dot"></span>One key, either way</h3>
       <p>Tap F9 as you step away and again when you're back. Hold it, and BRB switches the moment you're lined up.</p></div>
     <div class="feature"><h3><span class="dot"></span>Back in the same spot</h3>
