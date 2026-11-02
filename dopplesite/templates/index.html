@@ -50,6 +50,25 @@
   <p class="note">Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
     "Processor: Intel" means Intel.</p>
 
+  <h2 id="pricing">Free to try, {{ price }}/month for unlimited</h2>
+  <div class="plans">
+    <div class="plan">
+      <h3>Free</h3>
+      <p class="price">$0</p>
+      <ul><li><b>{{ free_label }} of LOOP time</b> per computer, in total</li><li>The clock only runs while the LOOP is on air</li>
+        <li>A warning and a countdown in the app when 5 minutes are left; then it cuts back to LIVE</li></ul>
+    </div>
+    <div class="plan plan-pro">
+      <h3>Unlimited</h3>
+      <p class="price">{{ price }}<small>/month</small></p>
+      <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Cancel any time</li>
+        <li><b>50% off ({{ early_price }}/month, for as long as you stay subscribed)</b> if you subscribe before your free time runs out:
+          use <b>Get License Key</b> in the app</li></ul>
+      <a class="btn" href="{{ url_for('api.license_page') }}">Get a license key</a>
+    </div>
+  </div>
+  <p class="note">Doppleganger checks your free time or license with this site, so it needs an internet connection while the LOOP is on air.</p>
+
   <h2>What it does</h2>
   <div class="features">
     <div class="feature"><h3><span class="dot"></span>A loop that doesn't look like one</h3>

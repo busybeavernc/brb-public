@@ -155,3 +155,88 @@ def no_store(resp):
         resp.headers['Cache-Control'] = 'no-store'
         resp.headers['X-Robots-Tag'] = 'noindex'
     return resp
+
+
+# ------------------------------------------------------------------ license keys and computers
+def _lic_json(lic):
+    out = {k: lic.get(k) for k in ('id', 'key', 'plan', 'status', 'max_devices', 'expires_at', 'email', 'note',
+                                   'square_status', 'created_at', 'created_by', 'valid', 'why')}
+    out['devices'] = [{k: d.get(k) for k in ('id', 'name', 'platform', 'app_version', 'added_at', 'last_seen')}
+                      for d in lic.get('devices', [])]
+    return out
+
+
+@bp.get('/admin/api/licenses')
+@login_required
+def licenses_list():
+    from . import licenses
+    return jsonify(licenses=[_lic_json(x) for x in licenses.all_licenses(request.args.get('q', ''))],
+                   free_seconds=licenses.free_seconds())
+
+
+@bp.post('/admin/api/licenses')
+@login_required
+def licenses_create():
+    from . import licenses
+    d = request.get_json(silent=True) or {}
+    try:
+        days = int(d.get('days') or 0)
+        n = int(d.get('max_devices') or 1)
+    except ValueError:
+        return jsonify(error='Days and computers must be numbers.'), 400
+    lic = licenses.create(plan='unlimited', max_devices=max(1, min(50, n)),
+                          expires_at=time.time() + days * 86400 if days > 0 else None,
+                          email=str(d.get('email') or '').strip()[:120], note=str(d.get('note') or '').strip()[:200], by=_who())
+    if d.get('device_id'):   # put it straight on a computer (e.g. someone who asked by email)
+        dev = licenses.db().execute('SELECT id FROM devices WHERE id=?', (d['device_id'],)).fetchone()
+        if dev:
+            licenses.bind_device(lic['id'], dev['id'])
+            lic = licenses.get(lic['id'])
+    return jsonify(license=_lic_json(lic))
+
+
+@bp.post('/admin/api/licenses/<lid>')
+@login_required
+def licenses_update(lid):
+    from . import licenses
+    if not licenses.get(lid):
+        return jsonify(error='No such key.'), 404
+    d = request.get_json(silent=True) or {}
+    changes = {k: d[k] for k in ('status', 'max_devices', 'note', 'email') if k in d}
+    if 'expires_days' in d:   # 0 / empty = never
+        days = int(d['expires_days'] or 0)
+        changes['expires_at'] = time.time() + days * 86400 if days > 0 else None
+    try:
+        return jsonify(license=_lic_json(licenses.update(lid, **changes)))
+    except (licenses.LicenseError, ValueError) as e:
+        return jsonify(error=str(e)), 400
+
+
+@bp.post('/admin/api/licenses/<lid>/devices/<did>/remove')
+@login_required
+def licenses_remove_device(lid, did):
+    from . import licenses
+    licenses.remove_device(lid, did)
+    return jsonify(license=_lic_json(licenses.get(lid)))
+
+
+@bp.get('/admin/api/devices')
+@login_required
+def devices_list():
+    from . import licenses
+    return jsonify(devices=licenses.devices(request.args.get('q', '')), free_seconds=licenses.free_seconds())
+
+
+@bp.post('/admin/api/devices/<did>/free')
+@login_required
+def devices_free(did):
+    from . import licenses
+    d = request.get_json(silent=True) or {}
+    if d.get('reset'):
+        n = licenses.add_free_time(did, 'reset')
+    else:
+        try:
+            n = licenses.add_free_time(did, float(d.get('minutes') or 0) * 60)
+        except ValueError:
+            return jsonify(error='Minutes must be a number.'), 400
+    return (jsonify(ok=True) if n else (jsonify(error='No such computer.'), 404))

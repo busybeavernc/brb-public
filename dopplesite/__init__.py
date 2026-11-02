@@ -29,7 +29,9 @@ def create_app() -> Flask:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     from .admin import bp as admin_bp
+    from .api import bp as api_bp
     app.register_blueprint(admin_bp)
+    app.register_blueprint(api_bp)
 
     def asset(filename):
         """Static URL with ?v=<mtime>: CloudPanel's vhost caches css/js/images forever, so a changed file needs a new URL."""
@@ -55,6 +57,11 @@ def create_app() -> Flask:
         return {'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS}
 
+    @app.template_filter('datefmt')
+    def datefmt(ts):
+        import datetime as _dt
+        return _dt.datetime.fromtimestamp(float(ts)).strftime('%b %-d, %Y') if ts else ''
+
     @app.route('/favicon.ico')
     def favicon():
         return send_from_directory(app.static_folder, 'favicon.ico')
@@ -62,7 +69,11 @@ def create_app() -> Flask:
     @app.route('/')
     def index():
         rel = releases.latest()
-        return render_template('index.html', release=rel, available=releases.available(),
+        from . import licenses, square
+        mins = licenses.free_seconds() // 60
+        free_label = (f'{mins // 60} hour' + ('s' if mins // 60 != 1 else '')) if mins % 60 == 0 and mins else f'{mins} minutes'
+        return render_template('index.html', release=rel, available=releases.available(), free_label=free_label,
+                               price=square.price_text(), early_price=square.price_text(square.early_price_cents()),
                                sizes={p: releases.size_mb(p) for p in releases.PLATFORMS},
                                need_signin=settings.flag('DOWNLOADS_REQUIRE_SIGNIN') and not g.user and hhauth.enabled())
 

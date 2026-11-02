@@ -22,6 +22,35 @@
         downloads repository shown above. The download buttons always point at the latest release.</p>
     </div>
 
+    <div class="admin-card" id="keys">
+      <div class="admin-card-head">
+        <h2>License keys</h2>
+        <span class="sp"></span>
+        <input id="keyQ" type="search" placeholder="Find a key, email, computer…" style="font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--midnight);color:var(--cloud)">
+      </div>
+      <form class="inline-form" id="newKey">
+        <label>Email (optional)<input name="email" type="email" placeholder="person@example.com"></label>
+        <label>Note<input name="note" placeholder="why / who"></label>
+        <label>Computers<input name="max_devices" type="number" min="1" max="50" value="1" style="width:80px"></label>
+        <label>Expires after<select name="days"><option value="0">never</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option></select></label>
+        <button class="btn btn-sm" type="submit">Create key</button>
+      </form>
+      <div id="keyNew"></div>
+      <table class="keytable"><thead><tr><th>Key</th><th>Plan</th><th>Owner / note</th><th>Computers</th><th></th></tr></thead><tbody id="keyRows"><tr><td colspan="5">…</td></tr></tbody></table>
+      <p class="hint">Unlimited keys work until they expire or you turn them off. Subscription keys follow Square (cancelled = works until the paid month ends).
+        To move a key to someone's new computer, remove the old computer: the key then works on the next computer that uses it.</p>
+    </div>
+
+    <div class="admin-card" id="devs">
+      <div class="admin-card-head">
+        <h2>Computers</h2>
+        <span class="sp"></span>
+        <input id="devQ" type="search" placeholder="Name, device id or IP…" style="font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--midnight);color:var(--cloud)">
+      </div>
+      <table class="keytable"><thead><tr><th>Computer</th><th>Free time left</th><th>Keys</th><th>Last seen</th><th></th></tr></thead><tbody id="devRows"><tr><td colspan="5">…</td></tr></tbody></table>
+      <p class="hint">Each computer is identified by its hardware, so reinstalling Doppleganger doesn't reset its free time.</p>
+    </div>
+
     <div class="admin-card" id="upd">
       <div class="admin-card-head">
         <h2>Website</h2>
@@ -122,6 +151,61 @@
   }
   $('#appRefresh').addEventListener('click', () => loadApp(true).catch(e => alert(e.message)));
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+  // ---- license keys
+  const mins = s => `${Math.floor(s / 60)} min`;
+  const day = t => t ? new Date(t * 1000).toLocaleDateString() : '';
+  async function post(path, body) {
+    const r = await fetch(path, { method: 'POST', headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+      credentials: 'same-origin', body: JSON.stringify(body || {}) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
+    return d;
+  }
+  function keyRow(k) {
+    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : '<span class="tag ok">active</span>';
+    const devs = k.devices.map(d => `<div>${esc(d.name || d.id.slice(0, 8))} <span class="mono">(${esc(d.platform)})</span> <button class="linkbtn" data-rm="${k.id}|${d.id}">remove</button></div>`).join('') || '<span class="hint">none yet</span>';
+    return `<tr><td><span class="mono">${esc(k.key)}</span><br>${state}</td><td>${esc(k.plan)}${k.square_status ? '<br><span class="hint">' + esc(k.square_status) + '</span>' : ''}</td>
+      <td>${esc(k.email)}<br><span class="hint">${esc(k.note)}</span></td><td>${k.devices.length} of ${k.max_devices}${devs}</td>
+      <td><button class="linkbtn" data-devmax="${k.id}|${k.max_devices}">computers…</button>
+          <button class="linkbtn" data-status="${k.id}|${k.status === 'revoked' ? 'active' : 'revoked'}">${k.status === 'revoked' ? 'turn on' : 'turn off'}</button>
+          <button class="linkbtn" data-copy="${esc(k.key)}">copy</button></td></tr>`;
+  }
+  async function loadKeys() {
+    const d = await api('/admin/api/licenses?q=' + encodeURIComponent($('#keyQ').value));
+    $('#keyRows').innerHTML = d.licenses.map(keyRow).join('') || '<tr><td colspan="5" class="hint">No keys yet.</td></tr>';
+  }
+  async function loadDevs() {
+    const d = await api('/admin/api/devices?q=' + encodeURIComponent($('#devQ').value));
+    $('#devRows').innerHTML = d.devices.map(v => `<tr><td>${esc(v.name || 'Computer')} <span class="hint">${esc(v.platform)} · v${esc(v.app_version)}</span><br><span class="mono hint">${esc(v.id.slice(0, 16))}…</span></td>
+      <td>${v.keys.length ? 'licensed' : esc(mins(v.free_left))}</td><td class="mono">${v.keys.map(esc).join('<br>')}</td><td>${esc(day(v.last_seen))}<br><span class="hint">${esc(v.last_ip)}</span></td>
+      <td><button class="linkbtn" data-free="${v.id}">+ free time</button><button class="linkbtn" data-reset="${v.id}">reset</button><button class="linkbtn" data-givekey="${v.id}">give a key</button></td></tr>`).join('') || '<tr><td colspan="5" class="hint">No computers yet.</td></tr>';
+  }
+  let qt;
+  $('#keyQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadKeys().catch(e => alert(e.message)), 250); });
+  $('#devQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadDevs().catch(e => alert(e.message)), 250); });
+  $('#newKey').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const f = Object.fromEntries(new FormData(ev.target));
+    try { const d = await post('/admin/api/licenses', f); $('#keyNew').innerHTML = `<p class="msg">New key: <span class="mono">${esc(d.license.key)}</span></p>`; ev.target.reset(); loadKeys(); }
+    catch (e) { alert(e.message); }
+  });
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    try {
+      if (b.dataset.copy) { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'copied'; return; }
+      if (b.dataset.rm) { const [lid, did] = b.dataset.rm.split('|'); if (!confirm('Remove this computer from the key? The key will then work on the next computer that uses it.')) return; await post(`/admin/api/licenses/${lid}/devices/${did}/remove`); }
+      else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? Doppleganger stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
+      else if (b.dataset.devmax) { const [lid, n] = b.dataset.devmax.split('|'); const v = prompt('How many computers may use this key?', n); if (!v) return; await post(`/admin/api/licenses/${lid}`, { max_devices: parseInt(v, 10) }); }
+      else if (b.dataset.free) { const v = prompt('Add how many minutes of free LOOP time? (negative takes time away)', '30'); if (!v) return; await post(`/admin/api/devices/${b.dataset.free}/free`, { minutes: parseFloat(v) }); }
+      else if (b.dataset.reset) { if (!confirm('Reset this computer to a full free allowance?')) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }
+      else if (b.dataset.givekey) { const note = prompt('Create an unlimited key for this computer. Note (who / why):', ''); if (note === null) return; const d = await post('/admin/api/licenses', { note, device_id: b.dataset.givekey }); alert('New key (already on that computer): ' + d.license.key); }
+      else return;
+      loadKeys(); loadDevs();
+    } catch (e) { alert(e.message); }
+  });
+  loadKeys().catch(e => { $('#keyRows').innerHTML = `<tr><td colspan="5" class="msg err">${esc(e.message)}</td></tr>`; });
+  loadDevs().catch(() => {});
+
 })();
 </script>
 {% endblock %}

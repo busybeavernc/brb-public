@@ -50,6 +50,11 @@ def reset():
     if con is not None:
         con.close()
     _local.con = _local.path = None
+    try:
+        from . import licenses
+        licenses._ready.clear()
+    except ImportError:
+        pass
 
 
 def get(uid):
