@@ -41,15 +41,24 @@ def _fetch():
 
 
 def _fetch_repo(repo):
-    url = f'https://api.github.com/repos/{repo}/releases/latest'
+    """The newest release, with each download taken from the newest release that has it: a Windows-only release
+    still leaves the latest Mac build on offer."""
+    url = f'https://api.github.com/repos/{repo}/releases?per_page=20'
     headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'doppleganger-site'}
     if settings.get('GITHUB_TOKEN'):
         headers['Authorization'] = 'Bearer ' + settings.get('GITHUB_TOKEN')
     with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=6) as r:
-        data = json.load(r)
-    assets = {a['name']: {'url': a['browser_download_url'], 'size': a.get('size', 0)} for a in data.get('assets', [])}
-    return {'version': str(data.get('tag_name', '')).lstrip('v'), 'published': data.get('published_at', ''),
-            'url': data.get('html_url', ''), 'assets': assets, 'repo': repo}
+        rels = [x for x in json.load(r) if not x.get('draft') and not x.get('prerelease')]
+    if not rels:
+        raise urllib.error.HTTPError(url, 404, 'no releases', None, None)
+    newest = rels[0]   # GitHub lists the newest first
+    assets = {}
+    for rel in rels:
+        for a in rel.get('assets', []):
+            assets.setdefault(a['name'], {'url': a['browser_download_url'], 'size': a.get('size', 0),
+                                          'version': str(rel.get('tag_name', '')).lstrip('v')})
+    return {'version': str(newest.get('tag_name', '')).lstrip('v'), 'published': newest.get('published_at', ''),
+            'url': newest.get('html_url', ''), 'assets': assets, 'repo': repo}
 
 
 def latest(force=False):
@@ -85,7 +94,7 @@ def link(platform):
     if rel is None:   # GitHub API unreachable: GitHub's permanent latest-release link
         return f'https://github.com/{settings.releases_repo()}/releases/latest/download/{p["asset"]}', ''
     a = rel['assets'].get(p['asset'])
-    return (a['url'], rel['version']) if a else (None, None)
+    return (a['url'], a.get('version') or rel['version']) if a else (None, None)
 
 
 def available():

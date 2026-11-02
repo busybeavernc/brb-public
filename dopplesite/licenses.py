@@ -246,10 +246,18 @@ def status(device, key=None):
     out['license_url'] = settings.public_url() + '/license'
     from . import square
     out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
+    # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app)
+    hours = free_seconds() / 3600
+    free_words = (f'{hours:g} hour' + ('' if hours == 1 else 's')) if free_seconds() % 1800 == 0 else f'{free_seconds() // 60} minutes'
+    out['pitch'] = (f'Every computer gets {free_words} of free LOOP time (it only counts while the LOOP is on air). '
+                    f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
+    out['offer_text'] = ''
     if not lic and out['free_left'] > 0 and not device.get('discount_used_at'):
         # early-bird offer: subscribing while free time is left is half price; the link proves it's this computer
         out['license_url'] += '?offer=' + offer_token(device['id'])
         out['offer'] = True
+        out['offer_text'] = (f'Special offer: 50% off. Subscribe while you still have free time and pay '
+                             f'{out["early_price"]}/month instead of {out["price"]}, for as long as you stay subscribed.')
     return out
 
 
