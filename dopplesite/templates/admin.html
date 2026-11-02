@@ -178,7 +178,7 @@
     const d = await api('/admin/api/devices?q=' + encodeURIComponent($('#devQ').value));
     $('#devRows').innerHTML = d.devices.map(v => `<tr><td>${esc(v.name || 'Computer')} <span class="hint">${esc(v.platform)} · v${esc(v.app_version)}</span><br><span class="mono hint">${esc(v.id.slice(0, 16))}…</span></td>
       <td>${v.keys.length ? 'licensed' : esc(mins(v.free_left))}</td><td class="mono">${v.keys.map(esc).join('<br>')}</td><td>${esc(day(v.last_seen))}<br><span class="hint">${esc(v.last_ip)}</span></td>
-      <td><button class="linkbtn" data-free="${v.id}">+ free time</button><button class="linkbtn" data-reset="${v.id}">reset</button><button class="linkbtn" data-givekey="${v.id}">give a key</button></td></tr>`).join('') || '<tr><td colspan="5" class="hint">No computers yet.</td></tr>';
+      <td><button class="linkbtn" data-free="${v.id}">+ free time</button><button class="linkbtn" data-reset="${v.id}">reset</button><button class="linkbtn" data-givekey="${v.id}">give a key</button><button class="linkbtn" data-deldev="${v.id}">delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="hint">No computers yet.</td></tr>';
   }
   let qt;
   $('#keyQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadKeys().catch(e => alert(e.message)), 250); });
@@ -197,6 +197,7 @@
       else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? BRB stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
       else if (b.dataset.devmax) { const [lid, n] = b.dataset.devmax.split('|'); const v = prompt('How many computers may use this key?', n); if (!v) return; await post(`/admin/api/licenses/${lid}`, { max_devices: parseInt(v, 10) }); }
       else if (b.dataset.free) { const v = prompt('Add how many minutes of free LOOP time? (negative takes time away)', '30'); if (!v) return; await post(`/admin/api/devices/${b.dataset.free}/free`, { minutes: parseFloat(v) }); }
+      else if (b.dataset.deldev) { if (!confirm('Delete this computer? Its free-time record, key assignments and history are removed. If it is a real computer, it starts over with a full free allowance next time.')) return; await post(`/admin/api/devices/${b.dataset.deldev}/delete`); }
       else if (b.dataset.reset) { if (!confirm('Reset this computer to a full free allowance?')) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }
       else if (b.dataset.givekey) { const note = prompt('Create an unlimited key for this computer. Note (who / why):', ''); if (note === null) return; const d = await post('/admin/api/licenses', { note, device_id: b.dataset.givekey }); alert('New key (already on that computer): ' + d.license.key); }
       else return;

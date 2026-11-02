@@ -64,6 +64,10 @@ def db():
     con = users.db()
     if id(con) not in _ready:
         con.executescript(SCHEMA)
+        if 'first_ip' not in [r[1] for r in con.execute('PRAGMA table_info(devices)')]:
+            con.execute("ALTER TABLE devices ADD COLUMN first_ip TEXT NOT NULL DEFAULT ''")
+            con.execute('UPDATE devices SET first_ip=last_ip')
+            con.commit()
         _ready.add(id(con))
     return con
 
@@ -180,20 +184,59 @@ def all_licenses(q='', limit=200):
 
 
 # ------------------------------------------------------------------ computers and free time
-def touch_device(device_id, name='', platform='', app_version='', ip=''):
-    if not DEVICE_ID.match(str(device_id or '')):
+def plausible_device_id(device_id):
+    """A real device id is a SHA-256 in hex: 64 characters that use most of the 16 hex digits.
+    Hand-made ones (all 'a', 'abab...') don't; the chance of a real one using fewer than 10 is negligible."""
+    d = str(device_id or '')
+    return bool(DEVICE_ID.match(d)) and len(set(d)) >= 10
+
+
+def new_devices_per_ip_day():
+    try:
+        return int(settings.get('NEW_DEVICES_PER_IP_DAY', 5))
+    except ValueError:
+        return 5
+
+
+def touch_device(device_id, name='', platform='', app_version='', ip='', create=True):
+    """This computer's record, refreshed. create=False (a status check): a computer we haven't seen yet isn't
+    recorded - it gets a full free allowance on paper, and is recorded the first time it puts the LOOP on air."""
+    if not plausible_device_id(device_id):
         raise LicenseError('This copy of BRB sent a device id the server does not recognise. '
                            'Update BRB and try again.', 'bad_device')
     now = time.time()
     con = db()
+    name, platform, app_version, ip = str(name)[:80], str(platform)[:20], str(app_version)[:20], str(ip)[:60]
     if con.execute('SELECT 1 FROM devices WHERE id=?', (device_id,)).fetchone():
         con.execute('UPDATE devices SET name=?, platform=?, app_version=?, last_seen=?, last_ip=? WHERE id=?',
-                    (str(name)[:80], str(platform)[:20], str(app_version)[:20], now, str(ip)[:60], device_id))
+                    (name, platform, app_version, now, ip, device_id))
+    elif not create:
+        return {'id': device_id, 'name': name, 'platform': platform, 'app_version': app_version, 'used_seconds': 0.0,
+                'bonus_seconds': 0.0, 'first_seen': now, 'last_seen': now, 'last_ip': ip, 'first_ip': ip, 'note': '',
+                'discount_used_at': None, 'new': True}
     else:
-        con.execute('INSERT INTO devices (id, name, platform, app_version, first_seen, last_seen, last_ip) VALUES (?,?,?,?,?,?,?)',
-                    (device_id, str(name)[:80], str(platform)[:20], str(app_version)[:20], now, now, str(ip)[:60]))
+        # A brake on making up device ids for more free time: only so many new computers per internet connection
+        # per day (an office shares one address, so it's a handful, not one).
+        cap = new_devices_per_ip_day()
+        if cap > 0 and ip and con.execute('SELECT COUNT(*) FROM devices WHERE first_ip=? AND first_seen > ?',
+                                          (ip, now - 86400)).fetchone()[0] >= cap:
+            raise LicenseError('Too many new computers have started BRB from this internet connection today. '
+                               'Please try again tomorrow, or contact support from brb.happyhacks.io/license.',
+                               'too_many_devices', 429)
+        con.execute('INSERT INTO devices (id, name, platform, app_version, first_seen, last_seen, last_ip, first_ip) '
+                    'VALUES (?,?,?,?,?,?,?,?)', (device_id, name, platform, app_version, now, now, ip, ip))
     con.commit()
     return dict(con.execute('SELECT * FROM devices WHERE id=?', (device_id,)).fetchone())
+
+
+def delete_device(device_id):
+    """Admin: forget a computer entirely (its free-time record, key assignments and lease history)."""
+    con = db()
+    n = con.execute('DELETE FROM devices WHERE id=?', (device_id,)).rowcount
+    con.execute('DELETE FROM license_devices WHERE device_id=?', (device_id,))
+    con.execute('DELETE FROM leases WHERE device_id=?', (device_id,))
+    con.commit()
+    return n
 
 
 def free_left(device):
@@ -357,8 +400,11 @@ def offer_device(token):
     except ValueError:
         return None
     row = db().execute('SELECT * FROM devices WHERE id=?', (device_id,)).fetchone()
-    if not row:
-        return None
+    if not row:   # signed by us, but not recorded yet (it hasn't used the LOOP): record it now
+        try:
+            row = touch_device(device_id)
+        except LicenseError:
+            return None
     d = dict(row)
     if d.get('discount_used_at') or free_left(d) <= 0:
         return None

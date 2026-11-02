@@ -9,8 +9,8 @@ from dopplesite import licenses, square, users
 
 from .test_site import Base
 
-DEV_A = 'a' * 64
-DEV_B = 'b' * 64
+DEV_A = hashlib.sha256(b'computer A').hexdigest()   # like a real device id
+DEV_B = hashlib.sha256(b'computer B').hexdigest()
 
 
 class Clock:
@@ -21,7 +21,7 @@ class Clock:
         return self.t
 
 
-class LicenseTests(Base):
+class LicenseBase(Base):
     extra_env = {'FREE_SECONDS': '3600'}
 
     def setUp(self):
@@ -40,6 +40,9 @@ class LicenseTests(Base):
         body.setdefault('platform', 'windows')
         body.setdefault('app_version', '0.1.40')
         return self.c.post('/api/v1/license/' + path, json=body)
+
+
+class LicenseTests(LicenseBase):
 
     def test_free_hour_is_tracked_on_the_server(self):
         st = self.api('status').get_json()
@@ -62,7 +65,8 @@ class LicenseTests(Base):
         self.assertEqual(round(r['free_left']), 3590 - 105)
 
     def test_reinstall_doesnt_reset_and_time_runs_out(self):
-        self.api('status')
+        self.api('lease', action='start')    # the computer is recorded once it uses the LOOP
+        self.api('lease', action='release')
         licenses.db().execute('UPDATE devices SET used_seconds=3590 WHERE id=?', (DEV_A,))
         licenses.db().commit()
         r = self.api('lease', action='start').get_json()   # same hardware id after a reinstall: same total
@@ -178,7 +182,8 @@ class LicenseTests(Base):
             self.assertEqual(r.status_code, 200)
 
     def test_admin_keys_and_devices(self):
-        self.api('status')
+        self.api('lease', action='start')
+        self.api('lease', action='release')
         self.c.post('/admin/login', data={'password': 'test-pw'})
         with self.c.session_transaction() as s:
             h = {'X-CSRF-Token': s['csrf']}
@@ -212,3 +217,47 @@ class LicenseTests(Base):
 
 
 del Base   # don't run the base class's (empty) tests twice
+
+
+class DeviceGuardTests(LicenseBase):
+    def test_made_up_device_ids_are_refused(self):
+        for bad in ('a' * 64, 'ab' * 32, 'not-a-hash'):
+            r = self.api('status', device_id=bad)
+            self.assertEqual(r.status_code, 400, bad)
+            self.assertEqual(r.get_json()['code'], 'bad_device')
+        self.assertTrue(licenses.plausible_device_id(DEV_A))
+
+    def test_a_status_check_alone_records_nothing(self):
+        st = self.api('status').get_json()
+        self.assertEqual(st['free_left'], 3600)
+        self.assertEqual(licenses.db().execute('SELECT COUNT(*) FROM devices').fetchone()[0], 0)
+        self.assertTrue(self.api('lease', action='release').get_json()['ok'])
+        self.assertEqual(licenses.db().execute('SELECT COUNT(*) FROM devices').fetchone()[0], 0)
+        self.api('lease', action='start')
+        self.assertEqual(licenses.db().execute('SELECT COUNT(*) FROM devices').fetchone()[0], 1)
+
+    def test_offer_link_works_before_the_first_loop(self):
+        st = self.api('status').get_json()
+        token = st['license_url'].split('offer=')[1]
+        self.assertEqual(licenses.offer_device(token)['id'], DEV_A)
+
+    def test_new_computers_per_connection_are_capped(self):
+        with mock.patch.dict(os.environ, {'NEW_DEVICES_PER_IP_DAY': '3'}):
+            ids = [hashlib.sha256(f'pc {i}'.encode()).hexdigest() for i in range(4)]
+            for i in ids[:3]:
+                self.assertTrue(self.api('lease', action='start', device_id=i).get_json()['ok'])
+            r = self.api('lease', action='start', device_id=ids[3])
+            self.assertEqual((r.status_code, r.get_json()['code']), (429, 'too_many_devices'))
+            self.assertTrue(self.api('lease', action='renew', device_id=ids[0]).get_json()['ok'])   # known ones fine
+            self.clock.t += 86400 + 1
+            self.assertTrue(self.api('lease', action='start', device_id=ids[3]).get_json()['ok'])   # next day
+
+    def test_admin_can_delete_a_computer(self):
+        self.api('lease', action='start')
+        self.c.post('/admin/login', data={'password': 'test-pw'})
+        with self.c.session_transaction() as s:
+            csrf = s['csrf']
+        h = {'X-CSRF-Token': csrf}
+        self.assertEqual(self.c.post(f'/admin/api/devices/{DEV_A}/delete', headers=h).status_code, 200)
+        self.assertEqual(licenses.db().execute('SELECT COUNT(*) FROM devices').fetchone()[0], 0)
+        self.assertEqual(self.c.post(f'/admin/api/devices/{DEV_A}/delete', headers=h).status_code, 404)

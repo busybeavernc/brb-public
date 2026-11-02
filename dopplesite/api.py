@@ -27,10 +27,10 @@ def _too_many(ip, limit=600, window=60):   # generous: many people can share one
     return len(recent) > limit
 
 
-def _device():
+def _device(create):
     d = request.get_json(silent=True) or {}
     dev = licenses.touch_device(d.get('device_id'), d.get('device_name', ''), d.get('platform', ''), d.get('app_version', ''),
-                                request.remote_addr or '')
+                                request.remote_addr or '', create=create)
     return d, dev
 
 
@@ -43,7 +43,8 @@ def license_error(e):
 def license_status():
     if _too_many(request.remote_addr or '?'):
         return jsonify(error='Too many requests. Try again in a minute.', code='slow_down'), 429
-    d, dev = _device()
+    d = request.get_json(silent=True) or {}
+    d, dev = _device(create=bool(d.get('key')))   # typing in a key records the computer (it's put on the key)
     return jsonify(licenses.status(dev, d.get('key')))
 
 
@@ -51,8 +52,12 @@ def license_status():
 def license_lease():
     if _too_many(request.remote_addr or '?'):
         return jsonify(error='Too many requests. Try again in a minute.', code='slow_down'), 429
-    d, dev = _device()
-    return jsonify(licenses.lease(dev, d.get('key'), str(d.get('action') or 'start')))
+    d = request.get_json(silent=True) or {}
+    action = str(d.get('action') or 'start')
+    d, dev = _device(create=action != 'release')
+    if dev.get('new'):   # releasing a lease it never had: nothing to do
+        return jsonify({**licenses.status(dev, d.get('key')), 'ok': True, 'lease_seconds': 0})
+    return jsonify(licenses.lease(dev, d.get('key'), action))
 
 
 # ------------------------------------------------------------------ /license (people)

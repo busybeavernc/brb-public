@@ -227,6 +227,13 @@ def devices_list():
     return jsonify(devices=licenses.devices(request.args.get('q', '')), free_seconds=licenses.free_seconds())
 
 
+@bp.post('/admin/api/devices/<did>/delete')
+@login_required
+def devices_delete(did):
+    from . import licenses
+    return jsonify(ok=True) if licenses.delete_device(did) else (jsonify(error='No such computer.'), 404)
+
+
 @bp.post('/admin/api/devices/<did>/free')
 @login_required
 def devices_free(did):
