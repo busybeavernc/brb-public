@@ -47,7 +47,7 @@ class LicenseTests(LicenseBase):
     def test_free_hour_is_tracked_on_the_server(self):
         st = self.api('status').get_json()
         self.assertEqual((st['plan'], st['free_left'], st['can_loop']), ('free', 3600, True))
-        self.assertTrue(st['offer'] and '/license?offer=' in st['license_url'])
+        self.assertTrue(st['offer'] and '/license?d=' in st['license_url'])
         r = self.api('lease', action='start').get_json()
         self.assertTrue(r['ok'])
         self.assertEqual(r['lease_seconds'], 30)
@@ -116,10 +116,10 @@ class LicenseTests(LicenseBase):
 
     def test_early_bird_offer(self):
         st = self.api('status').get_json()
-        token = st['license_url'].split('offer=')[1]
+        token = st['license_url'].split('?d=')[1]
         self.assertTrue(licenses.offer_device(token))
         self.assertIsNone(licenses.offer_device(token[:-2] + 'xx'))                # tampered
-        page = self.c.get('/license?offer=' + token, follow_redirects=True).get_data(as_text=True)
+        page = self.c.get('/license?offer=' + token, follow_redirects=True).get_data(as_text=True)   # older apps' link
         self.assertIn('Early-bird', page)
         self.assertIn('$2.50', page)
         self.clock.t += licenses.OFFER_TTL + 1
@@ -131,9 +131,9 @@ class LicenseTests(LicenseBase):
 
     def test_square_subscription_makes_key_and_binds_early_device(self):
         st = self.api('status').get_json()
-        token = st['license_url'].split('offer=')[1]
+        token = st['license_url'].split('?d=')[1]
         self.sign_in_with_hh({'id': 'hh9', 'name': 'Pat', 'email': 'pat@example.com', 'email_verified': True})
-        self.c.get('/license?offer=' + token)
+        self.c.get('/license?d=' + token)
         calls = []
 
         def fake_call(method, path, body=None):
@@ -171,6 +171,42 @@ class LicenseTests(LicenseBase):
         self.assertTrue(licenses.get(k['id'])['valid'])
         self.clock.t = 1_900_000_000
         self.assertFalse(licenses.get(k['id'])['valid'])
+
+    def test_full_price_purchase_from_the_app_goes_on_that_computer(self):
+        self.api('lease', action='start')
+        licenses.db().execute('UPDATE devices SET used_seconds=3600 WHERE id=?', (DEV_A,))   # free hour used up
+        licenses.db().commit()
+        st = self.api('status').get_json()
+        self.assertNotIn('offer', st)
+        token = st['license_url'].split('?d=')[1]
+        self.sign_in_with_hh({'id': 'hh10', 'name': 'Sam', 'email': 'sam@example.com', 'email_verified': True})
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}):
+            page = self.c.get('/license?d=' + token, follow_redirects=True).get_data(as_text=True)
+        self.assertIn('goes straight onto', page)
+        self.assertNotIn('Early-bird', page)
+
+        def fake_call(method, path, body=None):
+            if path == '/v2/locations':
+                return {'locations': [{'id': 'L1'}]}
+            if path == '/v2/catalog/object':
+                t = body['object']['type']
+                return {'catalog_object': {'id': 'PLAN1' if t == 'SUBSCRIPTION_PLAN' else 'VAR500'}}
+            if path == '/v2/online-checkout/payment-links':
+                self.assertEqual(body['quick_pay']['price_money']['amount'], 500)
+                return {'payment_link': {'id': 'PL2', 'url': 'https://square.test/pay'}}
+            if path.startswith('/v2/customers/'):
+                return {'customer': {'email_address': 'sam@example.com'}}
+            raise AssertionError(path)
+
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake_call):
+            with self.c.session_transaction() as s:
+                csrf = s['csrf']
+            self.c.post('/license/subscribe', data={'csrf': csrf})
+            square.handle({'type': 'subscription.created', 'data': {'object': {'subscription': {
+                'id': 'SUB2', 'status': 'ACTIVE', 'plan_variation_id': 'VAR500', 'customer_id': 'C2'}}}})
+        st = self.api('status').get_json()   # no key typed in: the app just asks, and it's unlimited
+        self.assertTrue(st['unlimited'] and st['key'].startswith('DG-'))
+        self.assertIsNone(licenses.db().execute('SELECT discount_used_at FROM devices WHERE id=?', (DEV_A,)).fetchone()[0])
 
     def test_webhook_signature(self):
         body = json.dumps({'type': 'subscription.updated', 'data': {'object': {'subscription': {'id': 'nope'}}}}).encode()
@@ -238,7 +274,7 @@ class DeviceGuardTests(LicenseBase):
 
     def test_offer_link_works_before_the_first_loop(self):
         st = self.api('status').get_json()
-        token = st['license_url'].split('offer=')[1]
+        token = st['license_url'].split('?d=')[1]
         self.assertEqual(licenses.offer_device(token)['id'], DEV_A)
 
     def test_new_computers_per_connection_are_capped(self):
@@ -261,3 +297,13 @@ class DeviceGuardTests(LicenseBase):
         self.assertEqual(self.c.post(f'/admin/api/devices/{DEV_A}/delete', headers=h).status_code, 200)
         self.assertEqual(licenses.db().execute('SELECT COUNT(*) FROM devices').fetchone()[0], 0)
         self.assertEqual(self.c.post(f'/admin/api/devices/{DEV_A}/delete', headers=h).status_code, 404)
+
+
+class BoundKeyTests(LicenseBase):
+    def test_a_key_bought_for_this_computer_beats_a_stale_typed_one(self):
+        self.api('lease', action='start')
+        lic = licenses.create(note='bought from the app')
+        licenses.bind_device(lic['id'], DEV_A)
+        st = self.api('status', key='222').get_json()        # an old, wrong key is still saved in the app
+        self.assertTrue(st['unlimited'])
+        self.assertEqual((st['key'], st['key_problem']), (lic['key'], ''))

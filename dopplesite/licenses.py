@@ -243,16 +243,32 @@ def free_left(device):
     return max(0.0, free_seconds() + float(device.get('bonus_seconds') or 0) - float(device.get('used_seconds') or 0))
 
 
+def _bound_license(device_id):
+    """A valid key this computer was put on (bought from it, or given by an admin)."""
+    for r in db().execute('SELECT license_id FROM license_devices WHERE device_id=? ORDER BY added_at DESC', (device_id,)):
+        lic = get(r['license_id'])
+        if lic and lic['valid']:
+            return lic
+    return None
+
+
 def _license_for(device_id, key):
     """The license this computer may use with this key, binding the computer to it if there's a free slot.
     -> (license or None, message for the person or '')."""
     if not key:
-        # no key typed in yet: a key this computer was put on (bought with the early-bird offer, or given by an admin)
-        for r in db().execute('SELECT license_id FROM license_devices WHERE device_id=? ORDER BY added_at DESC', (device_id,)):
-            lic = get(r['license_id'])
-            if lic and lic['valid']:
-                return lic, ''
-        return None, ''
+        # no key typed in yet: a key this computer was put on (bought from it, or given by an admin)
+        return _bound_license(device_id), ''
+    lic, problem = _license_for_key(device_id, key)
+    if lic is None:
+        # the typed key doesn't work here (mistyped, expired, used elsewhere), but this computer may have a key of its
+        # own - e.g. just bought from it: that one wins, and the app swaps it in
+        bound = _bound_license(device_id)
+        if bound:
+            return bound, ''
+    return lic, problem
+
+
+def _license_for_key(device_id, key):
     lic = by_key(key)
     if not lic:
         return None, "That license key isn't right. Check it and try again."
@@ -295,9 +311,11 @@ def status(device, key=None):
     out['pitch'] = (f'Every computer gets {free_words} of free LOOP time (it only counts while the LOOP is on air). '
                     f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
     out['offer_text'] = ''
+    if not lic:
+        # The link carries a signed token for this computer: whatever is bought through it is put on this computer,
+        # and the app picks it up by itself. While free time is left it also unlocks the early-bird price.
+        out['license_url'] += '?d=' + offer_token(device['id'])
     if not lic and out['free_left'] > 0 and not device.get('discount_used_at'):
-        # early-bird offer: subscribing while free time is left is half price; the link proves it's this computer
-        out['license_url'] += '?offer=' + offer_token(device['id'])
         out['offer'] = True
         out['offer_text'] = (f'Special offer: 50% off. Subscribe while you still have free time and pay '
                              f'{out["early_price"]}/month instead of {out["price"]}, for as long as you stay subscribed.')
@@ -389,6 +407,23 @@ def _sig(payload):
 def offer_token(device_id):
     payload = f'{device_id}.{int(time.time())}'
     return f'{payload}.{_sig(payload)}'
+
+
+def linked_device(token):
+    """The computer a link from the app belongs to, if the link is genuine and recent (any computer, licensed or not)."""
+    try:
+        device_id, ts, sig = str(token or '').split('.')
+        if not hmac.compare_digest(sig, _sig(f'{device_id}.{ts}')) or time.time() - int(ts) > OFFER_TTL:
+            return None
+    except ValueError:
+        return None
+    row = db().execute('SELECT * FROM devices WHERE id=?', (device_id,)).fetchone()
+    if not row:   # signed by us, but not recorded yet (it hasn't used the LOOP): record it now
+        try:
+            row = touch_device(device_id)
+        except LicenseError:
+            return None
+    return dict(row)
 
 
 def offer_device(token):

@@ -65,22 +65,37 @@ def _csrf_ok():
     return hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-')
 
 
+def _link_token():
+    """The computer token from the app's link (?d=..., or ?offer=... from older versions), kept through sign-in."""
+    t = request.args.get('d') or request.args.get('offer')
+    if t:
+        session['offer'] = t
+    return session.get('offer')
+
+
 def _offer_device():
-    """The computer whose early-bird link brought this visitor here (kept in the session through sign-in)."""
-    if request.args.get('offer'):
-        session['offer'] = request.args['offer']
-    return licenses.offer_device(session.get('offer')) if session.get('offer') else None
+    """The computer whose link brought this visitor here, if it qualifies for the early-bird price."""
+    t = _link_token()
+    return licenses.offer_device(t) if t else None
+
+
+def _linked_device():
+    """The computer whose link brought this visitor here (a purchase is put on it)."""
+    t = _link_token()
+    return licenses.linked_device(t) if t else None
 
 
 @bp.get('/license')
 def license_page():
     keys = licenses.for_user(g.user['id'], g.user.get('email')) if g.user else []
     dev = _offer_device()
-    if request.args.get('offer'):   # tidy URL (the offer is in the session now)
+    computer = _linked_device()
+    if request.args.get('offer') or request.args.get('d'):   # tidy URL (the token is in the session now)
         return redirect(url_for('api.license_page', n=request.args.get('n')), 303)
     return render_template('license.html', keys=keys, free_minutes=licenses.free_seconds() // 60,
                            price=square.price_text(), early_price=square.price_text(square.early_price_cents()),
-                           offer=dev, square_ready=square.ready(), sso=hhauth.enabled(), notice=request.args.get('n'))
+                           offer=dev, computer=computer, square_ready=square.ready(), sso=hhauth.enabled(),
+                           notice=request.args.get('n'))
 
 
 @bp.post('/license/subscribe')
@@ -91,7 +106,8 @@ def subscribe():
         return redirect(url_for('api.license_page', n='expired'), 303)
     try:
         early = _offer_device() if request.form.get('early') else None
-        url = square.checkout(g.user, settings.public_url() + url_for('api.subscribe_return'), early_device=early)
+        url = square.checkout(g.user, settings.public_url() + url_for('api.subscribe_return'), early_device=early,
+                              device=early or _linked_device())
     except square.SquareError as e:
         return render_template('message.html', title="Couldn't open checkout", body=str(e),
                                action=('Back to your license', url_for('api.license_page'))), e.status

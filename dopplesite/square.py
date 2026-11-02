@@ -157,8 +157,10 @@ def plan_variation(cents=None):
     return var['id']
 
 
-def checkout(user, return_url, early_device=None):
-    """A Square checkout page for the monthly plan (at the early-bird price for early_device). -> url"""
+def checkout(user, return_url, early_device=None, device=None):
+    """A Square checkout page for the monthly plan (at the early-bird price for early_device). The key is put on
+    `device` (the computer whose BRB opened the page) when the purchase goes through. -> url"""
+    device = device or early_device
     if not user.get('email'):
         raise SquareError('Add an email address to your Happy Hacks account first (Square sends receipts there).', 400)
     cid = 'sq' + uuid.uuid4().hex[:16]
@@ -176,7 +178,7 @@ def checkout(user, return_url, early_device=None):
     con = db()
     con.execute('INSERT INTO square_checkouts (id, env, user_id, email, link_id, url, created_at, price_cents, device_id) '
                 'VALUES (?,?,?,?,?,?,?,?,?)', (cid, env(), user['id'], user['email'].lower(), link.get('id'), link['url'][:500],
-                                               time.time(), cents, early_device['id'] if early_device else None))
+                                               time.time(), cents, device['id'] if device else None))
     con.commit()
     return link['url']
 
@@ -222,11 +224,11 @@ def apply(sub, user=None):
                           user_id=user['id'], by='square', square_subscription_id=sub['id'],
                           square_status=(sub.get('status') or '').upper(),
                           note='Square subscription' + (f' (early-bird {price_text(var["price_cents"])})' if early else ''))
-    # the computer that bought it at the early-bird price goes straight onto the key
+    # the computer whose BRB opened the checkout goes straight onto the key (the app then picks it up by itself)
     ck = con.execute("SELECT device_id FROM square_checkouts WHERE user_id=? AND status='open' AND device_id IS NOT NULL "
                      'ORDER BY created_at DESC', (user['id'],)).fetchone()
-    if ck and early:
-        licenses.bind_device(lic['id'], ck['device_id'], discount=True)
+    if ck:
+        licenses.bind_device(lic['id'], ck['device_id'], discount=bool(early))
     con.execute("UPDATE square_checkouts SET status='done' WHERE user_id=? AND status='open'", (user['id'],))
     con.commit()
     return licenses.get(lic['id'])
