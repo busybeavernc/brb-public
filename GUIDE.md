@@ -65,6 +65,8 @@ Release files are signed with a self-signed "BRB" certificate (`doppleganger-pub
 | **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter and Cut, to park beside your meeting. Drag it by the logo; *Full view*, **F10** or **M** brings the window back. |
 | **Settings** | License, text size, privacy, crossfade, guides, outlines, overlay strength, **recording length (60-600 s, default 90)**, the camera, updates. |
 
+**Optional BRB badge:** *Settings → Show a small BRB badge to the meeting while the LOOP is on air* adds a small "BRB · Be right back" badge to the bottom-right corner of what your meeting sees, only while the LOOP is on air. It's off by default; turn it on if your organizer asks for it, or if you prefer people to know you've stepped away.
+
 **Hidden from screen sharing:** BRB's windows (main, mini bar, setup, settings) are excluded from screen capture. When you share your screen, viewers see what's behind them. This also hides them from your own screenshots. Turn it off in *Settings → Privacy*.
 
 **Silence while on the LOOP:** loops never contain sound, since BRB only handles video. While the LOOP is on air, BRB also **mutes your microphone** at the Windows level, so nothing you say or no background noise goes out, and unmutes it the moment you cut back to live. It only touches microphones that were unmuted, and if the app is ever closed unexpectedly while muted, your mic is restored the next time it starts. Turn it off in *Settings → Privacy*.
@@ -133,4 +135,4 @@ Meeting apps and browsers list it as **HappyHacks Virtual Camera** (older versio
 
 ## Settings file
 
-`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`doppleganger`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `view_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `mute_mic_on_loop`, `hide_from_screen_share`, `auto_update`.
+`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`doppleganger`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `view_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `mute_mic_on_loop`, `loop_badge`, `hide_from_screen_share`, `auto_update`.
