@@ -87,6 +87,13 @@ Doppleganger uses **AI person detection** (Google's MediaPipe selfie segmentatio
 
 *Settings → Calibrate room* is still there as an optional fallback, and is used automatically only if the AI model can't run on a PC. Lean or step slowly to the side the banner asks for while it learns what the empty room looks like.
 
+## Free time and license keys
+- **Free:** every computer gets **1 hour of LOOP time** in total. The clock runs only while the LOOP is on air; the live camera, recording loops and everything else are never limited.
+- **Countdown:** when 5 minutes are left, Doppleganger warns you and shows a countdown (in the window, the mini bar and, for the last 30 seconds, on the preview). At 0:00 it cuts back to LIVE.
+- **Unlimited:** a license key from [doppleganger.happyhacks.io/license](https://doppleganger.happyhacks.io/license), $5/month, cancel any time. Subscribe **before your free hour runs out** (use **Get License Key** in the app) and it's **50% off ($2.50/month)** for as long as you stay subscribed.
+- **Applying a key:** click **Get License Key** (or *Settings → License key…*), paste the key, click **Apply**. A key works on one computer; to move it to a new one, contact support.
+- **Internet:** Doppleganger checks your free time or license with doppleganger.happyhacks.io, so the LOOP needs an internet connection.
+
 ## Recording a loop
 
 When you press **Record** (button, **R** or the tray menu), a short *Before you record* card lists what to expect first:

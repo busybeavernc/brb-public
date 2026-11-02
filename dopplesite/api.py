@@ -19,7 +19,7 @@ bp = Blueprint('api', __name__)
 _hits = {}   # ip -> [timestamps]; per worker, a simple brake on key guessing
 
 
-def _too_many(ip, limit=120, window=60):
+def _too_many(ip, limit=600, window=60):   # generous: many people can share one office IP
     now = time.time()
     recent = [t for t in _hits.get(ip, []) if now - t < window]
     recent.append(now)

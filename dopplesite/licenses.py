@@ -244,6 +244,8 @@ def status(device, key=None):
     out['free_left'] = free_left(device)
     out['can_loop'] = out['unlimited'] or out['free_left'] > 0
     out['license_url'] = settings.public_url() + '/license'
+    from . import square
+    out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
     if not lic and out['free_left'] > 0 and not device.get('discount_used_at'):
         # early-bird offer: subscribing while free time is left is half price; the link proves it's this computer
         out['license_url'] += '?offer=' + offer_token(device['id'])
