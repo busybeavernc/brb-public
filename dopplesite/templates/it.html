@@ -2,7 +2,7 @@
 {% block title %}For IT teams · BRB{% endblock %}
 {% set it_url = request.url_root.rstrip('/') + url_for('for_it') %}
 {% set mail_subject = 'Software request: BRB (Be Right Back)' %}
-{% set mail_body = 'Hi,\n\nI\'d like to use BRB (Be Right Back) on my work computer. It\'s a small Windows/Mac app that lets me step away from a video meeting for a moment (a quick break, a coffee refill) without my camera going dark, by showing a short recorded loop of me through a virtual camera. Video stays on my computer.\n\nEverything IT usually needs to review it - what it installs, what it sends over the network, permissions, file checksums and third-party components - is on one page:\n' ~ it_url ~ '\n\nCould you take a look and let me know if it can be approved?\n\nThanks!' %}
+{% set mail_body = 'Hi,\n\nI\'d like to use BRB (Be Right Back) on my work computer. It\'s a small Windows/Mac app that lets me step away from a video meeting for a moment (a quick break, a coffee refill) without my camera going dark, by showing a short recorded loop of me through a virtual camera. Video stays on my computer.\n\nEverything IT usually needs to review it - what it installs, what it sends over the network, permissions and file checksums - is on one page:\n' ~ it_url ~ '\n\nCould you take a look and let me know if it can be approved?\n\nThanks!' %}
 {% block content %}
 <section class="page wrap narrow it">
   <p class="eyebrow">For IT teams</p>
@@ -124,11 +124,6 @@
       <td>{{ f.version }}</td><td><code class="hash">{{ f.sha256 or 'see the release page' }}</code></td></tr>
     {% endif %}{% endfor %}
   </table>
-
-  <h2>Third-party components</h2>
-  <p class="note">OpenCV (Apache 2.0) · Google MediaPipe (Apache 2.0) · NumPy (BSD) · Pillow (MIT-CMU) · softcam (MIT) ·
-    pyvirtualcam (GPL-2.0, Mac output via OBS) · pynput (LGPL-3.0) · pystray (LGPL-3.0) · certifi (MPL-2.0) · Python (PSF).
-    Packaged with PyInstaller; installer built with Inno Setup.</p>
 
   <h2>Questions</h2>
   <p>Email <b>support@happyhacks.io</b> - we're happy to answer security or privacy questionnaires.</p>
