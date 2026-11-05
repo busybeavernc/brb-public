@@ -58,12 +58,12 @@
     <tr><th>Item</th><th>Where</th><th>Notes</th></tr>
     <tr><td>The app</td><td><code>%LOCALAPPDATA%\Programs\BRB\BRB.exe</code></td><td>Per-user install; the installer needs no administrator rights.
       Start-menu shortcut; optional desktop shortcut.</td></tr>
-    <tr><td>HappyHacks Virtual Camera</td><td><code>C:\ProgramData\Doppleganger\</code></td><td>A DirectShow video
+    <tr><td>HappyHacks Virtual Camera</td><td><code>C:\ProgramData\BRB\</code></td><td>A DirectShow video
       source filter (64- and 32-bit DLLs, built from the open-source <a href="https://github.com/tshino/softcam">softcam</a>,
       MIT), registered with <code>regsvr32</code>. CLSID <code>{548A881E-7657-4231-8FEA-A9877D9743C9}</code>.
       <b>The only step that needs administrator rights</b>: Windows shows one permission prompt.</td></tr>
-    <tr><td>Settings, loops, logs</td><td><code>%APPDATA%\Doppleganger\</code></td><td>Plain files: <code>config.json</code>,
-      recorded loops (<code>loops\*.mp4</code>), <code>doppleganger.log</code>. Kept on uninstall so loops aren't lost.</td></tr>
+    <tr><td>Settings, loops, logs</td><td><code>%APPDATA%\BRB\</code></td><td>Plain files: <code>config.json</code>,
+      recorded loops (<code>loops\*.mp4</code>), <code>brb.log</code>. Kept on uninstall so loops aren't lost.</td></tr>
     <tr><td>Start at sign-in <small>(optional, off unless the user turns it on)</small></td>
       <td><code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>, value <code>BRB</code></td><td>Starts BRB
       minimized. Removed on uninstall.</td></tr>

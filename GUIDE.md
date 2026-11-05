@@ -49,7 +49,7 @@ Loading the AI model and opening the webcam takes a few seconds, so a splash scr
 Each time it opens, BRB checks the releases. If there's a newer version, it shows an "Updating…" window, swaps itself out and reopens. *Settings → Updates → Check now* checks manually. An update never interrupts you while the LOOP is on air or a recording is running.
 
 ### Code signing (self-signed)
-Release files are signed with a self-signed "BRB" certificate (`doppleganger-publisher.cer` is attached to each release). Windows only trusts it on PCs that choose to: tick *Trust the BRB publisher on this PC* in the installer, and Windows asks you to confirm. Other PCs still see the SmartScreen "unknown publisher" prompt (**More info → Run anyway**). A commercial code-signing certificate would remove that prompt everywhere; the build already supports one, so just swap the secrets.
+Release files are signed with a self-signed certificate (`doppleganger-publisher.cer` is attached to each release). Windows only trusts it on PCs that choose to: tick *Trust the BRB publisher on this PC* in the installer, and Windows asks you to confirm. Other PCs still see the SmartScreen "unknown publisher" prompt (**More info → Run anyway**). A commercial code-signing certificate would remove that prompt everywhere; the build already supports one, so just swap the secrets.
 
 ## The window
 
@@ -129,10 +129,10 @@ The app finds the frame in the final seconds that best matches the first, ends t
 
 ## The HappyHacks Virtual Camera
 
-A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\Doppleganger`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
+A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\BRB`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
 
 Meeting apps and browsers list it as **HappyHacks Virtual Camera**. The installer adds it, and BRB installs or updates it by itself when needed (Windows asks for permission). On Windows BRB always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the BRB app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start BRB when Windows starts*; it opens minimized.
 
 ## Settings file
 
-`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`doppleganger`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `view_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `mute_mic_on_loop`, `loop_badge`, `hide_from_screen_share`, `auto_update`.
+`config.json` in the data folder. Useful fields: `camera_name`, `output_camera` (`auto`/`brb`/`obs`), `width`/`height`/`fps`, `loop_seconds`, `hold_still_seconds`, `return_prompt_seconds`, `crossfade_ms`, `overlay_opacity`, `hotkey`, `view_hotkey` (pynput format, e.g. `"<ctrl>+<alt>+l"`), `mute_mic_on_loop`, `loop_badge`, `hide_from_screen_share`, `auto_update`.
