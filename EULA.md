@@ -2,7 +2,7 @@
 
 **Version 1 · Effective November 2, 2026**
 
-This End User License Agreement ("Agreement") is between you and Happy Hacks ("Happy Hacks", "we", "us"), the maker of BRB (Be Right Back, formerly called Doppleganger; the "Software"). By installing, opening or using the Software, or by buying a subscription, you agree to this Agreement. If you don't agree, don't install or use the Software.
+This End User License Agreement ("Agreement") is between you and Busy Beaver Group LLC, doing business as Happy Hacks ("Happy Hacks", "we", "us"), the maker of BRB (Be Right Back, formerly called Doppleganger; the "Software"). By installing, opening or using the Software, or by buying a subscription, you agree to this Agreement. If you don't agree, don't install or use the Software.
 
 ## 1. What BRB is for
 
@@ -69,3 +69,5 @@ This Agreement lasts until it is ended. It ends automatically if you break it, i
 This Agreement is governed by the laws of the State of North Carolina, USA, without regard to its conflict-of-law rules. If any part is found unenforceable, the rest stays in effect. This is the entire agreement between you and Happy Hacks about the Software.
 
 Questions: support@happyhacks.io
+
+Busy Beaver Group LLC, doing business as Happy Hacks · North Carolina, USA
