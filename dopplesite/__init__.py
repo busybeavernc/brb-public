@@ -85,6 +85,12 @@ def create_app() -> Flask:
                                sizes={p: releases.size_mb(p) for p in releases.PLATFORMS},
                                need_signin=settings.flag('DOWNLOADS_REQUIRE_SIGNIN') and not g.user and hhauth.enabled())
 
+    @app.route('/privacy-policy')
+    @app.route('/privacy')       # the main address
+    def privacy():
+        return render_template('guide.html', guide_html=_md_html('PRIVACY.md'), title='Privacy Policy',
+                               lede='What BRB collects, what it never collects, and why.', legal=True)
+
     @app.route('/for-it')
     @app.route('/it')            # the main address (registered first: the lower decorator)
     def for_it():
@@ -105,7 +111,7 @@ def create_app() -> Flask:
     @app.route('/eula')          # the main address (url_for uses the route registered first, i.e. the lower one)
     def eula():
         return render_template('guide.html', guide_html=_md_html('EULA.md'), title='End User License Agreement',
-                               lede='The terms for using BRB.')
+                               lede='The terms for using BRB.', legal=True)
 
     @app.route('/download/<platform>')
     def download(platform):

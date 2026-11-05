@@ -88,6 +88,11 @@ class SiteTests(Base):
         self.assertIn('mailto:?subject=Software%20request', it)
         self.assertIn('/it', page)
         self.assertEqual(self.c.get('/for-it').status_code, 200)
+        pp = self.c.get('/privacy').get_data(as_text=True)
+        self.assertIn('without notice', pp)
+        self.assertIn('never see or store your card details', pp)
+        self.assertIn('/privacy', page)
+        self.assertNotIn('fonts.googleapis.com', page)   # no third-party font service
         self.assertEqual(self.c.get('/guide').status_code, 200)
         eula = self.c.get('/eula').get_data(as_text=True)
         self.assertIn('What you must not use it for', eula)

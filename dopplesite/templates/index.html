@@ -86,7 +86,8 @@
         {{ p.label }} <small>{{ p.detail }}{% if sizes[key] %} · {{ sizes[key] }} MB{% endif %}</small></a>
     {% endfor %}
   </div>
-  <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>.
+  <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>
+    (see our <a href="{{ url_for('privacy') }}">Privacy Policy</a>).
     Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
     "Processor: Intel" means Intel.</p>
 
@@ -142,7 +143,7 @@
       <p>Your video never leaves your computer: your camera, your loops and your recordings stay on it. BRB collects
         no personal or company data beyond what's needed for your account and license: for license checks, a
         scrambled device ID, your computer's name, operating system and BRB version; and, if you subscribe, your name
-        and email. Nothing is sold or shared. <a href="{{ url_for('for_it') }}#privacy">The details</a>.</p></details>
+        and email. Nothing is sold or shared. Read the <a href="{{ url_for('privacy') }}">Privacy Policy</a>.</p></details>
     <details><summary>Why does it need an internet connection?</summary>
       <p>Free LOOP time and license keys are checked with brb.happyhacks.io while the LOOP is on air, so reinstalling
         doesn't reset free time. Your live camera works without a connection.</p></details>

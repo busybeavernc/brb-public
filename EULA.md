@@ -38,9 +38,11 @@ BRB Unlimited is a monthly subscription paid through Square at the price shown w
 
 ## 5. Your information
 
-To check free time and license keys, the Software sends brb.happyhacks.io a one-way scrambled identifier of your computer (based on its hardware), your computer's name, its operating system and app version, and your license key, if you have one. When you sign in with Happy Hacks or subscribe, we keep your name and email address, and Square processes your payment. We use this information only to provide and support BRB, and we don't sell it.
+Our [Privacy Policy](https://brb.happyhacks.io/privacy) explains in full what we collect and why. In short:
 
-Your video, your loops and your recordings stay on your computer. The Software does not upload them.
+To check free time and license keys, the Software sends brb.happyhacks.io a one-way scrambled identifier of your computer (based on its hardware), your computer's name, its operating system and app version, and your license key, if you have one; our server also sees the internet address the request comes from, which we use to prevent abuse of the free allowance. When you sign in with Happy Hacks or subscribe, we keep your name and email address (and mobile number, if your Happy Hacks account has one), and Square processes your payment. We use this information only to provide and support BRB, and we don't sell it.
+
+Your video, your loops and your recordings stay on your computer. The Software does not upload them, and it does not record or send audio or keystrokes.
 
 ## 6. Other people's products
 

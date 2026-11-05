@@ -29,7 +29,8 @@
           <button class="btn" type="submit">Subscribe for {{ early_price if offer else price }}/month</button></form>
         {% if computer %}<p class="note">Your key goes straight onto <b>{{ computer.name or 'this computer' }}</b>: BRB switches
           to unlimited by itself a few seconds after you subscribe. No key to copy.</p>{% endif %}
-        <p class="note">By subscribing, you agree to the <a href="{{ url_for('eula') }}">EULA</a>.</p>
+        <p class="note">By subscribing, you agree to the <a href="{{ url_for('eula') }}">EULA</a>. See our
+          <a href="{{ url_for('privacy') }}">Privacy Policy</a>.</p>
         {% else %}<p class="note">Subscriptions open soon.</p>{% endif %}
       {% elif sso %}
         <a class="btn" href="{{ url_for('hh_start', next='/license') }}">Sign in to subscribe</a>

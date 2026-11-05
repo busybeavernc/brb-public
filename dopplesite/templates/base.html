@@ -12,9 +12,8 @@
   <link rel="icon" href="{{ asset('favicon-32.png') }}" sizes="32x32" type="image/png">
   <link rel="alternate icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/static/fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/nunito-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ asset('css/site.css') }}">
 </head>
 <body>
@@ -47,6 +46,7 @@
       <span>BRB · Be Right Back</span>
       <span class="sp"></span>
       <a href="{{ url_for('for_it') }}">For IT teams</a>
+      <a href="{{ url_for('privacy') }}">Privacy</a>
       <a href="{{ url_for('eula') }}">EULA</a>
       <a href="https://happyhacks.io">A product of Happy Hacks</a>
     </div>
@@ -61,7 +61,8 @@
       <a class="btn big" id="dl-go" href="{{ url_for('download', platform='windows') }}">Download for Windows</a>
       <form method="dialog"><button class="btn secondary" value="cancel">Cancel</button></form>
     </div>
-    <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>.
+    <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>
+      (see our <a href="{{ url_for('privacy') }}">Privacy Policy</a>).
       Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.
       Need IT approval first? <a href="{{ url_for('for_it') }}">Send them this page</a>.</p>
     <p class="dl-other">Other computers:

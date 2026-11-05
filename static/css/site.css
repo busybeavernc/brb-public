@@ -1,4 +1,10 @@
 /* brb.happyhacks.io: Deep Teal / Eucalyptus / Apricot / Ivory ("Need a moment? Be right back.") */
+/* Fonts are served from this site (no third-party font service). Outfit and Nunito Sans: SIL Open Font License,
+   see /static/fonts/OFL-*.txt */
+@font-face { font-family: "Outfit"; font-weight: 100 900; font-display: swap;
+  src: url("../fonts/outfit.woff2") format("woff2"); }
+@font-face { font-family: "Nunito Sans"; font-weight: 400 700; font-display: swap;
+  src: url("../fonts/nunito-sans.woff2") format("woff2"); }
 :root {
   --teal: #244B4B; --teal-dark: #1A3838; --euca: #8FB9AA; --euca-soft: #DCE9E4; --apricot: #EAB394; --apricot-soft: #F6E3D4;
   --ivory: #FAF8F3; --paper: #FFFFFF; --ink: #244B4B; --text: #3C5653; --muted: #6B807C; --line: #E6E1D8; --line-hi: #D8D1C5;
