@@ -1,0 +1,18 @@
+# Dependabot: weekly pull requests when a library or a GitHub Action has an update (security fixes come
+# immediately, as soon as an advisory is published). Grouped so there's one pull request per kind per week.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

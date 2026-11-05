@@ -48,4 +48,4 @@ The SHA-256 checksum of each current download is also listed on our [page for IT
 
 ## Keeping BRB up to date
 
-BRB checks for updates when it starts and installs them automatically (this can be turned off in Settings). Security fixes are released for the current version of BRB.
+BRB checks for updates each time it opens and installs them automatically. Security fixes are released for the current version of BRB.
