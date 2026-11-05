@@ -24,7 +24,7 @@ We don't currently run a paid bug bounty.
 
 - The BRB desktop app for Windows and Mac, including its installer and its virtual camera
 - The website brb.happyhacks.io, including the license and account pages
-- BRB's release files on [GitHub](https://github.com/busybeavernc/doppleganger-public/releases)
+- BRB's release files on [GitHub](https://github.com/busybeavernc/brb-public/releases)
 
 ## Out of scope
 
@@ -38,11 +38,11 @@ If you act in good faith, stay within the scope above, avoid accessing or changi
 
 ## Checking a download
 
-Every BRB release is built automatically by GitHub Actions and signed with [Sigstore](https://www.sigstore.dev), an open standard for proving where software came from. Each file on the [release page](https://github.com/busybeavernc/doppleganger-public/releases) has a matching `.sigstore.json` file: a signed, publicly logged statement that BRB's release workflow produced exactly that file. To check a download, put its `.sigstore.json` file next to it and run:
+Every BRB release is built automatically by GitHub Actions and signed with [Sigstore](https://www.sigstore.dev), an open standard for proving where software came from. Each file on the [release page](https://github.com/busybeavernc/brb-public/releases) has a matching `.sigstore.json` file: a signed, publicly logged statement that BRB's release workflow produced exactly that file. To check a download, put its `.sigstore.json` file next to it and run:
 
 ```
 pip install sigstore
-sigstore verify github BRBSetup.exe --repository busybeavernc/doppleganger
+sigstore verify github BRBSetup.exe --repository busybeavernc/brb
 ```
 
 The SHA-256 checksum of each current download is also listed on our [page for IT teams](https://brb.happyhacks.io/it).

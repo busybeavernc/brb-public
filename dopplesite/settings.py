@@ -26,7 +26,8 @@ def public_url():
 
 def releases_repo():
     """The public GitHub repository the app's releases are published to."""
-    return get('RELEASES_REPO') or 'busybeavernc/doppleganger-public'
+    repo = get('RELEASES_REPO') or 'busybeavernc/brb-public'
+    return 'busybeavernc/brb-public' if repo == 'busybeavernc/doppleganger-public' else repo   # renamed on GitHub
 
 
 def contacts(name):

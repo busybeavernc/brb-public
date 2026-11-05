@@ -41,7 +41,7 @@ as_user() { runuser -u "$SITE_USER" -- env HOME="$HOME_DIR" "$@"; }
 echo "App: $APP   site user: $SITE_USER"
 
 remote="$(as_user git -C "$APP" remote get-url origin 2>/dev/null || true)"
-# A public repository (busybeavernc/doppleganger-public) can be pulled over https with no key at all.
+# A public repository (busybeavernc/brb-public) can be pulled over https with no key at all.
 if [[ "$remote" == https://github.com/* ]] && as_user env GIT_TERMINAL_PROMPT=0 git -C "$APP" ls-remote -q origin HEAD >/dev/null 2>&1; then
   echo "GitHub access OK (public repository)"
   remote="public"

@@ -5,12 +5,12 @@
 It's meant for short, courteous breaks, not for faking attendance or getting around attendance checks, identity checks, exams or any meeting where your live presence is required; see the [EULA](https://brb.happyhacks.io/eula).
 
 
-**Download: [brb.happyhacks.io](https://brb.happyhacks.io/)** (picks the right file for your Windows PC or Mac), or grab a file from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest).
+**Download: [brb.happyhacks.io](https://brb.happyhacks.io/)** (picks the right file for your Windows PC or Mac), or grab a file from the [latest release](https://github.com/busybeavernc/brb-public/releases/latest).
 
 
 ## Install
 
-1. Download **BRBSetup.exe** from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest) and run it. No admin rights needed. It adds a Start-menu entry, an optional desktop shortcut, and an uninstall entry in *Settings → Apps*.
+1. Download **BRBSetup.exe** from the [latest release](https://github.com/busybeavernc/brb-public/releases/latest) and run it. No admin rights needed. It adds a Start-menu entry, an optional desktop shortcut, and an uninstall entry in *Settings → Apps*.
 2. BRB opens with a short **setup guide**:
     1. **Add the HappyHacks Virtual Camera** (the installer does this; Windows asks for permission once).
     2. **Choose your webcam.**
@@ -22,7 +22,7 @@ You can reopen the guide any time from the *Setup guide* button. OBS Studio is n
 Your loops and settings live in `%APPDATA%\BRB` and are kept if you uninstall. A copy run from its own folder that already contains `config.json` or `loops\` (as earlier versions did) keeps using that folder.
 
 ### Mac
-1. Download the Mac disk image from the [latest release](https://github.com/busybeavernc/doppleganger-public/releases/latest): **BRB-mac-arm64.dmg** for Apple Silicon (M1 or newer) or **BRB-mac-x86_64.dmg** for Intel Macs. Open it and drag **BRB** onto **Applications**.
+1. Download the Mac disk image from the [latest release](https://github.com/busybeavernc/brb-public/releases/latest): **BRB-mac-arm64.dmg** for Apple Silicon (M1 or newer) or **BRB-mac-x86_64.dmg** for Intel Macs. Open it and drag **BRB** onto **Applications**.
 2. The first time, macOS says BRB *"can't be opened because Apple cannot check it for malicious software"*, because the app isn't notarized by Apple yet. Click **OK**, go to *System Settings → Privacy & Security*, scroll down and click **Open Anyway**, then open it again and choose **Open**. On macOS 14 or older, **right-click → Open** also works. A Terminal fallback: `xattr -dr com.apple.quarantine /Applications/BRB.app`.
 3. Allow the **camera** when macOS asks.
 4. **OBS Studio is needed on a Mac.** BRB sends your picture through the free OBS Virtual Camera, because a Mac camera driver of our own needs a paid Apple developer certificate. The setup guide checks whether OBS and its camera are installed. If they aren't, it has a **Download OBS Studio** button ([obsproject.com/download](https://obsproject.com/download)) and walks you through the one-time steps:

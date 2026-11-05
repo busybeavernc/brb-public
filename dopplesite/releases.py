@@ -25,20 +25,12 @@ _lock = threading.Lock()
 _cache = {'at': 0.0, 'data': None}
 
 
-LEGACY_REPO = 'busybeavernc/doppleganger'   # where releases lived before the public downloads repo
-
-
 def _fetch():
-    """The latest release; if the downloads repo has none yet, the one in the app's code repo (while it's public)."""
+    """The latest release; with none published yet, an empty one (the page shows "coming soon" instead of dead links)."""
     try:
         return _fetch_repo(settings.releases_repo())
     except urllib.error.HTTPError as e:
-        if e.code != 404 or settings.releases_repo() == LEGACY_REPO:
-            raise
-    try:
-        return _fetch_repo(LEGACY_REPO)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:   # no release anywhere yet: the page shows "coming soon" instead of dead links
+        if e.code == 404:
             return {'version': '', 'published': '', 'url': '', 'assets': {}, 'repo': settings.releases_repo()}
         raise
 

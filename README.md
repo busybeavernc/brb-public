@@ -4,7 +4,7 @@
 
 **Download: [brb.happyhacks.io](https://brb.happyhacks.io/)**. The [setup guide](GUIDE.md) is also at [brb.happyhacks.io/guide](https://brb.happyhacks.io/guide).
 
-This repository holds BRB's public [releases](https://github.com/busybeavernc/doppleganger-public/releases) (published by the app's build) and the website. The app's code lives in a separate repository.
+This repository holds BRB's public [releases](https://github.com/busybeavernc/brb-public/releases) (published by the app's build) and the website. The app's code lives in a separate repository.
 
 ## The website (brb.happyhacks.io)
 
@@ -18,7 +18,7 @@ A small Flask app, set up like happyhacks.io and zipzip:
 1. **CloudPanel → Add Site → Python**: domain `brb.happyhacks.io`, App Port **9020**. Note the site user it creates.
 2. **Get the code**, as that site user (SSH in as the site user, or `sudo su - <site user>`):
    ```
-   git clone https://github.com/busybeavernc/doppleganger-public.git ~/doppleganger
+   git clone https://github.com/busybeavernc/brb-public.git ~/doppleganger
    ```
 3. **Install**, as root:
    ```
