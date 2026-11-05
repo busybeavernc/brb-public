@@ -1,6 +1,6 @@
 <p align="center"><img src="static/img/logo.png" alt="BRB - Be Right Back" width="420"></p>
 
-**BRB** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in Zoom, Teams or any browser meeting. For Windows 10/11 and macOS 12+.
+**BRB** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in Zoom, Teams or any browser meeting. For Windows 10/11 and macOS 13+.
 
 **Download: [brb.happyhacks.io](https://brb.happyhacks.io/)**. The [setup guide](GUIDE.md) is also at [brb.happyhacks.io/guide](https://brb.happyhacks.io/guide).
 

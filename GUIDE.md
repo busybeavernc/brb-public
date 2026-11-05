@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/logo.png" alt="BRB - Be Right Back" width="420"></p>
 
-**BRB** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in a video meeting, so you can step away for a moment (a restroom break, a coffee refill) without your camera going dark and distracting everyone. Works with Google Meet, Microsoft Teams, Webex, Zoom and other meeting apps that let you choose a camera. Windows 10/11 and macOS 12+.
+**BRB** records a short, seamless loop of you, then lets you switch between that loop and your live webcam in a video meeting, so you can step away for a moment (a restroom break, a coffee refill) without your camera going dark and distracting everyone. Works with Google Meet, Microsoft Teams, Webex, Zoom and other meeting apps that let you choose a camera. Windows 10/11 and macOS 13+.
 
 It's meant for short, courteous breaks, not for faking attendance or getting around attendance checks, identity checks, exams or any meeting where your live presence is required; see the [EULA](https://brb.happyhacks.io/eula).
 
