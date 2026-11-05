@@ -12,6 +12,7 @@
   --head: "Outfit", "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
+[id] { scroll-margin-top: 84px; }   /* #links land below the sticky header */
 html, body { margin: 0; overflow-x: clip; background: var(--ivory); color: var(--text);
   font: 16px/1.6 "Nunito Sans", "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 img { max-width: 100%; }
@@ -286,3 +287,49 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
   .it-table { font-size: .85rem; }
   .it-table th, .it-table td { padding: 8px; }
 }
+
+/* Optional BRB badge (home) */
+.badge-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 40px; align-items: center;
+  margin-top: 56px; background: var(--paper); border: 1px solid var(--line); border-radius: 24px; padding: 34px 36px; }
+.badge-feature h2 { margin: 4px 0 12px; }
+.badge-feature .eyebrow { margin: 0; color: var(--teal); font-weight: 700; font-size: .9rem; letter-spacing: .06em;
+  text-transform: uppercase; }
+.badge-text > p { margin: 0 0 14px; }
+.ticks { list-style: none; padding: 0; margin: 0 0 18px; }
+.ticks li { position: relative; padding-left: 26px; margin: 6px 0; }
+.ticks li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 12px; height: 7px;
+  border-left: 3px solid var(--teal); border-bottom: 3px solid var(--teal); transform: rotate(-45deg); }
+.switch-row { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: var(--muted);
+  background: var(--ivory); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.switch { flex: none; width: 38px; height: 22px; border-radius: 99px; background: var(--line-hi); position: relative; }
+.switch span { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.switch.on { background: var(--teal); }
+.switch.on span { left: 19px; }
+.badge-shot { margin: 0; }
+.tile-frame { position: relative; border-radius: 14px; overflow: hidden; background: #1F2A2A; padding: 8px;
+  box-shadow: 0 16px 40px rgba(36, 75, 75, .18); }
+.tile-frame img { display: block; width: 100%; height: auto; border-radius: 9px; }
+.tile-pic { position: relative; }
+/* the badge sits 13 px from the right/bottom of the 960x540 picture, 124x49 px: ring it, and label it */
+.badge-ring { position: absolute; right: 0.6%; bottom: 1.2%; width: 14.6%; height: 12.2%; border-radius: 999px;
+  border: 3px solid var(--apricot); box-shadow: 0 0 0 4px rgba(234, 179, 148, .35);
+  animation: badge-pulse 2.2s ease-in-out infinite; }
+.badge-callout { position: absolute; right: 2.5%; bottom: 17%; background: var(--apricot); color: var(--ink);
+  font-weight: 700; font-size: .78rem; border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+.badge-callout::after { content: ""; position: absolute; right: 22%; top: 100%; border: 6px solid transparent;
+  border-top-color: var(--apricot); }
+@keyframes badge-pulse { 50% { box-shadow: 0 0 0 9px rgba(234, 179, 148, 0); } }
+@media (prefers-reduced-motion: reduce) { .badge-ring { animation: none; } }
+.tile-name { position: absolute; left: 10px; bottom: 8px; color: #fff; font-size: .8rem; font-weight: 700;
+  background: rgba(0, 0, 0, .45); border-radius: 6px; padding: 2px 8px; }
+.badge-shot figcaption { color: var(--muted); font-size: .85rem; margin-top: 10px; text-align: center; }
+@media (max-width: 860px) {
+  .badge-feature { grid-template-columns: 1fr; padding: 24px 20px; gap: 24px; }
+}
+
+.new-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; text-decoration: none; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px 5px 5px; font-size: .9rem; white-space: nowrap; max-width: 100%; }
+.new-pill span { background: var(--apricot); border-radius: 99px; padding: 2px 9px; font-weight: 700; font-size: .78rem; }
+.new-pill:hover { border-color: var(--apricot); }
+@media (max-width: 640px) { [id] { scroll-margin-top: 130px; } .new-pill { white-space: normal; font-size: .85rem; } }

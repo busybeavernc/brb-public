@@ -8,6 +8,7 @@
       restroom run, a coffee refill, a knock at the door. Your camera doesn't go dark, and nobody is distracted.</p>
     <a class="btn big" href="{{ url_for('see_it') }}">See BRB in action <span aria-hidden="true">→</span></a>
     <p class="by">BY HAPPY HACKS</p>
+    <a class="new-pill" href="#badge"><span>New</span> Optional BRB badge for when you step away →</a>
   </div>
   <div class="scene" aria-label="Live camera, then the recorded loop, then back to live">
     <div class="cam">
@@ -41,6 +42,34 @@
   </div>
   <p class="compat" style="margin-top:18px">Works with <b>Google Meet</b> · <b>Microsoft Teams</b> · <b>Webex</b> ·
     <b>Zoom</b> and other video meeting apps that let you choose a camera.</p>
+
+  <div class="badge-feature" id="badge">
+    <div class="badge-text">
+      <p class="eyebrow">Optional BRB badge</p>
+      <h2>Want people to know you've stepped away? Say so.</h2>
+      <p>Turn on the <b>BRB badge</b> and a small "BRB · Be right back" sign appears in the corner of your video
+        while your loop is on air, then disappears the moment you're back.</p>
+      <ul class="ticks">
+        <li>Off by default; one switch in Settings</li>
+        <li>Shown only while the loop is on air</li>
+        <li>Handy when your organizer asks for it, or just because you prefer it</li>
+      </ul>
+      <div class="switch-row" aria-hidden="true"><span class="switch on"><span></span></span>
+        Show a small BRB badge to the meeting while the LOOP is on air</div>
+    </div>
+    <figure class="badge-shot">
+      <div class="tile-frame">
+        <div class="tile-pic">
+          <img src="{{ asset('img/badge-in-meeting.jpg') }}" width="960" height="540" loading="lazy"
+               alt="A meeting video tile showing a calm loop of the person, with a small 'BRB · Be right back' badge in the bottom-right corner">
+          <span class="tile-name">You</span>
+          <span class="badge-ring" aria-hidden="true"></span>
+          <span class="badge-callout" aria-hidden="true">BRB badge</span>
+        </div>
+      </div>
+      <figcaption>What your meeting sees with the badge on.</figcaption>
+    </figure>
+  </div>
 
   <h2 id="download">Download BRB</h2>
   <div class="dl">
@@ -118,6 +147,8 @@
       <p>Tap F9 as you step away and again when you're back. Hold it, and BRB switches the moment you're lined up.</p></div>
     <div class="feature"><h3><span class="dot"></span>Back in the same spot</h3>
       <p>Outlines of you and the loop show where to sit, so coming back is smooth too.</p></div>
+    <div class="feature"><h3><span class="dot"></span>Upfront when you want</h3>
+      <p>The optional <a href="#badge">BRB badge</a> tells others you've stepped away while your loop is on air.</p></div>
     <div class="feature"><h3><span class="dot"></span>Quiet while you're away</h3>
       <p>Your microphone is muted while the loop plays, so a coffee grinder or a barking dog never reaches the meeting.</p></div>
   </div>
