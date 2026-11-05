@@ -62,13 +62,14 @@ _ready = set()
 
 def db():
     con = users.db()
-    if id(con) not in _ready:
+    key = (id(con), users.path())   # a connection's id can be reused by a new one (e.g. a new database in tests)
+    if key not in _ready:
         con.executescript(SCHEMA)
         if 'first_ip' not in [r[1] for r in con.execute('PRAGMA table_info(devices)')]:
             con.execute("ALTER TABLE devices ADD COLUMN first_ip TEXT NOT NULL DEFAULT ''")
             con.execute('UPDATE devices SET first_ip=last_ip')
             con.commit()
-        _ready.add(id(con))
+        _ready.add(key)
     return con
 
 

@@ -57,7 +57,8 @@ class SquareError(Exception):
 
 def db():
     con = licenses.db()
-    if id(con) not in _ready:
+    key = (id(con), users.path())   # a connection's id can be reused by a new one (e.g. a new database in tests)
+    if key not in _ready:
         con.executescript(SCHEMA)
         cols = [r[1] for r in con.execute('PRAGMA table_info(square_catalog)')]
         if 'plan_name' not in cols:   # before the rename to BRB: one plan per price, keyed by (env, price)
@@ -67,7 +68,7 @@ def db():
               INSERT INTO square_catalog (env, price_cents, variation_id, created_at)
                 SELECT env, price_cents, variation_id, created_at FROM square_catalog_old;
               DROP TABLE square_catalog_old;""")
-        _ready.add(id(con))
+        _ready.add(key)
     return con
 
 

@@ -353,3 +353,13 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .new-pill span { background: var(--apricot); border-radius: 99px; padding: 2px 9px; font-weight: 700; font-size: .78rem; }
 .new-pill:hover { border-color: var(--apricot); }
 @media (max-width: 640px) { .new-pill { white-space: normal; font-size: .85rem; } }
+
+/* "Using a work computer?" (downloads, Download Free box, setup guide) */
+.work-box { display: flex; align-items: center; gap: 14px 22px; flex-wrap: wrap; margin: 16px 0 0; padding: 14px 18px;
+  background: var(--euca-soft); border-radius: 14px; font-size: .93rem; color: var(--ink); text-align: left; }
+.work-box p { margin: 0; flex: 1 1 300px; }
+.work-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.work-actions .btn { border-radius: 999px; padding: 7px 14px; font-size: .88rem; background: var(--paper); }
+.work-box.compact { padding: 12px 14px; font-size: .86rem; gap: 10px; }
+.work-box.compact p { flex-basis: 100%; }
+.guide .work-box { margin: 0 0 22px; }

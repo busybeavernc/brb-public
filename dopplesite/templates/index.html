@@ -108,6 +108,8 @@
     </div>
   </div>
 
+  {% import "_it_request.html" as itr with context %}{{ itr.work_box() }}
+
   <div class="all" id="all">
     {% for key, p in platforms.items() %}
       <a class="btn secondary{% if not available[key] %} missing{% endif %}" data-platform="{{ key }}"

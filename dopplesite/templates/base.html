@@ -42,6 +42,12 @@
     </div>
   </header>
   <script>
+  document.addEventListener("click", function (e) {   // "Copy link" buttons
+    var b = e.target.closest && e.target.closest("[data-copy]");
+    if (!b) return;
+    var done = function () { var t = b.textContent; b.textContent = "Copied!"; setTimeout(function () { b.textContent = t; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, function () {}); else done();
+  });
   (function () {   // the menu button (phones and narrow windows)
     var bar = document.querySelector(".nav-bar"), btn = bar.querySelector(".menu-btn");
     function set(open) { bar.classList.toggle("open", open); btn.setAttribute("aria-expanded", open ? "true" : "false");
@@ -77,8 +83,8 @@
     </div>
     <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>
       (see our <a href="{{ url_for('privacy') }}">Privacy Policy</a>).
-      Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.
-      Need IT approval first? <a href="{{ url_for('for_it') }}">Send them this page</a>.</p>
+      Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.</p>
+    {% import "_it_request.html" as itr with context %}{{ itr.work_box(compact=True) }}
     <p class="dl-other">Other computers:
       {% for key, p in platforms.items() %}{% if dl.available[key] %}<a href="{{ url_for('download', platform=key) }}" data-platform="{{ key }}">{{ p.label }} ({{ p.detail }}{% if dl.sizes[key] %}, {{ dl.sizes[key] }} MB{% endif %})</a>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</p>
   </dialog>

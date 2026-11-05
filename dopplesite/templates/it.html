@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% block title %}For IT teams · BRB{% endblock %}
-{% set it_url = request.url_root.rstrip('/') + url_for('for_it') %}
-{% set mail_subject = 'Software request: BRB (Be Right Back)' %}
-{% set mail_body = 'Hi,\n\nI\'d like to use BRB (Be Right Back) on my work computer. It\'s a small Windows/Mac app that lets me step away from a video meeting for a moment (a quick break, a coffee refill) without my camera going dark, by showing a short recorded loop of me through a virtual camera. Video stays on my computer.\n\nEverything IT usually needs to review it - what it installs, what it sends over the network, permissions and file checksums - is on one page:\n' ~ it_url ~ '\n\nCould you take a look and let me know if it can be approved?\n\nThanks!' %}
+{% import "_it_request.html" as itr with context %}
 {% block content %}
 <section class="page wrap narrow it">
   <p class="eyebrow">For IT teams</p>
@@ -131,17 +129,9 @@
   <div class="card use it-share">
     <p><b>Asking your IT team?</b> Send them this page - or use the button to start an email with the link already in it.</p>
     <div class="row">
-      <a class="btn" href="mailto:?subject={{ mail_subject|urlencode }}&amp;body={{ mail_body|urlencode }}">Email my IT team</a>
-      <button class="btn secondary" type="button" data-copy="{{ it_url }}">Copy link</button>
+      <a class="btn" href="{{ itr.mailto() }}">Email my IT team</a>
+      <button class="btn secondary" type="button" data-copy="{{ itr.it_url() }}">Copy link</button>
     </div>
   </div>
 </section>
-<script>
-document.querySelectorAll("[data-copy]").forEach(function (b) {
-  b.addEventListener("click", function () {
-    var done = function () { var t = b.textContent; b.textContent = "Copied!"; setTimeout(function () { b.textContent = t; }, 1500); };
-    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, function () {}); else done();
-  });
-});
-</script>
 {% endblock %}

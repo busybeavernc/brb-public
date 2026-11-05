@@ -1,0 +1,21 @@
+{# "Using a work computer?": quick access to the page for IT teams, plus a ready-made email to IT.
+   Import with context:  {% import "_it_request.html" as itr with context %}  then  {{ itr.work_box() }} #}
+{% macro it_url() -%}{{ request.url_root.rstrip('/') + url_for('for_it') }}{%- endmacro %}
+
+{% macro mailto() -%}
+{%- set subject = 'Software request: BRB (Be Right Back)' -%}
+{%- set body = 'Hi,\n\nI\'d like to use BRB (Be Right Back) on my work computer. It\'s a small Windows/Mac app that lets me step away from a video meeting for a moment (a quick break, a coffee refill) without my camera going dark, by showing a short recorded loop of me through a virtual camera. Video stays on my computer.\n\nEverything IT usually needs to review it - what it installs, what it sends over the network, the data it collects, permissions and file checksums - is on one page:\n' ~ (request.url_root.rstrip('/') + url_for('for_it')) ~ '\n\nCould you take a look and let me know if it can be approved?\n\nThanks!' -%}
+mailto:?subject={{ subject|urlencode }}&body={{ body|urlencode }}
+{%- endmacro %}
+
+{% macro work_box(compact=False) %}
+<div class="work-box{% if compact %} compact{% endif %}">
+  <p><b>Using a work computer?</b> Your IT team may need to approve new software first. Send them
+    <a href="{{ url_for('for_it') }}">our page for IT</a>: what BRB installs, what it sends and the data it collects,
+    in one place.</p>
+  <div class="work-actions">
+    <a class="btn btn-sm secondary" href="{{ mailto() }}">Email my IT team</a>
+    <button class="btn btn-sm secondary" type="button" data-copy="{{ it_url() }}">Copy link for IT</button>
+  </div>
+</div>
+{% endmacro %}
