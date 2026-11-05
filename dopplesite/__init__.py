@@ -62,8 +62,9 @@ def create_app() -> Flask:
         if request.is_secure:
             h.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
         h.setdefault('X-Content-Type-Options', 'nosniff')
-        h.setdefault('X-Frame-Options', 'DENY')
-        h.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        # the same values CloudPanel's nginx adds, so the duplicate headers agree (CSP frame-ancestors is the strict one)
+        h.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        h.setdefault('Referrer-Policy', 'same-origin')
         h.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()')
         h.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
         return resp
@@ -126,7 +127,7 @@ def create_app() -> Flask:
     @app.route('/security.txt')
     def security_txt():
         """RFC 9116. Expires is kept about six months ahead, as the RFC asks for a date under a year away."""
-        root = request.url_root.rstrip('/')
+        root = (settings.get('PUBLIC_URL') or request.url_root).rstrip('/')
         expires = (datetime.now(timezone.utc) + timedelta(days=180)).strftime('%Y-%m-%dT00:00:00Z')
         body = (f"Contact: mailto:{security_contact()}\n"
                 f"Expires: {expires}\n"

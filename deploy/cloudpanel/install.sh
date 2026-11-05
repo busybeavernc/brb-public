@@ -132,6 +132,17 @@ done
 if [ -n "$ok" ]; then echo "App is answering on 127.0.0.1:$APP_PORT."
 else echo "App did not answer on port $APP_PORT. Look at: tail -50 $LOGS/gunicorn.log"; exit 1; fi
 
+# CloudPanel's vhost answers /.well-known/ from htdocs itself (it's where HTTPS certificates are checked), so the
+# security contact file (RFC 9116) is written there on every update; its Expires date moves forward each time
+if [ -d "$HTDOCS" ]; then
+  install -d -o "$SITE_USER" -g "$GROUP" "$HTDOCS/.well-known"
+  if curl -fsS "http://127.0.0.1:$APP_PORT/security.txt" -o "$HTDOCS/.well-known/security.txt.new"; then
+    mv "$HTDOCS/.well-known/security.txt.new" "$HTDOCS/.well-known/security.txt"
+    chown "$SITE_USER:$GROUP" "$HTDOCS/.well-known/security.txt"; chmod 644 "$HTDOCS/.well-known/security.txt"
+    echo "Wrote $HTDOCS/.well-known/security.txt"
+  fi
+fi
+
 echo
 echo "Done. Site: https://$DOMAIN"
 echo "  HTTPS: in CloudPanel, Sites > $DOMAIN > SSL/TLS > New Let's Encrypt Certificate (once DNS points here)."
