@@ -85,6 +85,12 @@ def create_app() -> Flask:
                                sizes={p: releases.size_mb(p) for p in releases.PLATFORMS},
                                need_signin=settings.flag('DOWNLOADS_REQUIRE_SIGNIN') and not g.user and hhauth.enabled())
 
+    @app.route('/for-it')
+    @app.route('/it')            # the main address (registered first: the lower decorator)
+    def for_it():
+        return render_template('it.html', files={k: releases.details(k) for k in releases.PLATFORMS},
+                               signing=settings.get('CODE_SIGNING') or '', free_label=free_label())
+
     @app.route('/see-it-in-action')
     def see_it():
         from . import square

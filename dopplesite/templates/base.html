@@ -46,6 +46,7 @@
     <div class="wrap foot-inner">
       <span>BRB · Be Right Back</span>
       <span class="sp"></span>
+      <a href="{{ url_for('for_it') }}">For IT teams</a>
       <a href="{{ url_for('eula') }}">EULA</a>
       <a href="https://happyhacks.io">A product of Happy Hacks</a>
     </div>
@@ -61,7 +62,8 @@
       <form method="dialog"><button class="btn secondary" value="cancel">Cancel</button></form>
     </div>
     <p class="note">By downloading, you agree to the <a href="{{ url_for('eula') }}">End User License Agreement</a>.
-      Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.</p>
+      Then follow the <a href="{{ url_for('guide') }}">setup guide</a>.
+      Need IT approval first? <a href="{{ url_for('for_it') }}">Send them this page</a>.</p>
     <p class="dl-other">Other computers:
       {% for key, p in platforms.items() %}{% if dl.available[key] %}<a href="{{ url_for('download', platform=key) }}" data-platform="{{ key }}">{{ p.label }} ({{ p.detail }}{% if dl.sizes[key] %}, {{ dl.sizes[key] }} MB{% endif %})</a>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</p>
   </dialog>

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}For IT teams · BRB{% endblock %}
+{% set it_url = request.url_root.rstrip('/') + url_for('for_it') %}
+{% set mail_subject = 'Software request: BRB (Be Right Back)' %}
+{% set mail_body = 'Hi,\n\nI\'d like to use BRB (Be Right Back) on my work computer. It\'s a small Windows/Mac app that lets me step away from a video meeting for a moment (a quick break, a coffee refill) without my camera going dark, by showing a short recorded loop of me through a virtual camera. Video stays on my computer.\n\nEverything IT usually needs to review it - what it installs, what it sends over the network, permissions, file checksums and third-party components - is on one page:\n' ~ it_url ~ '\n\nCould you take a look and let me know if it can be approved?\n\nThanks!' %}
+{% block content %}
+<section class="page wrap narrow it">
+  <p class="eyebrow">For IT teams</p>
+  <h1>BRB at a glance</h1>
+  <p class="lede">Someone at your organization would like to use BRB. This page sets out what it is, what it installs,
+    what it sends over the network, and what it does on the computer, so you can review it quickly.</p>
+
+  <div class="card it-sum">
+    <dl class="kv">
+      <dt>What it is</dt><dd>A desktop app that lets a person step away from a video meeting for a moment without their
+        camera going dark: it switches their meeting camera between their live webcam and a short recorded loop of them.</dd>
+      <dt>Publisher</dt><dd>Happy Hacks (<a href="https://happyhacks.io">happyhacks.io</a>) · support@happyhacks.io</dd>
+      <dt>Platforms</dt><dd>Windows 10 / 11 (64-bit) · macOS 12+ (Apple Silicon and Intel)</dd>
+      <dt>How it reaches meetings</dt><dd>As a camera: Windows: its own <b>HappyHacks Virtual Camera</b>; Mac: OBS
+        Studio's virtual camera. Works with any meeting app that lets you choose a camera (Google Meet, Microsoft
+        Teams, Webex, Zoom and others). No plug-ins, no meeting-app integrations.</dd>
+      <dt>Video and audio</dt><dd><b>Never leave the computer.</b> The webcam picture, recorded loops and the person-detection
+        AI all stay and run locally. BRB doesn't record, process or send audio.</dd>
+      <dt>Account</dt><dd>None needed to use it. A free allowance of LOOP time per computer; unlimited use is an individual
+        subscription bought on this site.</dd>
+      <dt>Terms</dt><dd><a href="{{ url_for('eula') }}">End User License Agreement</a></dd>
+    </dl>
+  </div>
+
+  <h2 id="privacy">Data: what's collected, and what isn't</h2>
+  <div class="card use privacy">
+    <p><b>BRB collects no personal or company data beyond what's needed to create and manage an account and its
+      license. Nothing is sold or shared.</b></p>
+    <ul>
+      <li><b>For licensing</b> (sent by the app): a scrambled device ID (a SHA-256 of the computer's hardware ID; the
+        hardware ID itself never leaves the computer), the computer's name, the operating system, the BRB version, the
+        license key if there is one, and the internet address the check comes from (used to prevent abuse of the free
+        allowance).</li>
+      <li><b>For an account</b> (only if the person signs in or subscribes on this website): their name and email address,
+        through a Happy Hacks account. Card details go to Square, the payment processor, and never reach us.</li>
+    </ul>
+    <p><b>Never collected:</b> video, images, audio, keystrokes, files, meeting content or participants, contacts,
+      calendars, browsing activity, location, or information about the organization, its network or other users.
+      No analytics, advertising or tracking in the app.</p>
+  </div>
+
+  <h2>What it's for (and not for)</h2>
+  <p>BRB is a courtesy tool for <b>short, occasional breaks</b> - a restroom break, a coffee refill, answering the door -
+    in meetings where stepping away briefly is fine. Its <a href="{{ url_for('eula') }}">EULA</a> prohibits using it to
+    misrepresent attendance or participation, to get around attendance or identity checks or proctoring, or in exams,
+    interviews or any meeting where live presence is required, and requires users to follow their organization's
+    policies.</p>
+  <p>Users can turn on an <b>optional BRB badge</b> ("BRB · Be right back", bottom-right of their video) that tells
+    others they've stepped away while the loop is on air.</p>
+
+  <h2>What gets installed (Windows)</h2>
+  <table class="it-table">
+    <tr><th>Item</th><th>Where</th><th>Notes</th></tr>
+    <tr><td>The app</td><td><code>%LOCALAPPDATA%\Programs\BRB\BRB.exe</code><br><small>(earlier installs:
+      <code>…\Programs\Doppleganger</code>)</small></td><td>Per-user install; the installer needs no administrator rights.
+      Start-menu shortcut; optional desktop shortcut.</td></tr>
+    <tr><td>HappyHacks Virtual Camera</td><td><code>C:\ProgramData\Doppleganger\</code></td><td>A DirectShow video
+      source filter (64- and 32-bit DLLs, built from the open-source <a href="https://github.com/tshino/softcam">softcam</a>,
+      MIT), registered with <code>regsvr32</code>. CLSID <code>{548A881E-7657-4231-8FEA-A9877D9743C9}</code>.
+      <b>The only step that needs administrator rights</b>: Windows shows one permission prompt.</td></tr>
+    <tr><td>Settings, loops, logs</td><td><code>%APPDATA%\Doppleganger\</code></td><td>Plain files: <code>config.json</code>,
+      recorded loops (<code>loops\*.mp4</code>), <code>doppleganger.log</code>. Kept on uninstall so loops aren't lost.</td></tr>
+    <tr><td>Start at sign-in <small>(optional, off unless the user turns it on)</small></td>
+      <td><code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>, value <code>BRB</code></td><td>Starts BRB
+      minimized. Removed on uninstall.</td></tr>
+    {% if not signing %}
+    <tr><td>Publisher certificate <small>(optional, unticked by default)</small></td><td>Current user's certificate
+      stores</td><td>An installer option to trust BRB's current self-signed publisher certificate. Removed on uninstall.
+      Not needed to run BRB.</td></tr>
+    {% endif %}
+  </table>
+  <p class="note">No services, drivers, scheduled tasks or browser extensions. Uninstall (Settings → Apps) removes the
+    app, the virtual camera and the start-at-sign-in entry. On a Mac, BRB is a single app in Applications and uses OBS
+    Studio (installed separately) for its camera; macOS asks for Camera and Input Monitoring permission.</p>
+
+  <h2>What it does while running</h2>
+  <table class="it-table">
+    <tr><th>Behavior</th><th>Why</th><th>Details</th></tr>
+    <tr><td>Reads the webcam</td><td>The live picture, and recording loops</td><td>Only while BRB is open. The user picks
+      which webcam.</td></tr>
+    <tr><td>Sends video to its virtual camera</td><td>What the meeting sees</td><td>Live picture or the loop.</td></tr>
+    <tr><td>Mutes the microphone while the loop is on air</td><td>So background noise doesn't reach the meeting</td>
+      <td>Windows Core Audio API (via a small bundled helper, <code>micmute.exe</code>). Only microphones it muted are
+      unmuted again. Can be turned off in Settings.</td></tr>
+    <tr><td>Two global hotkeys (F9, F10)</td><td>Switch live/loop and window size while the meeting app is in front</td>
+      <td>A keyboard listener that acts only on its own keys. <b>Keystrokes are not recorded, stored or sent
+      anywhere.</b></td></tr>
+    <tr><td>Hides its own windows from screen sharing</td><td>So its controls don't appear when the user shares their
+      screen</td><td>Windows <code>SetWindowDisplayAffinity</code> (exclude from capture). Can be turned off in Settings.</td></tr>
+    <tr><td>Person detection</td><td>Helps the user line up when switching back</td><td>Google MediaPipe model, bundled
+      and run locally. Nothing is uploaded.</td></tr>
+  </table>
+
+  <h2>Network</h2>
+  <table class="it-table">
+    <tr><th>Address (HTTPS, port 443)</th><th>When</th><th>What is sent</th></tr>
+    <tr><td><code>brb.happyhacks.io</code></td><td>At start, every few minutes, and about every 15 s while the loop is on
+      air</td><td>License check: a scrambled device ID (SHA-256 of the computer's hardware ID; the hardware ID itself is
+      never sent), the computer's name, operating system, BRB version and license key (if any). <b>No video, audio,
+      images or keystrokes.</b> Required for the loop; the live camera works offline.</td></tr>
+    <tr><td><code>api.github.com</code>, <code>github.com</code>, <code>objects.githubusercontent.com</code>,
+      <code>release-assets.githubusercontent.com</code></td><td>At start</td><td>Update check and, if there's a newer
+      version, its download from BRB's public release page. Nothing about the user is sent.</td></tr>
+  </table>
+  <p class="note">No analytics, advertising or third-party trackers in the app. Corporate HTTPS inspection is supported
+    (BRB falls back to the computer's trusted certificates). Payments for subscriptions are handled by Square on this
+    website; sign-in uses a Happy Hacks account (name and email).</p>
+
+  <h2>Files and signatures</h2>
+  <p>{% if signing %}Windows releases are signed by <b>{{ signing }}</b>.{% else %}Windows releases are currently signed
+    with a self-signed certificate; publicly trusted code signing (Microsoft Artifact Signing) is being set up.{% endif %}
+    Releases are published at <a href="https://github.com/busybeavernc/doppleganger-public/releases">github.com/busybeavernc/doppleganger-public/releases</a>.</p>
+  <table class="it-table hashes">
+    <tr><th>Download</th><th>Version</th><th>SHA-256</th></tr>
+    {% for key, p in platforms.items() %}{% set f = files[key] %}{% if f %}
+    <tr><td>{{ f.name }}<br><small>{{ p.label }} · {{ p.detail }}{% if f.size_mb %} · {{ f.size_mb }} MB{% endif %}</small></td>
+      <td>{{ f.version }}</td><td><code class="hash">{{ f.sha256 or 'see the release page' }}</code></td></tr>
+    {% endif %}{% endfor %}
+  </table>
+
+  <h2>Third-party components</h2>
+  <p class="note">OpenCV (Apache 2.0) · Google MediaPipe (Apache 2.0) · NumPy (BSD) · Pillow (MIT-CMU) · softcam (MIT) ·
+    pyvirtualcam (GPL-2.0, Mac output via OBS) · pynput (LGPL-3.0) · pystray (LGPL-3.0) · certifi (MPL-2.0) · Python (PSF).
+    Packaged with PyInstaller; installer built with Inno Setup.</p>
+
+  <h2>Questions</h2>
+  <p>Email <b>support@happyhacks.io</b> - we're happy to answer security or privacy questionnaires.</p>
+
+  <div class="card use it-share">
+    <p><b>Asking your IT team?</b> Send them this page - or use the button to start an email with the link already in it.</p>
+    <div class="row">
+      <a class="btn" href="mailto:?subject={{ mail_subject|urlencode }}&amp;body={{ mail_body|urlencode }}">Email my IT team</a>
+      <button class="btn secondary" type="button" data-copy="{{ it_url }}">Copy link</button>
+    </div>
+  </div>
+</section>
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var done = function () { var t = b.textContent; b.textContent = "Copied!"; setTimeout(function () { b.textContent = t; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, function () {}); else done();
+  });
+});
+</script>
+{% endblock %}

@@ -261,3 +261,22 @@ code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }
   .see-step, .see-step:nth-child(even) { grid-template-columns: 1fr; gap: 18px; }
   .see-step:nth-child(even) .see-text { order: 0; }
 }
+
+/* For IT teams */
+.it h2 { margin-top: 44px; }
+.it-sum .kv { margin: 0; grid-template-columns: minmax(120px, max-content) 1fr; }
+.it-sum .kv dt { font-weight: 700; color: var(--ink); }
+.it-table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; overflow: hidden; font-size: .93rem; margin: 10px 0; }
+.it-table th, .it-table td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.it-table th { background: var(--euca-soft); color: var(--ink); font-weight: 700; }
+.it-table tr:last-child td { border-bottom: 0; }
+.it-table small { color: var(--muted); }
+.it-table code { word-break: break-all; }
+code.hash { font-size: .78rem; background: none; padding: 0; }
+.it-share { margin-top: 36px; }
+@media (max-width: 640px) {
+  .it-sum .kv { grid-template-columns: 1fr; }
+  .it-table { font-size: .85rem; }
+  .it-table th, .it-table td { padding: 8px; }
+}

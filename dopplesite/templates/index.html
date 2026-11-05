@@ -138,9 +138,11 @@
       <p>Any video meeting app that lets you choose a camera, including Google Meet, Microsoft Teams, Webex and Zoom. BRB
         appears as a camera (HappyHacks Virtual Camera on Windows, OBS Virtual Camera on a Mac); pick it in your meeting
         app's video settings.</p></details>
-    <details><summary>Is my video uploaded anywhere?</summary>
-      <p>No. Your camera, your loops and your recordings stay on your computer. BRB only checks your free time or license
-        key with this site.</p></details>
+    <details><summary>Is my video uploaded anywhere? What data does BRB collect?</summary>
+      <p>Your video never leaves your computer: your camera, your loops and your recordings stay on it. BRB collects
+        no personal or company data beyond what's needed for your account and license: for license checks, a
+        scrambled device ID, your computer's name, operating system and BRB version; and, if you subscribe, your name
+        and email. Nothing is sold or shared. <a href="{{ url_for('for_it') }}#privacy">The details</a>.</p></details>
     <details><summary>Why does it need an internet connection?</summary>
       <p>Free LOOP time and license keys are checked with brb.happyhacks.io while the LOOP is on air, so reinstalling
         doesn't reset free time. Your live camera works without a connection.</p></details>
@@ -155,6 +157,10 @@
       <p>BRB is meant for short, courteous breaks where stepping away is fine. Don't use it to fake attendance or in
         exams, interviews or meetings that require your live presence. If you're unsure, ask the organizer or turn your
         camera off.</p></details>
+    <details><summary>My company's IT needs to approve software. What do I send them?</summary>
+      <p>Send them our <a href="{{ url_for('for_it') }}">page for IT teams</a>: what BRB installs, what it sends over the
+        network (no video or audio ever leaves your computer), permissions, file checksums and third-party components,
+        all in one place. It has a button that starts the email for you.</p></details>
     <details><summary>Can I cancel my subscription?</summary>
       <p>Any time, on the <a href="{{ url_for('api.license_page') }}">license page</a>. Your key keeps working until the
         end of the month you've paid for.</p></details>

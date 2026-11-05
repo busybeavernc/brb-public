@@ -59,7 +59,8 @@ def _fetch_repo(repo):
     for rel in rels:
         for a in rel.get('assets', []):
             assets.setdefault(a['name'], {'url': a['browser_download_url'], 'size': a.get('size', 0),
-                                          'version': str(rel.get('tag_name', '')).lstrip('v')})
+                                          'version': str(rel.get('tag_name', '')).lstrip('v'),
+                                          'sha256': str(a.get('digest') or '').removeprefix('sha256:')})
     return {'version': str(newest.get('tag_name', '')).lstrip('v'), 'published': newest.get('published_at', ''),
             'url': newest.get('html_url', ''), 'assets': assets, 'repo': repo}
 
@@ -111,6 +112,17 @@ def available():
     if rel is None:
         return {k: True for k in PLATFORMS}
     return {k: _asset(rel, k) is not None for k in PLATFORMS}
+
+
+def details(platform):
+    """{name, version, size_mb, sha256} of a platform's current download, or None."""
+    rel = latest()
+    a = rel and _asset(rel, platform)
+    if not a:
+        return None
+    name = PLATFORMS[platform]['asset'] if rel['assets'].get(PLATFORMS[platform]['asset']) is a else OLD_ASSETS[platform]
+    return {'name': name, 'version': a.get('version') or rel['version'], 'size_mb': round(a.get('size', 0) / 1e6),
+            'sha256': a.get('sha256', '')}
 
 
 def size_mb(platform):
