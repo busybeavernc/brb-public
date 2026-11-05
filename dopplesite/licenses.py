@@ -158,7 +158,8 @@ def update(lid, **changes):
     if 'status' in sets and sets['status'] not in ('active', 'revoked'):
         raise LicenseError('Status must be active or revoked.')
     con = db()
-    con.execute(f'UPDATE licenses SET {", ".join(k + "=?" for k in sets)} WHERE id=?', (*sets.values(), lid))
+    # column names come from the `allowed` set above, never from the request; the values are bound parameters
+    con.execute(f'UPDATE licenses SET {", ".join(k + "=?" for k in sets)} WHERE id=?', (*sets.values(), lid))  # nosec B608
     con.commit()
     return get(lid)
 

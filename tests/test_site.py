@@ -232,7 +232,7 @@ class SecurityTest(Base):
         page = self.c.get('/security').get_data(as_text=True)
         self.assertIn('support@happyhacks.io', page)
         self.assertIn('brb.happyhacks.io/it', page)
-        self.assertIn('gh attestation verify', page)
+        self.assertIn('sigstore verify github', page)
         self.assertIn('/security', self.c.get('/').get_data(as_text=True))   # footer link
 
     def test_headers_and_nonce(self):

@@ -2,7 +2,9 @@ name: Security
 
 # Checks that run on every change and once a week (new vulnerabilities are published all the time):
 #   - pip-audit: the Python libraries in requirements.txt against the Python Packaging Advisory Database / OSV
-#   - CodeQL: GitHub's code scanner; results appear under the repository's Security tab
+#   - Bandit: a Python security linter (settings in .bandit); fails on medium or high severity findings
+#   - CodeQL: GitHub's code scanner, results under the Security tab. Free for public repositories only, so it's
+#     skipped while the repository is private (Bandit and pip-audit keep running either way)
 on:
   push:
     branches: [main]
@@ -27,7 +29,13 @@ jobs:
           pip install pip-audit==2.10.1
           pip-audit -r requirements.txt --desc
 
+      - name: Check the code with Bandit
+        run: |
+          pip install bandit==1.9.4
+          bandit -r dopplesite wsgi.py -ll --ini .bandit
+
   codeql:
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -38,10 +38,11 @@ If you act in good faith, stay within the scope above, avoid accessing or changi
 
 ## Checking a download
 
-Every BRB release is built automatically from its source code by GitHub Actions, and GitHub records a signed statement of exactly which build produced each file (a "build provenance attestation"). To check that a file you downloaded is a genuine, unmodified BRB release, run this with the [GitHub CLI](https://cli.github.com):
+Every BRB release is built automatically by GitHub Actions and signed with [Sigstore](https://www.sigstore.dev), an open standard for proving where software came from. Each file on the [release page](https://github.com/busybeavernc/doppleganger-public/releases) has a matching `.sigstore.json` file: a signed, publicly logged statement that BRB's release workflow produced exactly that file. To check a download, put its `.sigstore.json` file next to it and run:
 
 ```
-gh attestation verify BRBSetup.exe --repo busybeavernc/doppleganger
+pip install sigstore
+sigstore verify github BRBSetup.exe --repository busybeavernc/doppleganger
 ```
 
 The SHA-256 checksum of each current download is also listed on our [page for IT teams](https://brb.happyhacks.io/it).

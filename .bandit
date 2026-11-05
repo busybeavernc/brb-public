@@ -1,0 +1,5 @@
+# Bandit (Python security linter), run by .github/workflows/security.yml at medium severity and above.
+# B310 (urlopen allows file:/ URLs) is skipped: every URL this code opens is a fixed https:// address.
+[bandit]
+exclude = tests,.venv,build,dist
+skips = B310
