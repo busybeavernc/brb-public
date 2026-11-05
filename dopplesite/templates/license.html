@@ -45,7 +45,7 @@
       <div class="card keycard">
         <div class="keyrow">
           <code class="key" id="key-{{ loop.index }}">{{ k.key }}</code>
-          <button class="btn secondary btn-sm" type="button" onclick="navigator.clipboard.writeText(document.getElementById('key-{{ loop.index }}').textContent).then(() => { this.textContent = 'Copied'; })">Copy</button>
+          <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy</button>
           {% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">{{ 'ended' if k.plan == 'subscription' else 'off' }}</span>{% endif %}
         </div>
         <p class="note">
@@ -55,7 +55,7 @@
           {% for d in k.devices %}<br>· {{ d.name or 'A computer' }} ({{ d.platform }}){% endfor %}
         </p>
         {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
-          <form method="post" action="{{ url_for('api.cancel', lid=k.id) }}" onsubmit="return confirm('Cancel your BRB subscription? Your key keeps working until the end of the month you have paid for.')">
+          <form method="post" action="{{ url_for('api.cancel', lid=k.id) }}" data-confirm="Cancel your BRB subscription? Your key keeps working until the end of the month you have paid for.">
             <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Cancel subscription</button></form>
         {% endif %}
       </div>

@@ -71,7 +71,7 @@
   </div>
 </section>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (() => {
   const CSRF = {{ csrf()|tojson }};
   const $ = s => document.querySelector(s);

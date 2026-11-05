@@ -209,7 +209,7 @@
 </section>
 
 {% if not need_signin %}
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
   var ua = navigator.userAgent || "";
   var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";

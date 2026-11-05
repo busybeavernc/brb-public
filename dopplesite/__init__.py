@@ -3,7 +3,7 @@ import hmac
 import logging
 import os
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, abort, g, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -46,6 +46,28 @@ def create_app() -> Flask:
             session['csrf'] = secrets.token_urlsafe(24)
         return session['csrf']
 
+    def csp_nonce():
+        if 'csp_nonce' not in g:
+            g.csp_nonce = secrets.token_urlsafe(16)
+        return g.csp_nonce
+
+    @app.after_request
+    def security_headers(resp):
+        """The usual protective headers; security reviewers check for these (securityheaders.com, Mozilla Observatory)."""
+        h = resp.headers
+        script = f"'self' 'nonce-{g.csp_nonce}'" if 'csp_nonce' in g else "'self'"
+        h.setdefault('Content-Security-Policy',
+                     f"default-src 'self'; script-src {script}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                     "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
+        if request.is_secure:
+            h.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        h.setdefault('X-Content-Type-Options', 'nosniff')
+        h.setdefault('X-Frame-Options', 'DENY')
+        h.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        h.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()')
+        h.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        return resp
+
     @app.before_request
     def load_user():
         g.user = users.get(session['uid']) if session.get('uid') else None
@@ -65,7 +87,7 @@ def create_app() -> Flask:
     def inject():
         return {'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
-                'free_label_text': free_label}
+                'free_label_text': free_label, 'csp_nonce': csp_nonce}
 
     @app.template_filter('datefmt')
     def datefmt(ts):
@@ -90,6 +112,28 @@ def create_app() -> Flask:
     def privacy():
         return render_template('guide.html', guide_html=_md_html('PRIVACY.md'), title='Privacy Policy',
                                lede='What BRB collects, what it never collects, and why.', legal=True)
+
+    def security_contact():
+        return settings.get('SECURITY_CONTACT') or 'support@happyhacks.io'
+
+    @app.route('/security')
+    def security():
+        html = _md_html('SECURITY.md').replace('support@happyhacks.io', security_contact())
+        return render_template('guide.html', guide_html=html, title='Security',
+                               lede='How to report a security problem, and how to check a download.', legal=True)
+
+    @app.route('/.well-known/security.txt')
+    @app.route('/security.txt')
+    def security_txt():
+        """RFC 9116. Expires is kept about six months ahead, as the RFC asks for a date under a year away."""
+        root = request.url_root.rstrip('/')
+        expires = (datetime.now(timezone.utc) + timedelta(days=180)).strftime('%Y-%m-%dT00:00:00Z')
+        body = (f"Contact: mailto:{security_contact()}\n"
+                f"Expires: {expires}\n"
+                f"Policy: {root}{url_for('security')}\n"
+                f"Canonical: {root}/.well-known/security.txt\n"
+                "Preferred-Languages: en\n")
+        return app.response_class(body, mimetype='text/plain')
 
     @app.route('/for-it')
     @app.route('/it')            # the main address (registered first: the lower decorator)
@@ -198,5 +242,5 @@ def _md_html(name):
         text = text.split('\n', 1)[1] if text.startswith('<p align="center">') else text   # the logo is in the page header
         if text.lstrip().startswith('# '):   # the page has its own title
             text = text.lstrip().split('\n', 1)[1]
-        _md[name] = (mtime, markdown.markdown(text, extensions=['tables', 'sane_lists', 'toc']))
+        _md[name] = (mtime, markdown.markdown(text, extensions=['tables', 'sane_lists', 'toc', 'fenced_code']))
     return _md[name][1]

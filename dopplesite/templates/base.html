@@ -41,12 +41,16 @@
       <button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="site-nav"><span></span></button>
     </div>
   </header>
-  <script>
+  <script nonce="{{ csp_nonce() }}">
   document.addEventListener("click", function (e) {   // "Copy link" buttons
     var b = e.target.closest && e.target.closest("[data-copy]");
     if (!b) return;
     var done = function () { var t = b.textContent; b.textContent = "Copied!"; setTimeout(function () { b.textContent = t; }, 1500); };
     if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, function () {}); else done();
+  });
+  document.addEventListener("submit", function (e) {   // forms that ask first
+    var m = e.target.dataset && e.target.dataset.confirm;
+    if (m && !window.confirm(m)) e.preventDefault();
   });
   (function () {   // the menu button (phones and narrow windows)
     var bar = document.querySelector(".nav-bar"), btn = bar.querySelector(".menu-btn");
@@ -66,6 +70,7 @@
       <span class="sp"></span>
       <a href="{{ url_for('for_it') }}">For IT teams</a>
       <a href="{{ url_for('privacy') }}">Privacy</a>
+      <a href="{{ url_for('security') }}">Security</a>
       <a href="{{ url_for('eula') }}">EULA</a>
       <a href="https://happyhacks.io">A product of Happy Hacks</a>
       <span>© 2026 Busy Beaver Group LLC</span>
@@ -88,7 +93,7 @@
     <p class="dl-other">Other computers:
       {% for key, p in platforms.items() %}{% if dl.available[key] %}<a href="{{ url_for('download', platform=key) }}" data-platform="{{ key }}">{{ p.label }} ({{ p.detail }}{% if dl.sizes[key] %}, {{ dl.sizes[key] }} MB{% endif %})</a>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</p>
   </dialog>
-  <script>
+  <script nonce="{{ csp_nonce() }}">
   (function () {
     var dlg = document.getElementById("dl-modal");
     if (!dlg || !dlg.showModal) return;

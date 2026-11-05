@@ -213,3 +213,41 @@ class AdminTests(Base):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SecurityTest(Base):
+    def test_security_txt(self):
+        for path in ('/.well-known/security.txt', '/security.txt'):
+            r = self.c.get(path)
+            self.assertEqual(r.status_code, 200)
+            self.assertTrue(r.mimetype == 'text/plain')
+            body = r.get_data(as_text=True)
+            self.assertIn('Contact: mailto:support@happyhacks.io', body)
+            self.assertIn('/security\n', body)
+            exp = re.search(r'Expires: (\d{4}-\d\d-\d\d)T', body).group(1)
+            days = (time.mktime(time.strptime(exp, '%Y-%m-%d')) - time.time()) / 86400
+            self.assertTrue(100 < days < 365, days)
+
+    def test_security_page(self):
+        page = self.c.get('/security').get_data(as_text=True)
+        self.assertIn('support@happyhacks.io', page)
+        self.assertIn('brb.happyhacks.io/it', page)
+        self.assertIn('gh attestation verify', page)
+        self.assertIn('/security', self.c.get('/').get_data(as_text=True))   # footer link
+
+    def test_headers_and_nonce(self):
+        r = self.c.get('/')
+        csp = r.headers['Content-Security-Policy']
+        nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+        page = r.get_data(as_text=True)
+        scripts = re.findall(r'<script[^>]*>', page)
+        self.assertTrue(scripts)
+        for tag in scripts:
+            self.assertIn(f'nonce="{nonce}"', tag)
+        self.assertNotRegex(page, r'\son[a-z]+="')   # no inline handlers: the policy would block them
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertNotEqual(nonce, re.search(r"'nonce-([^']+)'", self.c.get('/').headers['Content-Security-Policy']).group(1))
+        for name in ('X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy'):
+            self.assertIn(name, r.headers)
+        self.assertNotIn('Strict-Transport-Security', r.headers)   # plain http (tests): no HSTS
+        self.assertIn('Strict-Transport-Security', self.c.get('/', base_url='https://dg.test').headers)
