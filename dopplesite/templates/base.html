@@ -22,7 +22,7 @@
       <a class="brand" href="/" aria-label="BRB home">
         {% include "_mark.svg" %}<span><b>BRB</b><small>Be Right Back</small></span>
       </a>
-      <nav>
+      <nav id="site-nav" aria-label="Main">
         <a href="/#how">How it works</a>
         <a href="{{ url_for('see_it') }}">See it in action</a>
         <a href="/#pricing">Pricing</a>
@@ -38,8 +38,21 @@
         {% endif %}
       </nav>
       <button class="btn btn-sm nav-dl" type="button" data-download>Download Free</button>
+      <button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="site-nav"><span></span></button>
     </div>
   </header>
+  <script>
+  (function () {   // the menu button (phones and narrow windows)
+    var bar = document.querySelector(".nav-bar"), btn = bar.querySelector(".menu-btn");
+    function set(open) { bar.classList.toggle("open", open); btn.setAttribute("aria-expanded", open ? "true" : "false");
+                         btn.setAttribute("aria-label", open ? "Close menu" : "Menu"); }
+    btn.addEventListener("click", function () { set(!bar.classList.contains("open")); });
+    bar.querySelectorAll("#site-nav a").forEach(function (a) { a.addEventListener("click", function () { set(false); }); });
+    document.addEventListener("click", function (e) { if (!bar.contains(e.target)) set(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && bar.classList.contains("open")) { set(false); btn.focus(); } });
+    window.addEventListener("resize", function () { if (window.innerWidth > 860) set(false); });
+  })();
+  </script>
   <main>{% block content %}{% endblock %}</main>
   <footer class="foot">
     <div class="wrap foot-inner">

@@ -203,8 +203,6 @@ code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }
 @media (max-width: 640px) {
   .how { grid-template-columns: 1fr; }
   .how > div + div { border-left: 0; border-top: 1px solid var(--line); }
-  .nav { flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; min-height: 0; }
-  .nav nav { margin-left: 0; width: 100%; gap: 6px 14px; font-size: .95rem; }
   .card { padding: 18px; }
   .scene { gap: 0; }
   .arrow { font-size: 1rem; }
@@ -229,10 +227,32 @@ code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }
 .dl-other { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
 .dl-close { position: absolute; top: 10px; right: 12px; margin: 0; }
 .dl-close .x { border: 0; background: none; font-size: 1.6rem; line-height: 1; color: var(--muted); cursor: pointer; padding: 4px 8px; }
-@media (max-width: 640px) {
-  .nav .brand { flex: 1; }
-  .nav nav { order: 3; }
-  .nav-dl { order: 2; }
+/* phones and narrow windows: the links fold into a menu button (Download Free stays in view) */
+.menu-btn { display: none; flex: none; width: 44px; height: 44px; border: 1px solid var(--line-hi); border-radius: 12px;
+  background: var(--paper); cursor: pointer; position: relative; padding: 0; }
+.menu-btn span, .menu-btn span::before, .menu-btn span::after { position: absolute; left: 12px; width: 18px; height: 2px;
+  border-radius: 2px; background: var(--ink); content: ""; transition: transform .2s, top .2s, opacity .2s; }
+.menu-btn span { top: 20.5px; }
+.menu-btn span::before { left: 0; top: -6px; }
+.menu-btn span::after { left: 0; top: 6px; }
+.nav-bar.open .menu-btn span { background: transparent; }
+.nav-bar.open .menu-btn span::before { top: 0; transform: rotate(45deg); }
+.nav-bar.open .menu-btn span::after { top: 0; transform: rotate(-45deg); }
+@media (max-width: 860px) {
+  .nav { gap: 10px; min-height: 64px; }
+  .nav .brand { margin-right: auto; }
+  .menu-btn { display: block; }
+  .nav nav { display: none; position: absolute; top: 100%; left: 0; right: 0; margin: 0; flex-direction: column;
+    align-items: stretch; gap: 0; padding: 6px 16px 14px; background: var(--ivory); border-bottom: 1px solid var(--line);
+    box-shadow: 0 14px 30px rgba(36, 75, 75, .12); }
+  .nav-bar.open nav { display: flex; }
+  .nav nav > a, .nav nav form { padding: 13px 4px; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
+  .nav nav > :last-child { border-bottom: 0; }
+  .nav nav .linkbtn { font-size: 1.05rem; text-decoration: none; color: var(--ink); font-weight: 600; }
+}
+@media (max-width: 380px) {
+  .nav-dl { padding: 8px 12px; font-size: .88rem; }
+  .brand small { display: none; }
 }
 
 /* See it in action */
@@ -332,4 +352,4 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
   background: var(--paper); border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px 5px 5px; font-size: .9rem; white-space: nowrap; max-width: 100%; }
 .new-pill span { background: var(--apricot); border-radius: 99px; padding: 2px 9px; font-weight: 700; font-size: .78rem; }
 .new-pill:hover { border-color: var(--apricot); }
-@media (max-width: 640px) { [id] { scroll-margin-top: 130px; } .new-pill { white-space: normal; font-size: .85rem; } }
+@media (max-width: 640px) { .new-pill { white-space: normal; font-size: .85rem; } }
