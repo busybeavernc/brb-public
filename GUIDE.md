@@ -131,7 +131,7 @@ The app finds the frame in the final seconds that best matches the first, ends t
 
 A small DirectShow camera filter (64- and 32-bit) installed in `C:\ProgramData\Doppleganger`, built from [softcam](https://github.com/tshino/softcam) (MIT) with its own name and ID, so it never clashes with OBS or other virtual cameras.
 
-Meeting apps and browsers list it as **HappyHacks Virtual Camera** (older versions called it "Doppleganger": pick the new name once in your meeting app). The installer adds it, and BRB installs or updates it by itself when needed (Windows asks for permission). On Windows BRB always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the BRB app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start BRB when Windows starts*; it opens minimized.
+Meeting apps and browsers list it as **HappyHacks Virtual Camera**. The installer adds it, and BRB installs or updates it by itself when needed (Windows asks for permission). On Windows BRB always uses it, never OBS, unless you set `output_camera` to `obs`. Your meeting app can select it any time. Whenever the BRB app isn't running (not started yet, or quit), the camera shows a neutral dark **"Camera starting…"** picture. It's deliberately generic, because meeting participants can see it, and it's never a frozen frame of you. To make sure the camera always has a real picture, turn on *Settings → Start BRB when Windows starts*; it opens minimized.
 
 ## Settings file
 

@@ -2,7 +2,7 @@
 
 **Effective November 5, 2026**
 
-This Privacy Policy explains what information Busy Beaver Group LLC, doing business as Happy Hacks ("Happy Hacks", "we", "us"), collects when you use BRB (Be Right Back, formerly called Doppleganger), the desktop app (the "Software"), and the website brb.happyhacks.io (the "Website"), how we use it, and the choices you have.
+This Privacy Policy explains what information Busy Beaver Group LLC, doing business as Happy Hacks ("Happy Hacks", "we", "us"), collects when you use BRB (Be Right Back), the desktop app (the "Software"), and the website brb.happyhacks.io (the "Website"), how we use it, and the choices you have.
 
 **The short version:** BRB collects no personal or company data beyond what's needed to create and manage your account and your license. Your video, your loops and your recordings never leave your computer. We don't sell or rent your information, we don't use it for advertising, and we share it only with the few service providers that help us run BRB (listed below).
 
