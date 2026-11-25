@@ -15,7 +15,15 @@ BRB works on your computer. The following are created and kept **only on your co
 - BRB's settings, its calibration pictures of your room, and its log files;
 - the results of BRB's person detection, which runs entirely on your computer.
 
-BRB does not record, process or send audio. While the loop is on air it can mute your microphone (you can turn this off); it only switches the microphone off and on again.
+BRB does not record or send audio. While the loop is on air it can mute your microphone (you can turn this off); it only switches the microphone off and on again.
+
+**Name alerts (optional, Windows, off unless you turn it on).** If you turn on *Name alerts*, then while the loop is on air BRB listens to the sound your computer is playing (the other people in your meeting) for the names you entered, so it can tell you when someone calls on you. This happens entirely on your computer:
+
+- at most the **last 10 seconds** of that audio are held, **in memory only**, each moment overwriting the oldest; audio is never saved to disk or sent anywhere;
+- only the few seconds around a heard name are turned into text, by a speech model that runs on your computer; that text is shown in the alert and kept only until you dismiss it or close BRB;
+- nothing is listened to while you're live, or when the feature is off. The names you entered are stored in BRB's settings on your computer.
+
+Because this processes other people's speech, please make sure it is appropriate for your meeting and your organization.
 
 BRB listens for its own two hotkeys (F9 and F10) so they work while your meeting app is in front. It acts only on those keys. **It does not record, store or send your keystrokes.**
 

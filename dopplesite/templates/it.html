@@ -18,7 +18,8 @@
         Studio's virtual camera. Works with any meeting app that lets you choose a camera (Google Meet, Microsoft
         Teams, Webex, Zoom and others). No plug-ins, no meeting-app integrations.</dd>
       <dt>Video and audio</dt><dd><b>Never leave the computer.</b> The webcam picture, recorded loops and the person-detection
-        AI all stay and run locally. BRB doesn't record, process or send audio.</dd>
+        AI all stay and run locally. BRB doesn't record or send audio. The optional <i>Name alerts</i> feature (off by
+        default, Windows) listens to meeting audio on the device only - see below.</dd>
       <dt>Account</dt><dd>None needed to use it. A free allowance of LOOP time per computer; unlimited use is an individual
         subscription bought on this site.</dd>
       <dt>Terms</dt><dd><a href="{{ url_for('eula') }}">End User License Agreement</a> ·
@@ -94,6 +95,12 @@
       screen</td><td>Windows <code>SetWindowDisplayAffinity</code> (exclude from capture). Can be turned off in Settings.</td></tr>
     <tr><td>Person detection</td><td>Helps the user line up when switching back</td><td>Google MediaPipe model, bundled
       and run locally. Nothing is uploaded.</td></tr>
+    <tr><td>Name alerts (optional, off by default, Windows)</td><td>Tells the user when someone in the meeting says their
+      name while their loop is on air</td><td>Only while the loop is on air: listens to the PC's sound output (WASAPI
+      loopback, i.e. the other participants) - never the microphone. At most the last <b>10 seconds</b> are held
+      <b>in memory only</b>, never written to disk or sent. A bundled keyword spotter and small speech recogniser
+      (k2-fsa/icefall zipformer models via sherpa-onnx, Apache-2.0) run locally and transcribe only the few seconds
+      around a heard name; the text appears in the alert and is discarded when dismissed. No network access.</td></tr>
   </table>
 
   <h2>Network</h2>

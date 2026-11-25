@@ -124,6 +124,17 @@ Press **Continue** (or **R** again). BRB then waits while you get comfortable: w
 
 The app finds the frame in the final seconds that best matches the first, ends the loop there, and adds a few motion-matched bridge frames if needed, so the restart is invisible. The loop starts at its first frame the first time you cut to it, then keeps playing in the background, so later cuts pick it up wherever it is.
 
+## Name alerts (Windows, optional)
+
+Stepping away while your loop runs? Turn on **Settings → Name alerts** (or the *Name alerts* step of the setup guide), and enter the names people use for you, separated by commas: for example *Jim, Jimmy, Jim Smith*. If a name is unusual, type it the way it sounds.
+
+While the LOOP is on air, BRB listens to your meeting for those names. When someone says one, a window pops up on top of everything with what they said (for example *"Jim, can you walk us through the numbers?"*, marked **Question for you** when it sounds like one), your taskbar button flashes, and an alert sound repeats until you're back. Press **F9** or **Go LIVE** to return, or **Dismiss**. The window never appears in screen shares.
+
+- **Sensitivity:** *Normal* alerts only when the speech model confirms it heard your name, so "gym" doesn't set off "Jim". *High* alerts on every possible match; *Low* needs a clearer match.
+- **Test: say your name** listens to your microphone for 6 seconds and shows what it heard.
+- **Private by design:** it only listens while the loop is on air, holds at most the last 10 seconds of meeting audio in memory (never saved or sent), and only turns the moment around your name into text. Everything runs on your computer.
+- Your own voice isn't part of it: BRB listens to what your PC plays, which is the other participants.
+
 ## Before you cut
 
 - **Before the first cut**, the loop's start pose shows as a soft apricot shape with your green outline on top (with outlines on). Line them up ("In start pose – cut is seamless"), then cut, or just *hold* F9 and let BRB cut when you're there. The white silhouette appears only while recording.
