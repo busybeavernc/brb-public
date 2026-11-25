@@ -110,10 +110,13 @@ When you press **Record** (button, **R** or the tray menu), a short *Before you 
 - Come back to the start pose for the last 10 seconds.
 - Keep the room the same.
 
-Press **Start recording** (or **R** again) to begin. You can turn the card off with *Don't show this again* or in Settings. While a new loop is being stitched, a small progress window appears and cuts are paused for a moment.
+Press **Continue** (or **R** again). BRB then waits while you get comfortable: when you're ready, press **Enter** or **Space** (or the **Start recording** button) and the countdown begins. You can turn the card off with *Don't show this again* or in Settings.
+
+**Spoken guidance:** a voice talks you through the recording: getting ready, the countdown, when to hold still, when to relax, halfway, when to return to your starting position, and when you're done. Turn it on or off, and pick the voice, in *Settings → Voice* (or with the switch on the tips card). *Settings → Voice* can also play a soft chime when you cut to LOOP or back to LIVE; use headphones for that, as a meeting microphone may pick it up from speakers. While a new loop is being stitched, a small progress window appears and cuts are paused for a moment.
 
 | Time (default 90 s; *Settings → Recording*: 60-600 s) | What you'll see | What to do |
 |---|---|---|
+| Getting ready | "Get comfortable – press Enter or Space when you're ready" | Take your time; press Enter or Space |
 | 3 s countdown | "Get in your start pose" | Settle into a comfortable, centered position |
 | 0–10 s | **HOLD STILL** + movement meter | No big head or body movement; this becomes the loop's first frame and your silhouette |
 | 10–80 s | "Recording – move naturally" | Look at the screen, nod, blink, look like you're listening |
