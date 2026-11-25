@@ -48,6 +48,9 @@ You don't need an account to download or use BRB. If you sign in on the Website 
 - **Sign-in** uses your Happy Hacks account. We receive and keep your **name**, **email address**, and **mobile number** if your Happy Hacks account has one, plus when your BRB account was created and when you last signed in.
 - **Subscriptions** are paid through **Square**. You enter your payment details on Square's checkout page; **we never see or store your card details**. We keep your license key, its status and expiry, the Square subscription identifier, the price you subscribed at, and which computer the key is on.
 - If you open the Website from the Software's "Get Unlimited Access Now" button, the link carries a signed reference to your computer's scrambled identifier, so a key you buy goes straight onto that computer.
+- If you use **Link this computer to my account** in the Software, we record that your computer (by its scrambled identifier, name, operating system and BRB version) belongs to your account, so you can see and manage it on your account page. You can remove it there at any time.
+
+**Support requests.** If you contact support (on the Website or from the Software), we keep what you send: your **email address**, your **name** if you give it, your **message** and any **file you attach** (for example BRB's log file or a screenshot), our replies, the BRB version and operating system, and the IP address the request came from (to stop abuse). If you write from the Software, we also note which computer it came from. We use this only to help you, and we email you about your request.
 
 ## 4. The Website
 
@@ -74,6 +77,7 @@ We share information only with service providers that help us run BRB, and only 
 - **Square** processes subscription payments and sends your receipts ([Square's privacy notice](https://squareup.com/legal/general/privacy)).
 - **GitHub** hosts BRB's downloads and updates. When you download BRB, or the Software checks for and downloads an update, your computer connects to GitHub, which receives your IP address ([GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)). The Software sends GitHub nothing about you.
 - **Our hosting provider** runs the servers that store the information described here.
+- **Our email provider** delivers support emails (your address and the message).
 - **Happy Hacks sign-in** (happyhacks.io), operated by us, holds your Happy Hacks account.
 
 We may also disclose information if the law requires it, to protect the rights, property or safety of Happy Hacks, our users or others, or as part of a merger, acquisition or sale of assets, in which case this Policy continues to apply to the information transferred.
@@ -82,6 +86,7 @@ We may also disclose information if the law requires it, to protect the rights, 
 
 - **Computer records and LOOP time records**: for as long as BRB offers a free allowance and licenses, because deleting them would reset a computer's free time or remove its key. You can ask us to delete yours (see section 9).
 - **Account and license records**: for as long as your account or license exists, and afterwards for as long as needed for billing, tax and legal records.
+- **Support requests**: for up to three years after the request is closed, then deleted; ask us any time to delete one sooner.
 - **Server logs**: for a limited period, then deleted.
 - **Download counts**: kept as totals; they contain no personal information.
 
@@ -93,7 +98,7 @@ All communication between the Software, the Website and our servers is encrypted
 
 - You can use the live camera without an internet connection; the Software contacts us only for the loop (licensing) and for updates.
 - You can uninstall the Software at any time. Your loops and settings stay on your computer until you delete them.
-- You can ask us to **see, correct or delete** the information we hold about you or your computer, or to close your account, by emailing **support@happyhacks.io**. Deleting a computer's record also deletes its free-time history, so its free allowance starts over; deleting an account doesn't cancel a Square subscription, which you cancel on your license page.
+- You can ask us to **see, correct or delete** the information we hold about you or your computer, or to close your account, by emailing **support@happyhacks.io** or from [brb.happyhacks.io/support](https://brb.happyhacks.io/support). Deleting a computer's record also deletes its free-time history, so its free allowance starts over; deleting an account doesn't cancel a Square subscription, which you cancel on your license page.
 - Depending on where you live, you may have further rights under local law (for example, to object to or restrict processing, to receive your data in a portable form, or to complain to a data-protection authority). Contact us and we'll help.
 
 We don't sell or share personal information for cross-context behavioral advertising, as those terms are used in California law.

@@ -23,7 +23,7 @@ class Base(unittest.TestCase):
             'DATA_DIR': self.tmp.name, 'SECRET_KEY': 'test-secret', 'ADMIN_PASSWORD': 'test-pw', 'UPDATES_DIR': self.tmp.name,
             'UPDATE_COMMAND': 'echo deploying; echo done', 'HAPPYHACKS_URL': 'https://hh.test', 'HAPPYHACKS_CLIENT_ID': 'doppleganger',
             'HAPPYHACKS_CLIENT_SECRET': 'shh', 'PUBLIC_URL': 'https://dg.test', 'ADMIN_CONTACTS': 'boss@example.com',
-            'DOWNLOADS_REQUIRE_SIGNIN': '0', **self.extra_env})
+            'DOWNLOADS_REQUIRE_SIGNIN': '0', 'NO_AUTO_BACKUP': '1', **self.extra_env})
         self.env.start()
         users.reset()
         admin._failures.clear()

@@ -48,13 +48,17 @@ def _fetch_repo(repo):
         raise urllib.error.HTTPError(url, 404, 'no releases', None, None)
     newest = rels[0]   # GitHub lists the newest first
     assets = {}
+    names = {p['asset'] for p in PLATFORMS.values()} | set(OLD_ASSETS.values())
+    gh_downloads = sum(int(a.get('download_count') or 0) for rel in rels for a in rel.get('assets', [])
+                       if a['name'] in names)
     for rel in rels:
         for a in rel.get('assets', []):
             assets.setdefault(a['name'], {'url': a['browser_download_url'], 'size': a.get('size', 0),
                                           'version': str(rel.get('tag_name', '')).lstrip('v'),
                                           'sha256': str(a.get('digest') or '').removeprefix('sha256:')})
     return {'version': str(newest.get('tag_name', '')).lstrip('v'), 'published': newest.get('published_at', ''),
-            'url': newest.get('html_url', ''), 'assets': assets, 'repo': repo}
+            'url': newest.get('html_url', ''), 'assets': assets, 'repo': repo,
+            'github_downloads': gh_downloads, 'github_releases_counted': len(rels)}
 
 
 def latest(force=False):

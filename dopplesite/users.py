@@ -4,7 +4,9 @@ Who someone is comes from their Happy Hacks account (see hhauth.py); this table 
 Doppleganger and holds what is Doppleganger's own: the admin role and when they were last here.
 
 Admins: emails / mobiles in ADMIN_CONTACTS become admins when they next sign in (confirmed contacts only), or
-    python -m dopplesite.users admin you@example.com      (and: unadmin, list)
+    python -m dopplesite.users admin you@example.com      (and: support, unadmin, list)
+Roles: admin (everything), support (customers, keys' computers, free time, support requests - not site updates,
+new keys, exports or roles), user.
 """
 import os
 import sqlite3
@@ -89,7 +91,16 @@ def sign_in(hh):
     return get(uid)
 
 
+ROLES = ('user', 'support', 'admin')
+
+
+def staff():
+    return [dict(r) for r in db().execute("SELECT * FROM users WHERE role IN ('admin','support') ORDER BY role, name")]
+
+
 def set_role(who, role):
+    if role not in ROLES:
+        raise ValueError('unknown role')
     w = settings.norm_contact(who)
     con = db()
     cur = con.execute('UPDATE users SET role=? WHERE id=? OR hh_id=? OR email=? OR phone=?', (role, who, who, w, w))
@@ -116,8 +127,8 @@ def download_stats(days=30):
 
 
 def main(argv):
-    if len(argv) >= 2 and argv[0] in ('admin', 'unadmin'):
-        n = set_role(argv[1], 'admin' if argv[0] == 'admin' else 'user')
+    if len(argv) >= 2 and argv[0] in ('admin', 'support', 'unadmin'):
+        n = set_role(argv[1], {'admin': 'admin', 'support': 'support'}.get(argv[0], 'user'))
         print(f'{argv[0]}: {argv[1]} -> {n} account(s) changed' if n else
               f'No Doppleganger account matches {argv[1]} yet. Sign in once at {settings.public_url()} first, '
               'or add it to ADMIN_CONTACTS.')

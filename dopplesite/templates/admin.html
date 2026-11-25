@@ -5,68 +5,160 @@
   <div class="wrap">
     <div class="admin-head">
       <h1>Admin</h1>
-      <form method="post" action="{{ url_for('admin.logout') }}"><span class="who">{{ who }}</span>
+      <form class="gsearch" id="gsearch"><input id="gq" type="search" placeholder="Search email, name, key, computer, IP, request #…" autocomplete="off"></form>
+      <form method="post" action="{{ url_for('admin.logout') }}"><span class="who">{{ who }} · {{ role }}</span>
         <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Sign out</button></form>
     </div>
+    <nav class="tabs" id="tabs">
+      <a href="#overview">Overview</a><a href="#support">Support <span class="count" id="supCount"></span></a>
+      <a href="#customers">Customers</a><a href="#keys">License keys</a><a href="#computers">Computers</a><a href="#team">Team &amp; log</a>
+    </nav>
+    <div id="results" class="admin-card" hidden></div>
 
-    <div class="admin-card" id="appcard">
-      <div class="admin-card-head">
-        <h2>BRB app</h2>
-        <span id="appTag" class="tag dim">checking…</span>
-        <span class="sp"></span>
-        <button class="linkbtn" type="button" id="appRefresh">Check GitHub again</button>
+    <!-- ===================================================== overview -->
+    <div class="tab" id="tab-overview">
+      <div class="admin-card">
+        <div class="admin-card-head"><h2>At a glance</h2><span class="sp"></span><span class="hint" id="backupInfo"></span></div>
+        <div class="stats" id="metrics"></div>
+        <table class="keytable" id="weeks"></table>
       </div>
-      <dl class="kv" id="appInfo"><dt>Latest release</dt><dd>…</dd></dl>
-      <div class="stats" id="appStats"></div>
-      <p class="hint">Releases are built by GitHub Actions in the code repository and published to the public
-        downloads repository shown above. The download buttons always point at the latest release.</p>
+      <div class="admin-card" id="appcard">
+        <div class="admin-card-head">
+          <h2>BRB app</h2>
+          <span id="appTag" class="tag dim">checking…</span>
+          <span class="sp"></span>
+          <button class="linkbtn" type="button" id="appRefresh">Check GitHub again</button>
+        </div>
+        <dl class="kv" id="appInfo"><dt>Latest release</dt><dd>…</dd></dl>
+        <div class="stats" id="appStats"></div>
+        <p class="hint">Releases are built by GitHub Actions in the code repository and published to the public downloads
+          repository shown above. The download buttons always point at the latest release. GitHub's count includes
+          downloads through this site, people downloading straight from GitHub, and BRB's own background updates.</p>
+      </div>
+      {% if role == 'admin' %}
+      <div class="admin-card" id="upd">
+        <div class="admin-card-head">
+          <h2>Website</h2>
+          <span id="updTag" class="tag">checking…</span>
+          <span class="sp"></span>
+          <button class="linkbtn" type="button" id="updRefresh">Check GitHub again</button>
+        </div>
+        <dl class="kv" id="updInfo"><dt>Running</dt><dd>…</dd></dl>
+        <div id="updErr"></div>
+        <div id="updNew"></div>
+        <div class="row">
+          <button class="btn" type="button" id="updRun" disabled>Update website</button>
+          <button class="linkbtn" type="button" id="updShowLog" hidden>Show the last output</button>
+        </div>
+        <pre class="updlog" id="updLog" hidden></pre>
+        <p class="hint">Updating runs the same command as over SSH (<code>sudo doppleganger-deploy</code>): it pulls <code>main</code> from GitHub, installs, runs the tests and restarts the site. The site is down for a few seconds at the end.</p>
+      </div>
+      {% endif %}
     </div>
 
-    <div class="admin-card" id="keys">
-      <div class="admin-card-head">
-        <h2>License keys</h2>
-        <span class="sp"></span>
-        <input id="keyQ" type="search" placeholder="Find a key, email, computer…" style="font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--midnight);color:var(--cloud)">
+    <!-- ===================================================== support -->
+    <div class="tab" id="tab-support" hidden>
+      <div class="admin-card" id="supList">
+        <div class="admin-card-head">
+          <h2>Support requests</h2><span class="sp"></span>
+          <select id="supStatus"><option value="active">New &amp; open</option><option value="waiting">Waiting on customer</option>
+            <option value="closed">Closed</option><option value="">All</option></select>
+          <input id="supQ" type="search" class="q" placeholder="Search requests…">
+        </div>
+        <table class="keytable"><thead><tr><th>#</th><th>Request</th><th>Customer</th><th>Status</th><th>Updated</th></tr></thead><tbody id="supRows"></tbody></table>
+        <p class="hint">Customers write in from brb.happyhacks.io/support (or BRB's Help → Contact support). Replies are emailed to them
+          and shown on their private request page; notes stay here.</p>
       </div>
-      <form class="inline-form" id="newKey">
-        <label>Email (optional)<input name="email" type="email" placeholder="person@example.com"></label>
-        <label>Note<input name="note" placeholder="why / who"></label>
-        <label>Computers<input name="max_devices" type="number" min="1" max="50" value="1" style="width:80px"></label>
-        <label>Expires after<select name="days"><option value="0">never</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option></select></label>
-        <button class="btn btn-sm" type="submit">Create key</button>
-      </form>
-      <div id="keyNew"></div>
-      <table class="keytable"><thead><tr><th>Key</th><th>Plan</th><th>Owner / note</th><th>Computers</th><th></th></tr></thead><tbody id="keyRows"><tr><td colspan="5">…</td></tr></tbody></table>
-      <p class="hint">Unlimited keys work until they expire or you turn them off. Subscription keys follow Square (cancelled = works until the paid month ends).
-        To move a key to someone's new computer, remove the old computer: the key then works on the next computer that uses it.</p>
+      <div id="supView" hidden></div>
     </div>
 
-    <div class="admin-card" id="devs">
-      <div class="admin-card-head">
-        <h2>Computers</h2>
-        <span class="sp"></span>
-        <input id="devQ" type="search" placeholder="Name, device id or IP…" style="font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--midnight);color:var(--cloud)">
+    <!-- ===================================================== customers -->
+    <div class="tab" id="tab-customers" hidden>
+      <div class="admin-card">
+        <div class="admin-card-head"><h2>Customers</h2><span class="sp"></span>
+          <input id="custQ" type="search" class="q" placeholder="Email of a customer…"></div>
+        <p class="hint">Search above (or anywhere) and open a customer to see their account, keys, computers, requests and history together.</p>
+        <h3>Saved lists</h3>
+        <div class="chips" id="filters"></div>
+        <div id="filterOut"></div>
       </div>
-      <table class="keytable"><thead><tr><th>Computer</th><th>Free time left</th><th>Keys</th><th>Last seen</th><th></th></tr></thead><tbody id="devRows"><tr><td colspan="5">…</td></tr></tbody></table>
-      <p class="hint">Each computer is identified by its hardware, so reinstalling BRB doesn't reset its free time.</p>
+      <div id="custView" hidden></div>
     </div>
 
-    <div class="admin-card" id="upd">
-      <div class="admin-card-head">
-        <h2>Website</h2>
-        <span id="updTag" class="tag">checking…</span>
-        <span class="sp"></span>
-        <button class="linkbtn" type="button" id="updRefresh">Check GitHub again</button>
+    <!-- ===================================================== keys -->
+    <div class="tab" id="tab-keys" hidden>
+      <div class="admin-card" id="keys">
+        <div class="admin-card-head">
+          <h2>License keys</h2>
+          <span class="sp"></span>
+          <input id="keyQ" type="search" class="q" placeholder="Find a key, email, computer…">
+        </div>
+        {% if role == 'admin' %}
+        <form class="inline-form" id="newKey">
+          <label>Email (optional)<input name="email" type="email" placeholder="person@example.com"></label>
+          <label>Note<input name="note" placeholder="why / who"></label>
+          <label>Computers<input name="max_devices" type="number" min="1" max="50" value="1" style="width:80px"></label>
+          <label>Expires after<select name="days"><option value="0">never</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option></select></label>
+          <button class="btn btn-sm" type="submit">Create key</button>
+        </form>
+        {% endif %}
+        <div id="keyNew"></div>
+        <table class="keytable"><thead><tr><th>Key</th><th>Plan</th><th>Owner / note</th><th>Computers</th><th></th></tr></thead><tbody id="keyRows"><tr><td colspan="5">…</td></tr></tbody></table>
+        <p class="hint">Unlimited keys work until they expire or you turn them off. Subscription keys follow Square (cancelled = works until the paid month ends).
+          To move a key to someone's new computer, remove the old computer: the key then works on the next computer that uses it.
+          Customers can also do this themselves on their account page, {{ 3 }} times a month.</p>
       </div>
-      <dl class="kv" id="updInfo"><dt>Running</dt><dd>…</dd></dl>
-      <div id="updErr"></div>
-      <div id="updNew"></div>
-      <div class="row">
-        <button class="btn" type="button" id="updRun" disabled>Update website</button>
-        <button class="linkbtn" type="button" id="updShowLog" hidden>Show the last output</button>
+    </div>
+
+    <!-- ===================================================== computers -->
+    <div class="tab" id="tab-computers" hidden>
+      <div class="admin-card" id="devs">
+        <div class="admin-card-head">
+          <h2>Computers</h2>
+          <span class="sp"></span>
+          <input id="devQ" type="search" class="q" placeholder="Name, device id or IP…">
+        </div>
+        {% if role == 'admin' %}
+        <div class="row bulk"><span class="hint" id="selCount">0 selected</span>
+          <button class="linkbtn" type="button" id="bulkFree">add free time to selected</button>
+          <button class="linkbtn" type="button" id="bulkDel">delete selected</button></div>
+        {% endif %}
+        <table class="keytable"><thead><tr><th></th><th>Computer</th><th>Free time left</th><th>Keys</th><th>Last seen</th><th></th></tr></thead><tbody id="devRows"><tr><td colspan="6">…</td></tr></tbody></table>
+        <p class="hint">Each computer is identified by its hardware, so reinstalling BRB doesn't reset its free time. Computers appear the first
+          time they use the LOOP, enter a key or link an account - however BRB was downloaded (this site or straight from GitHub).</p>
       </div>
-      <pre class="updlog" id="updLog" hidden></pre>
-      <p class="hint">Updating runs the same command as over SSH (<code>sudo doppleganger-deploy</code>): it pulls <code>main</code> from GitHub, installs, runs the tests and restarts the site. The site is down for a few seconds at the end.</p>
+    </div>
+
+    <!-- ===================================================== team & log -->
+    <div class="tab" id="tab-team" hidden>
+      <div class="admin-card">
+        <div class="admin-card-head"><h2>Team</h2></div>
+        <table class="keytable"><thead><tr><th>Person</th><th>Role</th><th>Last sign-in</th></tr></thead><tbody id="teamRows"></tbody></table>
+        {% if role == 'admin' %}
+        <form class="inline-form" id="teamForm">
+          <label>Email or mobile<input name="who" placeholder="person@example.com"></label>
+          <label>Role<select name="role"><option value="support">Support</option><option value="admin">Admin</option><option value="user">No access</option></select></label>
+          <button class="btn btn-sm" type="submit">Set role</button>
+        </form>
+        <p class="hint">The person signs in at the site once first (Sign in with Happy Hacks). Support can help customers (computers, free
+          time up to 10 hours, support requests); admins can also create and change keys, delete computers, export, run bulk actions,
+          manage the team and update the website.</p>
+        {% endif %}
+      </div>
+      {% if role == 'admin' %}
+      <div class="admin-card">
+        <div class="admin-card-head"><h2>Export (CSV)</h2></div>
+        <p class="row"><a class="btn btn-sm secondary" href="/admin/export/accounts.csv">Accounts</a>
+          <a class="btn btn-sm secondary" href="/admin/export/keys.csv">License keys</a>
+          <a class="btn btn-sm secondary" href="/admin/export/computers.csv">Computers</a>
+          <a class="btn btn-sm secondary" href="/admin/export/requests.csv">Support requests</a></p>
+        <p class="hint">For a spreadsheet or an email tool (e.g. to tell everyone about a new version). Exports are logged.</p>
+      </div>
+      {% endif %}
+      <div class="admin-card">
+        <div class="admin-card-head"><h2>Activity log</h2><span class="sp"></span><input id="auditQ" type="search" class="q" placeholder="Filter…"></div>
+        <table class="keytable"><thead><tr><th>When</th><th>Who</th><th>What</th><th>On</th></tr></thead><tbody id="auditRows"></tbody></table>
+      </div>
     </div>
   </div>
 </section>
@@ -74,9 +166,14 @@
 <script nonce="{{ csp_nonce() }}">
 (() => {
   const CSRF = {{ csrf()|tojson }};
+  const ROLE = {{ role|tojson }};
+  const ADMIN = ROLE === 'admin';
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const when = t => t ? new Date(t * 1000).toLocaleString() : '';
+  const day = t => t ? new Date(t * 1000).toLocaleDateString() : '';
+  const mins = s => `${Math.floor(s / 60)} min`;
+  const fail = e => alert(e.message);
   let poll;
 
   async function api(path, method = 'GET') {
@@ -86,49 +183,64 @@
     if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
     return d;
   }
-
-  async function load(fetchGit = true) {
-    const v = await api('/admin/api/updates' + (fetchGit ? '' : '?fetch=0'));
-    const n = (v.behind || []).length;
-    const tag = $('#updTag');
-    tag.className = 'tag' + (v.running ? ' warn' : n ? ' ok' : '');
-    tag.textContent = v.running ? 'updating…' : n ? `${n} new` : 'up to date';
-    const last = v.started ? `<dt>Last update</dt><dd>${esc(when(v.started))}${v.exit === 0 ? ' · <span class="tag ok">finished</span>' : v.exit != null ? ` · <span class="tag bad">${v.exit === -1 ? 'stopped' : 'failed (' + v.exit + ')'}</span>` : ''}</dd>` : '';
-    $('#updInfo').innerHTML = `<dt>Branch</dt><dd>${esc(v.branch)}</dd><dt>Running</dt><dd><span class="mono">${esc(v.commit || '?')}</span> ${esc(v.subject || '')}</dd>${last}`;
-    $('#updErr').innerHTML = v.error ? `<p class="msg err">Couldn't check GitHub: ${esc(v.error)}</p>` : '';
-    $('#updNew').innerHTML = n ? `<h3>New on GitHub</h3><ul class="commits">${v.behind.map(c => `<li><span class="mono">${esc(c.commit)}</span> ${esc(c.subject)}</li>`).join('')}</ul>` : '';
-    $('#updRun').disabled = !!v.running || !v.exists;
-    $('#updShowLog').hidden = !v.started;
-    if (v.running) watch(0);
+  async function post(path, body) {
+    const r = await fetch(path, { method: 'POST', headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
+      credentials: 'same-origin', body: JSON.stringify(body || {}) });
+    if (r.status === 401) { location.href = '/admin/login'; throw new Error('signed out'); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
+    return d;
   }
+  const debounce = (fn, ms = 250) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  const custLink = (email, label) => email ? `<a href="#customer/${encodeURIComponent(email)}">${esc(label || email)}</a>` : '<span class="hint">no account</span>';
+  const stTag = s => `<span class="tag ${s === 'new' ? 'bad' : s === 'open' ? 'warn' : s === 'closed' ? 'ok' : 'dim'}">${esc(s)}</span>`;
 
-  function watch(from) {
-    const box = $('#updLog');
-    box.hidden = false; if (!from) box.textContent = '';
-    clearTimeout(poll);
-    const tick = async off => {
-      let r;
-      try { r = await api('/admin/api/updates/log?from=' + off); }
-      catch (e) { poll = setTimeout(() => tick(off), 3000); return; }   // the site restarting mid-update: keep trying
-      if (r.log) { box.textContent += r.log; box.scrollTop = box.scrollHeight; }
-      if (r.running) { poll = setTimeout(() => tick(r.offset), 1500); return; }
-      box.textContent += r.exit === 0 ? '\n✓ Finished.' : `\n✗ ${r.exit === -1 ? 'Stopped before it finished.' : 'Failed (exit ' + r.exit + ').'}`;
-      box.scrollTop = box.scrollHeight;
-      setTimeout(() => load(false).catch(() => {}), 800);
-    };
-    tick(from);
+  // ---------------------------------------------------------------- tabs / routing (#tab, #support/12, #customer/email)
+  function route() {
+    const [tab, arg] = decodeURIComponent(location.hash.slice(1) || 'overview').split('/');
+    const name = tab === 'customer' ? 'customers' : tab;
+    document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== 'tab-' + name);
+    document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + name));
+    $('#results').hidden = true;
+    if (name === 'overview') { loadMetrics().catch(fail); }
+    if (name === 'support') { if (arg) openTicket(arg).catch(fail); else { $('#supView').hidden = true; $('#supList').hidden = false; loadTickets().catch(fail); } }
+    if (name === 'customers') { if (tab === 'customer' && arg) openCustomer(arg).catch(e => { $('#custView').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; $('#custView').hidden = false; }); else $('#custView').hidden = true; }
+    if (name === 'keys') loadKeys().catch(fail);
+    if (name === 'computers') loadDevs().catch(fail);
+    if (name === 'team') { loadTeam().catch(fail); loadAudit().catch(fail); }
   }
+  window.addEventListener('hashchange', route);
 
-  $('#updRefresh').addEventListener('click', () => { $('#updTag').textContent = 'checking…'; load(true).catch(e => alert(e.message)); });
-  $('#updShowLog').addEventListener('click', () => watch(0));
-  $('#updRun').addEventListener('click', async () => {
-    if (!confirm('Update the website?\n\nPulls main from GitHub, installs, runs the tests and restarts (a few seconds of downtime).')) return;
-    $('#updRun').disabled = true;
-    try { await api('/admin/api/updates', 'POST'); $('#updTag').className = 'tag warn'; $('#updTag').textContent = 'updating…'; watch(0); }
-    catch (e) { alert(e.message); $('#updRun').disabled = false; }
+  // ---------------------------------------------------------------- global search
+  const runSearch = debounce(async () => {
+    const q = $('#gq').value.trim(), box = $('#results');
+    if (q.length < 2) { box.hidden = true; return; }
+    const d = await api('/admin/api/search?q=' + encodeURIComponent(q));
+    box.hidden = false;
+    box.innerHTML = `<div class="admin-card-head"><h2>Results for “${esc(q)}”</h2><span class="sp"></span><button class="linkbtn" type="button" data-closeresults="1">close</button></div>` +
+      (d.results.length ? `<table class="keytable"><tbody>${d.results.map(r => `<tr><td><span class="tag dim">${esc(r.type)}</span></td>
+        <td>${r.type === 'request' ? `<a href="#support/${r.id}">${esc(r.title)}</a>` : r.customer ? custLink(r.customer, r.title) : esc(r.title)}</td>
+        <td class="hint">${esc(r.detail)}</td><td>${r.customer ? custLink(r.customer) : '<span class="hint">no account</span>'}</td></tr>`).join('')}</tbody></table>` : '<p class="hint">Nothing found.</p>');
   });
+  $('#gq').addEventListener('input', () => runSearch());
+  $('#gsearch').addEventListener('submit', ev => { ev.preventDefault(); runSearch(); });
 
-  load(true).catch(e => { $('#updErr').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+  // ---------------------------------------------------------------- overview
+  async function loadMetrics() {
+    const d = await api('/admin/api/metrics'), m = d.metrics;
+    $('#metrics').innerHTML = [
+      [m.subscribers, 'paying subscribers'], ['$' + (m.mrr_cents / 100).toFixed(0), 'monthly revenue (est.)'],
+      [m.cancelled_30d, 'cancelled, last 30 days'], [m.accounts, `accounts (${m.accounts_7d} this week)`],
+      [m.active_7d, `computers active this week`], [m.active_30d, 'active, last 30 days'], [m.computers, 'computers, all time'],
+      [m.no_account, 'computers with no account'], [m.other_keys, 'other active keys'],
+      [m.open_requests, `open support requests (${m.new_requests} new)`]
+    ].map(([n, l]) => `<div class="stat"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('');
+    $('#weeks').innerHTML = `<thead><tr><th>Week of</th>${m.weeks.map(w => `<th>${esc(w.week)}</th>`).join('')}</tr></thead><tbody>` +
+      [['accounts', 'New accounts'], ['computers', 'New computers'], ['keys', 'New keys']].map(([k, l]) =>
+        `<tr><td>${l}</td>${m.weeks.map(w => `<td>${w[k]}</td>`).join('')}</tr>`).join('') + '</tbody>';
+    $('#backupInfo').textContent = d.backup.at ? `Last database backup: ${when(d.backup.at)}` : 'No database backup yet (made automatically once a day)';
+    $('#supCount').textContent = m.open_requests ? m.open_requests : '';
+  }
 
   async function loadApp(fresh = false) {
     const a = await api('/admin/api/app' + (fresh ? '?fresh=1' : ''));
@@ -143,55 +255,226 @@
            `<dt>Latest release</dt><dd>Couldn't read it from GitHub (no release yet, or GitHub unreachable).</dd>`) +
       `<dt>Downloads</dt><dd>${a.platforms.map(p => `<span class="tag ${p.ready ? 'ok' : 'dim'}">${esc(p.label)}</span>`).join(' ')}</dd>` +
       `<dt>Sign-in</dt><dd>${a.sso ? 'Sign in with Happy Hacks is on' : 'Happy Hacks sign-in is not set up yet (HAPPYHACKS_ settings in .env)'}</dd>`;
-    const s = a.stats, by = s.by_platform || {};
+    const s = a.stats, by = s.by_platform || {}, gh = a.github || {};
+    const direct = gh.downloads != null ? Math.max(0, gh.downloads - s.total) : null;
     $('#appStats').innerHTML = [
-      [s.recent, `downloads, last ${s.days} days`], [by.windows || 0, 'Windows'], [by['mac-arm64'] || 0, 'Mac · Apple Silicon'],
-      [by['mac-intel'] || 0, 'Mac · Intel'], [s.total, 'downloads, all time'], [s.users, 'signed-in people']
-    ].map(([n, l]) => `<div class="stat"><b>${n}</b><span>${esc(l)}</span></div>`).join('');
+      [s.recent, `downloads via this site, last ${s.days} days`], [by.windows || 0, 'Windows'], [by['mac-arm64'] || 0, 'Mac · Apple Silicon'],
+      [by['mac-intel'] || 0, 'Mac · Intel'], [s.total, 'via this site, all time'],
+      [gh.downloads ?? '–', `on GitHub (last ${gh.releases || '?'} releases)`], [direct ?? '–', 'direct from GitHub or in-app updates'],
+      [s.users, 'signed-in people']
+    ].map(([n, l]) => `<div class="stat"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('');
   }
-  $('#appRefresh').addEventListener('click', () => loadApp(true).catch(e => alert(e.message)));
+  $('#appRefresh').addEventListener('click', () => loadApp(true).catch(fail));
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
-  // ---- license keys
-  const mins = s => `${Math.floor(s / 60)} min`;
-  const day = t => t ? new Date(t * 1000).toLocaleDateString() : '';
-  async function post(path, body) {
-    const r = await fetch(path, { method: 'POST', headers: { 'X-CSRF-Token': CSRF, 'Content-Type': 'application/json' },
-      credentials: 'same-origin', body: JSON.stringify(body || {}) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`);
-    return d;
+
+  if (ADMIN) {
+    async function loadUpd(fetchGit = true) {
+      const v = await api('/admin/api/updates' + (fetchGit ? '' : '?fetch=0'));
+      const n = (v.behind || []).length;
+      const tag = $('#updTag');
+      tag.className = 'tag' + (v.running ? ' warn' : n ? ' ok' : '');
+      tag.textContent = v.running ? 'updating…' : n ? `${n} new` : 'up to date';
+      const last = v.started ? `<dt>Last update</dt><dd>${esc(when(v.started))}${v.exit === 0 ? ' · <span class="tag ok">finished</span>' : v.exit != null ? ` · <span class="tag bad">${v.exit === -1 ? 'stopped' : 'failed (' + v.exit + ')'}</span>` : ''}</dd>` : '';
+      $('#updInfo').innerHTML = `<dt>Branch</dt><dd>${esc(v.branch)}</dd><dt>Running</dt><dd><span class="mono">${esc(v.commit || '?')}</span> ${esc(v.subject || '')}</dd>${last}`;
+      $('#updErr').innerHTML = v.error ? `<p class="msg err">Couldn't check GitHub: ${esc(v.error)}</p>` : '';
+      $('#updNew').innerHTML = n ? `<h3>New on GitHub</h3><ul class="commits">${v.behind.map(c => `<li><span class="mono">${esc(c.commit)}</span> ${esc(c.subject)}</li>`).join('')}</ul>` : '';
+      $('#updRun').disabled = !!v.running || !v.exists;
+      $('#updShowLog').hidden = !v.started;
+      if (v.running) watch(0);
+    }
+    function watch(from) {
+      const box = $('#updLog');
+      box.hidden = false; if (!from) box.textContent = '';
+      clearTimeout(poll);
+      const tick = async off => {
+        let r;
+        try { r = await api('/admin/api/updates/log?from=' + off); }
+        catch (e) { poll = setTimeout(() => tick(off), 3000); return; }   // the site restarting mid-update: keep trying
+        if (r.log) { box.textContent += r.log; box.scrollTop = box.scrollHeight; }
+        if (r.running) { poll = setTimeout(() => tick(r.offset), 1500); return; }
+        box.textContent += r.exit === 0 ? '\n✓ Finished.' : `\n✗ ${r.exit === -1 ? 'Stopped before it finished.' : 'Failed (exit ' + r.exit + ').'}`;
+        box.scrollTop = box.scrollHeight;
+        setTimeout(() => loadUpd(false).catch(() => {}), 800);
+      };
+      tick(from);
+    }
+    $('#updRefresh').addEventListener('click', () => { $('#updTag').textContent = 'checking…'; loadUpd(true).catch(fail); });
+    $('#updShowLog').addEventListener('click', () => watch(0));
+    $('#updRun').addEventListener('click', async () => {
+      if (!confirm('Update the website?\n\nPulls main from GitHub, installs, runs the tests and restarts (a few seconds of downtime).')) return;
+      $('#updRun').disabled = true;
+      try { await api('/admin/api/updates', 'POST'); $('#updTag').className = 'tag warn'; $('#updTag').textContent = 'updating…'; watch(0); }
+      catch (e) { alert(e.message); $('#updRun').disabled = false; }
+    });
+    loadUpd(true).catch(e => { $('#updErr').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
   }
+
+  // ---------------------------------------------------------------- support
+  async function loadTickets() {
+    const d = await api(`/admin/api/tickets?status=${encodeURIComponent($('#supStatus').value)}&q=${encodeURIComponent($('#supQ').value)}`);
+    const c = d.counts || {};
+    $('#supCount').textContent = (c.new || 0) + (c.open || 0) || '';
+    $('#supRows').innerHTML = d.tickets.map(t => `<tr><td><a href="#support/${t.id}">#${t.id}</a></td>
+      <td><a href="#support/${t.id}">${esc(t.subject)}</a><br><span class="hint">${esc(t.topic_label)}${t.app_version ? ' · BRB ' + esc(t.app_version) : ''}</span></td>
+      <td>${custLink(t.email, t.name || t.email)}</td><td>${stTag(t.status)}${t.assignee ? '<br><span class="hint">' + esc(t.assignee) + '</span>' : ''}</td>
+      <td>${esc(when(t.updated_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="hint">No requests here.</td></tr>';
+  }
+  $('#supStatus').addEventListener('change', () => loadTickets().catch(fail));
+  $('#supQ').addEventListener('input', debounce(() => loadTickets().catch(fail)));
+
+  let ticketData;
+  async function openTicket(id, data) {
+    const d = data || await api('/admin/api/tickets/' + id);
+    ticketData = d;
+    const t = d.ticket, box = $('#supView');
+    $('#supList').hidden = true; box.hidden = false;
+    const msgs = d.messages.map(m => `<div class="card msgcard ${m.kind === 'staff' ? 'staff' : m.kind === 'note' ? 'note-msg' : ''}">
+      <p class="note">${m.kind === 'note' ? '🔒 Note · ' : m.kind === 'staff' ? 'Reply · ' : ''}${esc(m.author)} · ${esc(when(m.created_at))}</p>
+      <div class="body">${esc(m.body)}</div>
+      ${m.attachment ? `<p class="note">Attached: <a href="/admin/support/${t.id}/file/${encodeURIComponent(m.attachment)}">${esc(m.attachment.split('-').slice(1).join('-'))}</a></p>` : ''}</div>`).join('');
+    box.innerHTML = `<div class="admin-card"><div class="admin-card-head"><a class="linkbtn" href="#support">← all requests</a><span class="sp"></span>
+        <label class="hint">Status <select id="tStatus">${d.statuses.map(s => `<option ${s === t.status ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+        <button class="linkbtn" type="button" id="tMine">${t.assignee ? 'assigned: ' + esc(t.assignee) : 'assign to me'}</button></div>
+      <h2>#${t.id} ${esc(t.subject)}</h2>
+      <p class="hint">${esc(t.topic_label)} · from ${custLink(t.email, (t.name ? t.name + ' · ' : '') + t.email)} · ${esc(when(t.created_at))}
+        ${t.app_version ? ' · BRB ' + esc(t.app_version) + ' ' + esc(t.platform) : ''}</p>
+      <div class="split"><div><div class="thread">${msgs}</div>
+        <form id="tReply" class="form"><label>Reply ${d.canned.length ? `<select id="tCanned"><option value="">insert a ready-made reply…</option>${d.canned.map((c, i) => `<option value="${i}">${esc(c.title)}</option>`).join('')}</select>` : ''}
+          <textarea name="body" rows="6" required></textarea></label>
+          <div class="row"><button class="btn btn-sm" type="submit" name="send" value="reply">Send reply (emails ${esc(t.email)})</button>
+            <button class="btn btn-sm secondary" type="submit" name="send" value="note">Add private note</button>
+            <label class="hint"><input type="checkbox" id="tClose"> close after sending</label>
+            <span class="sp"></span><button class="linkbtn" type="button" id="tSaveCanned">save as a ready-made reply</button></div></form></div>
+        <div class="side">${d.customer ? customerSummary(d.customer) : '<p class="hint">No account, keys or computers found for this email yet.</p>'}</div></div></div>`;
+    $('#tStatus').addEventListener('change', async ev => openTicket(id, await post(`/admin/api/tickets/${t.id}/status`, { status: ev.target.value })).catch(fail));
+    $('#tMine').addEventListener('click', async () => openTicket(id, await post(`/admin/api/tickets/${t.id}/status`, { assignee: {{ who|tojson }} })).catch(fail));
+    const sel = $('#tCanned');
+    if (sel) sel.addEventListener('change', () => { if (sel.value !== '') { const ta = $('#tReply textarea'); ta.value = (ta.value ? ta.value + '\n\n' : '') + d.canned[sel.value].body; sel.value = ''; } });
+    $('#tSaveCanned').addEventListener('click', async () => {
+      const body = $('#tReply textarea').value.trim(); if (!body) return alert('Write the reply first.');
+      const title = prompt('A short title for this ready-made reply:'); if (!title) return;
+      try { await post('/admin/api/canned', { title, body }); alert('Saved.'); } catch (e) { fail(e); }
+    });
+    $('#tReply').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const note = ev.submitter && ev.submitter.value === 'note';
+      const body = ev.target.body.value;
+      try { openTicket(id, await post(`/admin/api/tickets/${t.id}/reply`, { body, note, status: $('#tClose').checked ? 'closed' : undefined })); }
+      catch (e) { fail(e); }
+    });
+  }
+
+  // ---------------------------------------------------------------- customers
+  function keyMini(k) {
+    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : '<span class="tag ok">active</span>';
+    return `<div class="mini"><span class="mono">${esc(k.key)}</span> ${state} <span class="hint">${esc(k.plan)}${k.square_status ? ' · ' + esc(k.square_status) : ''} · ${k.devices.length}/${k.max_devices} computers${k.moves_left != null ? ' · ' + k.moves_left + ' self-moves left' : ''}</span>
+      ${k.devices.map(d => `<div>· ${esc(d.name || d.id.slice(0, 8))} <button class="linkbtn" data-rm="${k.id}|${d.id}">remove from key</button></div>`).join('')}</div>`;
+  }
+  function devMini(v, free) {
+    return `<div class="mini">${esc(v.name || 'Computer')} <span class="hint">${esc(v.platform)} · v${esc(v.app_version)} · last seen ${esc(day(v.last_seen))} · ${esc(v.last_ip || '')}</span>
+      ${v.linked ? '<span class="tag ok">linked</span>' : ''} ${v.keys.length ? '<span class="tag ok">licensed</span>' : `<span class="tag dim">${esc(mins(v.free_left))} free left</span>`}
+      <div><button class="linkbtn" data-free="${v.id}">+ free time</button>${ADMIN ? `<button class="linkbtn" data-givekey="${v.id}">give a key</button>` : ''}</div></div>`;
+  }
+  function customerSummary(c) {
+    const u = c.user;
+    return `<h3>${u ? esc(u.name || u.email) : esc(c.email)}</h3>
+      <p class="hint">${u ? `Account since ${esc(day(u.created_at))}, last sign-in ${esc(day(u.last_login_at))}${u.role !== 'user' ? ' · ' + esc(u.role) : ''}` : 'No account (keys or requests under this email only)'}
+        · <a href="#customer/${encodeURIComponent(c.email || (u && u.id) || '')}">full page</a></p>
+      <h4>Keys</h4>${c.keys.map(keyMini).join('') || '<p class="hint">none</p>'}
+      <h4>Computers</h4>${c.devices.map(v => devMini(v)).join('') || '<p class="hint">none linked</p>'}`;
+  }
+  async function openCustomer(who) {
+    const d = await api('/admin/api/customer?who=' + encodeURIComponent(who)), c = d.customer, box = $('#custView');
+    box.hidden = false;
+    box.innerHTML = `<div class="admin-card">${customerSummary(c)}
+      <h4>Support requests</h4>${c.tickets.map(t => `<div class="mini"><a href="#support/${t.id}">#${t.id} ${esc(t.subject)}</a> ${stTag(t.status)} <span class="hint">${esc(when(t.updated_at))}</span></div>`).join('') || '<p class="hint">none</p>'}
+      <h4>History</h4><table class="keytable"><tbody>${c.history.map(h => `<tr><td>${esc(when(h.at))}</td><td>${esc(h.who)}</td><td>${esc(h.action.replace(/_/g, ' '))}</td><td class="hint">${esc(h.details)}</td></tr>`).join('') || '<tr><td class="hint">nothing yet</td></tr>'}</tbody></table></div>`;
+    box.scrollIntoView({ behavior: 'smooth' });
+  }
+  $('#custQ').addEventListener('keydown', ev => { if (ev.key === 'Enter') location.hash = 'customer/' + encodeURIComponent($('#custQ').value.trim()); });
+  async function loadFilters() {
+    const d = await api('/admin/api/filters');
+    $('#filters').innerHTML = d.filters.map(f => `<button class="btn btn-sm secondary" type="button" data-filter="${f.id}">${esc(f.label)}</button>`).join(' ');
+  }
+  async function runFilter(name) {
+    const d = await api('/admin/api/filters/' + name), out = $('#filterOut');
+    if (d.kind === 'keys') out.innerHTML = d.rows.map(keyMini).join('') || '<p class="hint">None.</p>';
+    else if (d.kind === 'computers') out.innerHTML = d.rows.map(v => devMini({ ...v, keys: [] }) + (v.customer ? `<div class="hint">customer: ${custLink(v.customer)}</div>` : '')).join('') || '<p class="hint">None.</p>';
+    else out.innerHTML = d.rows.map(u => `<div class="mini">${custLink(u.email || u.id, u.name || u.email)} <span class="hint">${esc(when(u.created_at))}</span></div>`).join('') || '<p class="hint">None.</p>';
+  }
+  loadFilters().catch(() => {});
+
+  // ---------------------------------------------------------------- keys & computers
   function keyRow(k) {
     const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : '<span class="tag ok">active</span>';
     const devs = k.devices.map(d => `<div>${esc(d.name || d.id.slice(0, 8))} <span class="mono">(${esc(d.platform)})</span> <button class="linkbtn" data-rm="${k.id}|${d.id}">remove</button></div>`).join('') || '<span class="hint">none yet</span>';
     return `<tr><td><span class="mono">${esc(k.key)}</span><br>${state}</td><td>${esc(k.plan)}${k.square_status ? '<br><span class="hint">' + esc(k.square_status) + '</span>' : ''}</td>
-      <td>${esc(k.email)}<br><span class="hint">${esc(k.note)}</span></td><td>${k.devices.length} of ${k.max_devices}${devs}</td>
-      <td><button class="linkbtn" data-devmax="${k.id}|${k.max_devices}">computers…</button>
-          <button class="linkbtn" data-status="${k.id}|${k.status === 'revoked' ? 'active' : 'revoked'}">${k.status === 'revoked' ? 'turn on' : 'turn off'}</button>
+      <td>${k.email ? custLink(k.email) : ''}<br><span class="hint">${esc(k.note)}</span></td><td>${k.devices.length} of ${k.max_devices}${devs}</td>
+      <td>${ADMIN ? `<button class="linkbtn" data-devmax="${k.id}|${k.max_devices}">computers…</button>
+          <button class="linkbtn" data-status="${k.id}|${k.status === 'revoked' ? 'active' : 'revoked'}">${k.status === 'revoked' ? 'turn on' : 'turn off'}</button>` : ''}
           <button class="linkbtn" data-copy="${esc(k.key)}">copy</button></td></tr>`;
   }
   async function loadKeys() {
     const d = await api('/admin/api/licenses?q=' + encodeURIComponent($('#keyQ').value));
     $('#keyRows').innerHTML = d.licenses.map(keyRow).join('') || '<tr><td colspan="5" class="hint">No keys yet.</td></tr>';
   }
+  const selected = new Set();
   async function loadDevs() {
     const d = await api('/admin/api/devices?q=' + encodeURIComponent($('#devQ').value));
-    $('#devRows').innerHTML = d.devices.map(v => `<tr><td>${esc(v.name || 'Computer')} <span class="hint">${esc(v.platform)} · v${esc(v.app_version)}</span><br><span class="mono hint">${esc(v.id.slice(0, 16))}…</span></td>
+    $('#devRows').innerHTML = d.devices.map(v => `<tr><td>${ADMIN ? `<input type="checkbox" data-sel="${v.id}" ${selected.has(v.id) ? 'checked' : ''}>` : ''}</td>
+      <td>${esc(v.name || 'Computer')} <span class="hint">${esc(v.platform)} · v${esc(v.app_version)}</span><br><span class="mono hint">${esc(v.id.slice(0, 16))}…</span>${v.user_id ? '' : ' <span class="tag dim">no account</span>'}</td>
       <td>${v.keys.length ? 'licensed' : esc(mins(v.free_left))}</td><td class="mono">${v.keys.map(esc).join('<br>')}</td><td>${esc(day(v.last_seen))}<br><span class="hint">${esc(v.last_ip)}</span></td>
-      <td><button class="linkbtn" data-free="${v.id}">+ free time</button><button class="linkbtn" data-reset="${v.id}">reset</button><button class="linkbtn" data-givekey="${v.id}">give a key</button><button class="linkbtn" data-deldev="${v.id}">delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="hint">No computers yet.</td></tr>';
+      <td><button class="linkbtn" data-free="${v.id}">+ free time</button><button class="linkbtn" data-reset="${v.id}">reset</button>${ADMIN ? `<button class="linkbtn" data-givekey="${v.id}">give a key</button><button class="linkbtn" data-deldev="${v.id}">delete</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="hint">No computers yet.</td></tr>';
   }
-  let qt;
-  $('#keyQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadKeys().catch(e => alert(e.message)), 250); });
-  $('#devQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => loadDevs().catch(e => alert(e.message)), 250); });
-  $('#newKey').addEventListener('submit', async ev => {
+  $('#keyQ').addEventListener('input', debounce(() => loadKeys().catch(fail)));
+  $('#devQ').addEventListener('input', debounce(() => loadDevs().catch(fail)));
+  const nk = $('#newKey');
+  if (nk) nk.addEventListener('submit', async ev => {
     ev.preventDefault();
     const f = Object.fromEntries(new FormData(ev.target));
     try { const d = await post('/admin/api/licenses', f); $('#keyNew').innerHTML = `<p class="msg">New key: <span class="mono">${esc(d.license.key)}</span></p>`; ev.target.reset(); loadKeys(); }
-    catch (e) { alert(e.message); }
+    catch (e) { fail(e); }
   });
+  document.addEventListener('change', ev => {
+    const c = ev.target.closest('[data-sel]'); if (!c) return;
+    c.checked ? selected.add(c.dataset.sel) : selected.delete(c.dataset.sel);
+    const sc = $('#selCount'); if (sc) sc.textContent = `${selected.size} selected`;
+  });
+  if (ADMIN) {
+    $('#bulkFree').addEventListener('click', async () => {
+      if (!selected.size) return alert('Tick some computers first.');
+      const v = prompt(`Add how many minutes of free LOOP time to ${selected.size} computers?`, '30'); if (!v) return;
+      try { const d = await post('/admin/api/bulk', { action: 'free_time', minutes: parseFloat(v), devices: [...selected] }); alert(`Done: ${d.count} computers.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
+    });
+    $('#bulkDel').addEventListener('click', async () => {
+      if (!selected.size) return alert('Tick some computers first.');
+      if (!confirm(`Delete ${selected.size} computers? Their free-time records, key assignments and history are removed.`)) return;
+      try { const d = await post('/admin/api/bulk', { action: 'delete', devices: [...selected] }); alert(`Deleted ${d.count}.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
+    });
+  }
+
+  // ---------------------------------------------------------------- team & audit
+  async function loadTeam() {
+    const d = await api('/admin/api/team');
+    $('#teamRows').innerHTML = d.team.map(u => `<tr><td>${esc(u.name)}<br><span class="hint">${esc(u.email || u.phone)}</span></td><td>${esc(u.role)}</td><td>${esc(when(u.last_login_at))}</td></tr>`).join('') || '<tr><td colspan="3" class="hint">Only the admin password so far.</td></tr>';
+  }
+  const tf = $('#teamForm');
+  if (tf) tf.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    try { await post('/admin/api/team', Object.fromEntries(new FormData(ev.target))); ev.target.reset(); loadTeam(); loadAudit(); } catch (e) { fail(e); }
+  });
+  async function loadAudit() {
+    const d = await api('/admin/api/audit?q=' + encodeURIComponent($('#auditQ').value));
+    $('#auditRows').innerHTML = d.entries.map(h => `<tr><td>${esc(when(h.at))}</td><td>${esc(h.who)}</td><td>${esc(h.action.replace(/_/g, ' '))}<br><span class="hint">${esc(h.details)}</span></td><td class="mono hint">${esc(h.target)}</td></tr>`).join('') || '<tr><td colspan="4" class="hint">Nothing yet.</td></tr>';
+  }
+  $('#auditQ').addEventListener('input', debounce(() => loadAudit().catch(fail)));
+
+  // ---------------------------------------------------------------- shared buttons
   document.addEventListener('click', async ev => {
     const b = ev.target.closest('button'); if (!b) return;
     try {
+      if (b.dataset.closeresults) { $('#results').hidden = true; $('#gq').value = ''; return; }
+      if (b.dataset.filter) { await runFilter(b.dataset.filter); return; }
       if (b.dataset.copy) { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'copied'; return; }
       if (b.dataset.rm) { const [lid, did] = b.dataset.rm.split('|'); if (!confirm('Remove this computer from the key? The key will then work on the next computer that uses it.')) return; await post(`/admin/api/licenses/${lid}/devices/${did}/remove`); }
       else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? BRB stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
@@ -201,12 +484,11 @@
       else if (b.dataset.reset) { if (!confirm('Reset this computer to a full free allowance?')) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }
       else if (b.dataset.givekey) { const note = prompt('Create an unlimited key for this computer. Note (who / why):', ''); if (note === null) return; const d = await post('/admin/api/licenses', { note, device_id: b.dataset.givekey }); alert('New key (already on that computer): ' + d.license.key); }
       else return;
-      loadKeys(); loadDevs();
-    } catch (e) { alert(e.message); }
+      route();   // refresh whatever is showing
+    } catch (e) { fail(e); }
   });
-  loadKeys().catch(e => { $('#keyRows').innerHTML = `<tr><td colspan="5" class="msg err">${esc(e.message)}</td></tr>`; });
-  loadDevs().catch(() => {});
 
+  route();
 })();
 </script>
 {% endblock %}

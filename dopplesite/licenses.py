@@ -51,6 +51,17 @@ CREATE INDEX IF NOT EXISTS leases_device ON leases (device_id, released_at);
 """
 
 
+INDEXES = """
+CREATE INDEX IF NOT EXISTS devices_last_seen ON devices (last_seen);
+CREATE INDEX IF NOT EXISTS devices_user ON devices (user_id);
+CREATE INDEX IF NOT EXISTS devices_first_ip ON devices (first_ip, first_seen);
+CREATE INDEX IF NOT EXISTS licenses_email ON licenses (email);
+CREATE INDEX IF NOT EXISTS licenses_user ON licenses (user_id);
+CREATE INDEX IF NOT EXISTS license_devices_device ON license_devices (device_id);
+"""
+SELF_MOVES_PER_MONTH = 3   # how often a customer may move their own key to another computer (stops key sharing)
+
+
 class LicenseError(Exception):
     def __init__(self, message, code='bad_request', status=400):
         super().__init__(message)
@@ -65,10 +76,15 @@ def db():
     key = (id(con), users.path())   # a connection's id can be reused by a new one (e.g. a new database in tests)
     if key not in _ready:
         con.executescript(SCHEMA)
-        if 'first_ip' not in [r[1] for r in con.execute('PRAGMA table_info(devices)')]:
+        cols = [r[1] for r in con.execute('PRAGMA table_info(devices)')]
+        if 'first_ip' not in cols:
             con.execute("ALTER TABLE devices ADD COLUMN first_ip TEXT NOT NULL DEFAULT ''")
             con.execute('UPDATE devices SET first_ip=last_ip')
             con.commit()
+        if 'user_id' not in cols:   # the account this computer is linked to (from BRB's "Link to my account")
+            con.execute('ALTER TABLE devices ADD COLUMN user_id TEXT')
+            con.commit()
+        con.executescript(INDEXES)
         _ready.add(key)
     return con
 
@@ -305,6 +321,8 @@ def status(device, key=None):
     out['free_left'] = free_left(device)
     out['can_loop'] = out['unlimited'] or out['free_left'] > 0
     out['license_url'] = settings.public_url() + '/license'
+    # "Link this computer to my account" (Settings > License): signs in, then shows the computer on /account
+    out['link_url'] = settings.public_url() + '/account?d=' + offer_token(device['id'])
     from . import square
     out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
     # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app)
@@ -461,3 +479,65 @@ def bind_device(lid, device_id, discount=False):
     if discount:
         con.execute('UPDATE devices SET discount_used_at=? WHERE id=?', (now, device_id))
     con.commit()
+
+
+# ------------------------------------------------------------------ accounts: linking computers, self-service
+def link_device(device_id, user_id):
+    con = db()
+    n = con.execute('UPDATE devices SET user_id=? WHERE id=?', (user_id, device_id)).rowcount
+    con.commit()
+    return n
+
+
+def unlink_device(device_id, user_id):
+    con = db()
+    n = con.execute('UPDATE devices SET user_id=NULL WHERE id=? AND user_id=?', (device_id, user_id)).rowcount
+    con.commit()
+    return n
+
+
+def user_devices(user_id, email=None):
+    """The computers that belong to an account: linked to it, or using one of its keys."""
+    lic_ids = [x['id'] for x in for_user(user_id, email)]
+    con = db()
+    ids = {r['id'] for r in con.execute('SELECT id FROM devices WHERE user_id=?', (user_id,))}
+    if lic_ids:
+        ids |= {r['device_id'] for r in con.execute(
+            'SELECT device_id FROM license_devices WHERE license_id IN (%s)' % ','.join('?' * len(lic_ids)),  # nosec B608
+            lic_ids)}
+    out = []
+    for did in ids:
+        row = con.execute('SELECT * FROM devices WHERE id=?', (did,)).fetchone()
+        if not row:
+            continue
+        d = dict(row)
+        d['free_left'] = free_left(d)
+        d['linked'] = d.get('user_id') == user_id
+        d['keys'] = [dict(r) for r in con.execute(
+            'SELECT l.id, l.key FROM license_devices ld JOIN licenses l ON l.id = ld.license_id WHERE ld.device_id=?', (did,))]
+        out.append(d)
+    return sorted(out, key=lambda d: -d['last_seen'])
+
+
+def self_moves_left(lid):
+    from . import audit
+    since = time.time() - 30 * 86400
+    n = audit.db().execute("SELECT COUNT(*) FROM audit WHERE action='self_remove_device' AND target=? AND at > ?",
+                           (lid, since)).fetchone()[0]
+    return max(0, SELF_MOVES_PER_MONTH - n)
+
+
+def self_remove_device(user, lid, device_id):
+    """A customer frees their own key from one of their computers (to use it on a new one)."""
+    from . import audit
+    lic = get(lid)
+    owned = lic and (lic.get('user_id') == user['id'] or (user.get('email') and lic.get('email') == user['email']))
+    if not owned:
+        raise LicenseError('That key is not on your account.', 'not_yours', 403)
+    if device_id not in [d['id'] for d in lic['devices']]:
+        raise LicenseError('That computer is not using this key.', 'not_on_key', 404)
+    if self_moves_left(lid) <= 0:
+        raise LicenseError(f'A key can be moved {SELF_MOVES_PER_MONTH} times a month. Please contact support '
+                           'and we will move it for you.', 'too_many_moves', 429)
+    remove_device(lid, device_id)
+    audit.log(user.get('email') or user['id'], 'self_remove_device', lid, device=device_id)

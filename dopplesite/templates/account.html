@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Your account · BRB{% endblock %}
+{% block content %}
+<section class="page wrap narrow">
+  <h1>Your account</h1>
+  <p class="note">Signed in as {{ user.name or user.email }}{{ ' (' + user.email + ')' if user.name and user.email }}.
+    Name, email and sign-in are managed in your <a href="{{ hh_account }}">Happy Hacks account</a>.</p>
+  {% if linked %}<p class="msg">✓ {{ linked.name or 'This computer' }} is now linked to your account.</p>{% endif %}
+  {% if notice == 'moved' %}<p class="msg">Done: that computer is off your key. The key now works on the next computer you enter it on.</p>{% endif %}
+  {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+
+  <h2>Your computers</h2>
+  {% if devices %}
+  <table class="keytable"><thead><tr><th>Computer</th><th>License</th><th>Last used</th><th></th></tr></thead><tbody>
+  {% for d in devices %}
+    <tr><td><b>{{ d.name or 'A computer' }}</b><br><span class="note">{{ d.platform }} · BRB {{ d.app_version }}</span></td>
+      <td>{% if d['keys'] %}{% for k in d['keys'] %}<span class="mono">…{{ k.key[-4:] }}</span>{% if moves.get(k.id) is not none %}
+          <form method="post" action="{{ url_for('account_remove_device', lid=k.id, did=d.id) }}" data-confirm="Take {{ d.name or 'this computer' }} off this key? BRB on it goes back to free time; the key then works on the next computer you enter it on.">
+            <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Move this key to another computer</button></form>{% endif %}<br>{% endfor %}
+          {% else %}Free: {{ (d.free_left // 60)|int }} min left{% endif %}</td>
+      <td>{{ d.last_seen|datefmt }}</td>
+      <td>{% if d.linked %}<form method="post" action="{{ url_for('account_unlink', did=d.id) }}" data-confirm="Remove {{ d.name or 'this computer' }} from your account?">
+          <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Remove from account</button></form>{% endif %}</td></tr>
+  {% endfor %}</tbody></table>
+  <p class="note">You can move a key to another computer yourself up to {{ per_month }} times a month; after that,
+    <a href="{{ url_for('support_page', topic='license') }}">ask us</a> and we'll do it.</p>
+  {% else %}
+  <p class="note">No computers yet. In BRB, open <b>Settings → License</b> and click <b>Link this computer to my account</b>
+    (computers using one of your keys show up here by themselves).</p>
+  {% endif %}
+
+  <h2>Your license keys</h2>
+  {% if keys %}
+    {% for k in keys %}<p><code class="key">{{ k.key }}</code> <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy</button>
+      {% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">ended</span>{% endif %}
+      <span class="note">used on {{ k.devices|length }} of {{ k.max_devices }}</span></p>{% endfor %}
+    <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
+  {% else %}<p class="note">No keys yet. <a href="{{ url_for('api.license_page') }}">Get unlimited LOOP time</a>.</p>{% endif %}
+
+  <h2>Your support requests</h2>
+  {% if tickets %}
+  <ul class="tlist">{% for t in tickets %}<li><a href="{{ url_for('support_ticket', token=t.token) }}">#{{ t.id }} {{ t.subject }}</a>
+    <span class="tag {{ 'ok' if t.status == 'closed' else 'warn' if t.status == 'waiting' else 'dim' }}">{{ {'new': 'sent', 'open': 'open', 'waiting': 'answered', 'closed': 'closed'}[t.status] }}</span>
+    <span class="note">{{ t.updated_at|datefmt }}</span></li>{% endfor %}</ul>
+  {% else %}<p class="note">None. Need help? <a href="{{ url_for('support_page') }}">Contact support</a>.</p>{% endif %}
+</section>
+{% endblock %}

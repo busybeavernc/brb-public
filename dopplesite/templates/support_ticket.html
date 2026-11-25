@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ t.id }} · BRB support{% endblock %}
+{% block content %}
+<section class="page wrap narrow">
+  <h1>#{{ t.id }} {{ t.subject }}</h1>
+  <p class="note">{{ topic }} · opened {{ t.created_at|datefmt }} ·
+    <span class="tag {{ 'ok' if t.status == 'closed' else 'warn' if t.status == 'waiting' else 'dim' }}">{{ {'new': 'sent - we will answer soon', 'open': 'open', 'waiting': 'answered', 'closed': 'closed'}[t.status] }}</span></p>
+  {% if notice == 'sent' %}<p class="msg">Thanks, we got it. We've emailed you a copy with a link back to this page (keep it: it's your private link to this request).</p>{% endif %}
+  {% if notice == 'replied' %}<p class="msg">Thanks, your reply was added.</p>{% endif %}
+  {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+  <div class="thread">
+  {% for m in msgs %}
+    <div class="card msgcard {{ 'staff' if m.kind == 'staff' }}">
+      <p class="note">{{ 'BRB Support' if m.kind == 'staff' else (m.author or 'You') }} · {{ m.created_at|datefmt }}</p>
+      <div class="body">{{ m.body }}</div>
+      {% if m.attachment %}<p class="note">Attached: <a href="{{ url_for('support_file', token=t.token, stored=m.attachment) }}">{{ m.attachment.split('-', 1)[1] }}</a></p>{% endif %}
+    </div>
+  {% endfor %}
+  </div>
+  <form class="card form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <label>{{ 'Reopen it: add a message' if t.status == 'closed' else 'Add a message' }}<textarea name="body" rows="5" required maxlength="8000"></textarea></label>
+    <label>Attach a file (optional, up to 2 MB)<input type="file" name="attachment" accept=".log,.txt,.png,.jpg,.jpeg"></label>
+    <button class="btn" type="submit">Send</button>
+  </form>
+  <p class="note">Anyone with this page's address can read this request, so keep the link to yourself.
+    {% if user %}All your requests are on <a href="{{ url_for('account') }}">your account page</a>.{% endif %}</p>
+</section>
+{% endblock %}

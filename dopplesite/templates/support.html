@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Support · BRB{% endblock %}
+{% block content %}
+<section class="page wrap narrow">
+  <h1>Support</h1>
+  <p class="lede">Tell us what's going on and we'll get back to you by email, usually within one business day.</p>
+  <p class="note">Quick answers first? The <a href="{{ url_for('guide') }}">setup guide</a> covers installing, choosing the
+    BRB camera in your meeting app, recording loops and name alerts. IT and security questions: <a href="{{ url_for('for_it') }}">For IT teams</a>.</p>
+  {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+  <form class="card form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf() }}">
+    <input type="hidden" name="app_version" value="{{ form.app_version }}">
+    <input type="hidden" name="platform" value="{{ form.platform }}">
+    <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <div class="row2">
+      <label>Your email<input name="email" type="email" required maxlength="200" value="{{ form.email }}" autocomplete="email"></label>
+      <label>Your name (optional)<input name="name" maxlength="120" value="{{ form.name }}" autocomplete="name"></label>
+    </div>
+    <label>What is it about?
+      <select name="topic">{% for k, v in topics.items() %}<option value="{{ k }}" {{ 'selected' if form.topic == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <label>Subject (optional)<input name="subject" maxlength="150" value="{{ form.subject }}"></label>
+    <label>What happened?<textarea name="body" rows="7" required maxlength="8000" placeholder="What you did, what you expected, and what happened instead.">{{ form.body }}</textarea></label>
+    <label>Attach a file (optional): BRB's log or a screenshot, up to 2 MB<input type="file" name="attachment" accept=".log,.txt,.png,.jpg,.jpeg"></label>
+    {% if form.app_version %}<p class="note">From BRB {{ form.app_version }}{{ ' on ' + form.platform if form.platform }}: we'll include that, so you don't have to.</p>{% endif %}
+    <p class="note">BRB's log is <b>brb.log</b> in <code>%APPDATA%\BRB</code> on Windows (in BRB: Help → Open log folder). It has no video or audio.</p>
+    <button class="btn" type="submit">Send</button>
+  </form>
+  {% if mine %}
+    <h2>Your requests</h2>
+    <ul class="tlist">{% for t in mine %}<li><a href="{{ url_for('support_ticket', token=t.token) }}">#{{ t.id }} {{ t.subject }}</a>
+      <span class="tag {{ 'ok' if t.status == 'closed' else 'warn' if t.status == 'waiting' else 'dim' }}">{{ {'new': 'sent', 'open': 'open', 'waiting': 'answered', 'closed': 'closed'}[t.status] }}</span>
+      <span class="note">{{ t.updated_at|datefmt }}</span></li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}
