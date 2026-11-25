@@ -61,7 +61,7 @@ Release files are signed with a self-signed certificate (`doppleganger-publisher
 | **Cut button** | **Tap:** cut immediately (hard cut). **Hold:** BRB waits and cuts by itself the moment you're in sync; let go first to cancel. The button wears the colour of where you're cutting *to*. |
 | **Mini Bar (F10) / Record loop (R)** | Switch to the Mini Bar; record a new loop (see below). |
 | **Webcam** | Pick which camera is your live feed (virtual cameras are never offered). |
-| **Loops** | Your loop library: thumbnails, names (*Rename*), *Use*, *Delete*. A ⚠ appears when a loop's lighting doesn't match your room right now (darker, brighter, different colour). |
+| **Loops** | Your loop library: thumbnails, names (*Rename*), *Use*, *Delete*. BRB adjusts the loop's brightness and colour to your room's light right now (*Settings → Match the loop to the room's lighting*, on by default; your live picture is never changed), so a cut doesn't jump if the light has changed since you recorded. A ⚠ appears when the difference is too big for that (a much darker or brighter room, very different light). |
 | **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter and Cut, to park beside your meeting. Drag it by the logo; *Full view*, **F10** or **M** brings the window back. |
 | **Settings** | License, text size, privacy, crossfade, guides, outlines, overlay strength, **recording length (60-600 s, default 90)**, the camera, updates. |
 
