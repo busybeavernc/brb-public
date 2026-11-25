@@ -216,12 +216,13 @@ def create_app() -> Flask:
         return redirect(url_for('index'), 303)
 
     # ---------- support requests and the account page ----------
-    from . import audit, backup, licenses, support
+    from . import audit, backup, licenses, mailin, support
 
     @app.before_request
     def nightly_backup():
         if request.endpoint not in (None, 'static', 'healthz'):
             backup.maybe_run()
+            mailin.start()       # read the support mailbox in the background (if IMAP_ settings are set)
 
     def _form_csrf_ok():
         return hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-')

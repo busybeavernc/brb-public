@@ -238,7 +238,10 @@
     $('#weeks').innerHTML = `<thead><tr><th>Week of</th>${m.weeks.map(w => `<th>${esc(w.week)}</th>`).join('')}</tr></thead><tbody>` +
       [['accounts', 'New accounts'], ['computers', 'New computers'], ['keys', 'New keys']].map(([k, l]) =>
         `<tr><td>${l}</td>${m.weeks.map(w => `<td>${w[k]}</td>`).join('')}</tr>`).join('') + '</tbody>';
-    $('#backupInfo').textContent = d.backup.at ? `Last database backup: ${when(d.backup.at)}` : 'No database backup yet (made automatically once a day)';
+    const ml = d.mail;
+    $('#backupInfo').innerHTML = esc(d.backup.at ? `Last database backup: ${when(d.backup.at)}` : 'No database backup yet (made automatically once a day)') +
+      '<br>' + (ml.sending ? `Email: sending as ${esc(ml.from)}` : 'Email: not sending (set SMTP_ in .env)') + ' · ' +
+      (ml.receiving ? (ml.error ? `<span class="tag bad">mailbox: ${esc(ml.error)}</span>` : `reading the mailbox${ml.last_check ? ', last checked ' + esc(when(ml.last_check)) : ''}`) : 'not reading the mailbox (set IMAP_ in .env)');
     $('#supCount').textContent = m.open_requests ? m.open_requests : '';
   }
 

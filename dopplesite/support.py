@@ -124,7 +124,7 @@ def attachment_path(ticket_id, stored):
 
 # ------------------------------------------------------------------ tickets
 def create(email, subject, body, name='', topic='other', user_id=None, app_version='', platform='', device_id='',
-           ip='', upload=None):
+           ip='', upload=None, confirm=True):
     email = _clean(email, 200).lower()
     subject, body, name = _clean(subject, 150), _clean(body, 8000), _clean(name, 120)
     if not valid_email(email):
@@ -149,10 +149,11 @@ def create(email, subject, body, name='', topic='other', user_id=None, app_versi
         raise
     con.commit()
     t = get(tid)
-    mailer.send(email, f'[BRB #{tid}] We got your message: {subject}',
-                f"Hi{(' ' + name.split()[0]) if name else ''},\n\nThanks for writing to BRB support. We usually answer "
-                f"within one business day.\n\nYour request: {subject}\nSee it or add to it any time: {ticket_url(t)}\n\n"
-                "You can also just reply to this email.\n\n- BRB Support (Happy Hacks)")
+    if confirm:   # (not for requests that came in by email: no automatic answers to whoever wrote, e.g. spam)
+        mailer.send(email, f'[BRB #{tid}] We got your message: {subject}',
+                    f"Hi{(' ' + name.split()[0]) if name else ''},\n\nThanks for writing to BRB support. We usually "
+                    f"answer within one business day.\n\nYour request: {subject}\nSee it or add to it any time: "
+                    f"{ticket_url(t)}\n\nYou can also just reply to this email.\n\n- BRB Support (Happy Hacks)")
     mailer.send(mailer.staff(), f'[BRB #{tid}] New: {subject}',
                 f"From: {name} <{email}>\nTopic: {TOPICS[topic]}\nBRB {app_version or '?'} {platform}\n\n{body}\n\n"
                 f"Answer it in Admin: {settings.public_url()}/admin#support/{tid}", reply_to=email)

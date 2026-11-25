@@ -365,7 +365,11 @@ def filter_run(name):
 def metrics():
     from . import backup
     path, at = backup.latest()
-    return jsonify(metrics=customers.metrics(), backup={'file': os.path.basename(path) if path else '', 'at': at})
+    from . import mailer, mailin
+    return jsonify(metrics=customers.metrics(), backup={'file': os.path.basename(path) if path else '', 'at': at},
+                   mail={'sending': mailer.ready(), 'from': mailer.from_address(), 'notify': mailer.staff(),
+                         'receiving': mailin.ready(), 'last_check': mailin.status['last_check'],
+                         'error': mailin.status['last_error']})
 
 
 @bp.get('/admin/export/<kind>.csv')
