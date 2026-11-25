@@ -11,7 +11,7 @@
     <div class="plan">
       <h3>Free</h3>
       <p class="price">$0</p>
-      <ul><li>{{ free_minutes // 60 if free_minutes % 60 == 0 else free_minutes }} {{ 'hour' if free_minutes == 60 else ('hours' if free_minutes % 60 == 0 else 'minutes') }} of LOOP time per computer, in total</li>
+      <ul><li>{{ free_label_text() }} of LOOP time per computer, in total</li>
         <li>Live camera, recording loops, outlines: no limit</li><li>No key needed</li></ul>
     </div>
     <div class="plan plan-pro">

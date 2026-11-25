@@ -9,9 +9,9 @@ import json
 import logging
 import time
 
-from flask import Blueprint, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, g, jsonify, redirect, render_template, request, session, url_for
 
-from . import hhauth, licenses, settings, square
+from . import hhauth, licenses, settings, signing, square
 
 log = logging.getLogger('dopplesite')
 bp = Blueprint('api', __name__)
@@ -39,13 +39,28 @@ def license_error(e):
     return jsonify(error=str(e), code=e.code), e.status
 
 
+def _signed(out, d):
+    """The reply, signed: it echoes the app's nonce and computer, and X-BRB-Signature covers the exact bytes."""
+    out = {**out, 'nonce': str(d.get('nonce') or '')[:64], 'device_id': str(d.get('device_id') or '')}
+    body = json.dumps(out, separators=(',', ':'), sort_keys=True).encode()
+    resp = Response(body, mimetype='application/json')
+    resp.headers['X-BRB-Signature'] = signing.sign(body)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
+@bp.get('/.well-known/brb-license-key')
+def license_public_key():
+    return Response(signing.public_key() + '\n', mimetype='text/plain')
+
+
 @bp.post('/api/v1/license/status')
 def license_status():
     if _too_many(request.remote_addr or '?'):
         return jsonify(error='Too many requests. Try again in a minute.', code='slow_down'), 429
     d = request.get_json(silent=True) or {}
     d, dev = _device(create=bool(d.get('key')))   # typing in a key records the computer (it's put on the key)
-    return jsonify(licenses.status(dev, d.get('key')))
+    return _signed(licenses.status(dev, d.get('key')), d)
 
 
 @bp.post('/api/v1/license/lease')
@@ -56,8 +71,8 @@ def license_lease():
     action = str(d.get('action') or 'start')
     d, dev = _device(create=action != 'release')
     if dev.get('new'):   # releasing a lease it never had: nothing to do
-        return jsonify({**licenses.status(dev, d.get('key')), 'ok': True, 'lease_seconds': 0})
-    return jsonify(licenses.lease(dev, d.get('key'), action))
+        return _signed({**licenses.status(dev, d.get('key')), 'ok': True, 'lease_seconds': 0}, d)
+    return _signed(licenses.lease(dev, d.get('key'), action), d)
 
 
 # ------------------------------------------------------------------ /license (people)

@@ -2,3 +2,4 @@ Flask>=3.0,<4
 gunicorn>=22,<24
 python-dotenv>=1.0
 Markdown>=3.5,<4
+cryptography>=42      # signs license replies so BRB can tell they really came from this site

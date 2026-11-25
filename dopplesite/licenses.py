@@ -1,7 +1,7 @@
 """Doppleganger licenses: free time per computer, license keys, and which computers use them.
 
 The rules
-  - Every computer gets FREE_SECONDS (default 1 hour) of LOOP time in total, without a key. Time counts only while
+  - Every computer gets FREE_SECONDS (default 30 minutes) of LOOP time in total, without a key. Time counts only while
     the LOOP is on air. It's tracked here, per computer (device id), so reinstalling the app doesn't reset it.
   - A license key means unlimited LOOP time: a $5/month Square subscription, or a key an admin creates.
   - A key works on max_devices computers (default 1). Admins can move a key to a new computer or allow more.
@@ -91,9 +91,19 @@ def db():
 
 def free_seconds():
     try:
-        return max(0, int(float(settings.get('FREE_SECONDS', 3600))))
+        return max(0, int(float(settings.get('FREE_SECONDS', 1800))))
     except ValueError:
-        return 3600
+        return 1800
+
+
+def free_words(seconds=None):
+    """1800 -> '30 minutes', 3600 -> '1 hour', 5400 -> '90 minutes', 7200 -> '2 hours'."""
+    s = free_seconds() if seconds is None else int(seconds)
+    if s >= 3600 and s % 3600 == 0:
+        h = s // 3600
+        return f'{h} hour' + ('' if h == 1 else 's')
+    m = s // 60
+    return f'{m} minute' + ('' if m == 1 else 's')
 
 
 # ------------------------------------------------------------------ keys
@@ -211,9 +221,9 @@ def plausible_device_id(device_id):
 
 def new_devices_per_ip_day():
     try:
-        return int(settings.get('NEW_DEVICES_PER_IP_DAY', 5))
+        return int(settings.get('NEW_DEVICES_PER_IP_DAY', 3))
     except ValueError:
-        return 5
+        return 3
 
 
 def touch_device(device_id, name='', platform='', app_version='', ip='', create=True):
@@ -326,9 +336,7 @@ def status(device, key=None):
     from . import square
     out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
     # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app)
-    hours = free_seconds() / 3600
-    free_words = (f'{hours:g} hour' + ('' if hours == 1 else 's')) if free_seconds() % 1800 == 0 else f'{free_seconds() // 60} minutes'
-    out['pitch'] = (f'Every computer gets {free_words} of free LOOP time (it only counts while the LOOP is on air). '
+    out['pitch'] = (f'Every computer gets {free_words()} of free LOOP time (it only counts while the LOOP is on air). '
                     f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
     out['offer_text'] = ''
     if not lic:

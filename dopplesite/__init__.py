@@ -78,8 +78,7 @@ def create_app() -> Flask:
 
     def free_label():
         from . import licenses
-        mins = licenses.free_seconds() // 60
-        return (f'{mins // 60} hour' + ('s' if mins // 60 != 1 else '')) if mins % 60 == 0 and mins else f'{mins} minutes'
+        return licenses.free_words()
 
     def download_info():
         """For the Download Free dialog in the header: which downloads exist, and their sizes."""

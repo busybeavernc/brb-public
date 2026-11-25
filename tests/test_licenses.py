@@ -307,3 +307,22 @@ class BoundKeyTests(LicenseBase):
         st = self.api('status', key='222').get_json()        # an old, wrong key is still saved in the app
         self.assertTrue(st['unlimited'])
         self.assertEqual((st['key'], st['key_problem']), (lic['key'], ''))
+
+
+class SignedReplyTests(LicenseBase):
+    def test_replies_are_signed_for_this_request_and_computer(self):
+        import base64
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        pub = self.c.get('/.well-known/brb-license-key').get_data(as_text=True).strip()
+        key = Ed25519PublicKey.from_public_bytes(base64.b64decode(pub))
+        for kind, extra in (('status', {}), ('lease', {'action': 'start'})):
+            r = self.api(kind, nonce='n-123', **extra)
+            key.verify(base64.b64decode(r.headers['X-BRB-Signature']), r.data)    # raises if not genuine
+            d = json.loads(r.data)
+            self.assertEqual((d['nonce'], d['device_id']), ('n-123', DEV_A))
+        with self.assertRaises(Exception):
+            key.verify(base64.b64decode(r.headers['X-BRB-Signature']), r.data.replace(b'"ok":true', b'"ok":false'))
+
+    def test_free_time_wording(self):
+        self.assertEqual([licenses.free_words(s) for s in (1800, 3600, 5400, 7200, 60)],
+                         ['30 minutes', '1 hour', '90 minutes', '2 hours', '1 minute'])
