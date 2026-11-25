@@ -139,7 +139,10 @@ While the LOOP is on air, BRB listens to your meeting for those names. When some
 
 - **Before the first cut**, the loop's start pose shows as a soft apricot shape with your green outline on top (with outlines on). Line them up ("In start pose – cut is seamless"), then cut, or just *hold* F9 and let BRB cut when you're there. The white silhouette appears only while recording.
 - **After that**, the preview shows the off-air feed faded over the on-air one: the loop while you're LIVE, your camera while the LOOP is on air. Line up until the green border appears, or hold F9.
-- **Outlines** (O, or the checkbox under the sync meter): a green line traces you live and a apricot line traces the loop. When the two lines sit on top of each other, the cut is seamless.
+- **Outlines** (O, or the switch under the sync meter): a green line traces you live and an apricot line traces the loop. When the two lines sit on top of each other, the cut is seamless.
+- **Face guide**: the loop's eyes, nose and mouth and yours, with a hint to line them up - while you're LIVE and while the LOOP is on air (to come back seamlessly). Not shown in the Mini Bar, where it's too small to read.
+- **Rehearse cut** (under the cut button): plays the cut in the preview exactly as the meeting would see it - lighting match, watermark and all - then goes back to normal. Nothing changes on air.
+- **Background** switch: turn it off to see just yourself on a plain backdrop in the preview, without the room. It only changes your preview; the meeting still sees your camera (or loop) as usual.
 
 ## The HappyHacks Virtual Camera
 
