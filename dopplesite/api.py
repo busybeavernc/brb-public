@@ -49,7 +49,7 @@ def _signed(out, d):
     return resp
 
 
-@bp.get('/.well-known/brb-license-key')
+@bp.get('/api/v1/license/public-key')   # (not /.well-known: the web server answers those paths itself)
 def license_public_key():
     return Response(signing.public_key() + '\n', mimetype='text/plain')
 

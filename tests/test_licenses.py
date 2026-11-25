@@ -313,7 +313,7 @@ class SignedReplyTests(LicenseBase):
     def test_replies_are_signed_for_this_request_and_computer(self):
         import base64
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-        pub = self.c.get('/.well-known/brb-license-key').get_data(as_text=True).strip()
+        pub = self.c.get('/api/v1/license/public-key').get_data(as_text=True).strip()
         key = Ed25519PublicKey.from_public_bytes(base64.b64decode(pub))
         for kind, extra in (('status', {}), ('lease', {'action': 'start'})):
             r = self.api(kind, nonce='n-123', **extra)

@@ -7,7 +7,7 @@ nonce) for its own computer, so old replies can't be replayed either.
 
 The key is an Ed25519 key in DATA_DIR/license-signing.key, made on first use. Back it up (it isn't in the database
 backups): if it's lost, BRB versions that know the old key can't use the LOOP until they update.
-Its public half: https://<site>/.well-known/brb-license-key, or
+Its public half: https://<site>/api/v1/license/public-key, or
     python -m dopplesite.signing
 """
 import base64
