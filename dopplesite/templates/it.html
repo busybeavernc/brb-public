@@ -56,8 +56,9 @@
   <h2>What gets installed (Windows)</h2>
   <table class="it-table">
     <tr><th>Item</th><th>Where</th><th>Notes</th></tr>
-    <tr><td>The app</td><td><code>%LOCALAPPDATA%\Programs\BRB\BRB.exe</code></td><td>Per-user install; the installer needs no administrator rights.
-      Start-menu shortcut; optional desktop shortcut.</td></tr>
+    <tr><td>The app</td><td><code>%LOCALAPPDATA%\Programs\BRB\</code><br><small><code>BRB.exe</code> and its
+      libraries (<code>_internal\</code>)</small></td><td>Per-user install; the installer needs no administrator rights.
+      Start-menu shortcut; optional desktop shortcut. Updates run the same installer.</td></tr>
     <tr><td>HappyHacks Virtual Camera</td><td><code>C:\ProgramData\BRB\</code></td><td>A DirectShow video
       source filter (64- and 32-bit DLLs, built from the open-source <a href="https://github.com/tshino/softcam">softcam</a>,
       MIT), registered with <code>regsvr32</code>. CLSID <code>{548A881E-7657-4231-8FEA-A9877D9743C9}</code>.
@@ -103,8 +104,9 @@
       never sent), the computer's name, operating system, BRB version and license key (if any). <b>No video, audio,
       images or keystrokes.</b> Required for the loop; the live camera works offline.</td></tr>
     <tr><td><code>api.github.com</code>, <code>github.com</code>, <code>objects.githubusercontent.com</code>,
-      <code>release-assets.githubusercontent.com</code></td><td>At start</td><td>Update check and, if there's a newer
-      version, its download from BRB's public release page. Nothing about the user is sent.</td></tr>
+      <code>release-assets.githubusercontent.com</code></td><td>Shortly after start</td><td>Update check and, if there's
+      a newer version, its download (the installer) from BRB's public release page, installed the next time BRB opens.
+      Nothing about the user is sent.</td></tr>
   </table>
   <p class="note">No analytics, advertising or third-party trackers in the app. Corporate HTTPS inspection is supported
     (BRB falls back to the computer's trusted certificates). Payments for subscriptions are handled by Square on this
