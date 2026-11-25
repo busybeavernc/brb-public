@@ -251,3 +251,15 @@ class SecurityTest(Base):
             self.assertIn(name, r.headers)
         self.assertNotIn('Strict-Transport-Security', r.headers)   # plain http (tests): no HSTS
         self.assertIn('Strict-Transport-Security', self.c.get('/', base_url='https://dg.test').headers)
+
+
+class SignOutTests(Base):
+    def test_sign_out_also_signs_out_of_happy_hacks(self):
+        self.sign_in_with_hh({'id': 'hh1', 'name': 'Pat', 'email': 'pat@example.com', 'email_verified': True})
+        with self.c.session_transaction() as s:
+            csrf = s['csrf']
+        r = self.c.post('/signout', data={'csrf': csrf})
+        self.assertEqual(r.status_code, 303)
+        self.assertIn('/account/signout?return_to=', r.headers['Location'])
+        with self.c.session_transaction() as s:
+            self.assertNotIn('uid', s)

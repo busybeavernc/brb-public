@@ -208,9 +208,11 @@ def create_app() -> Flask:
 
     @app.post('/signout')
     def signout():
+        """Sign out here AND of Happy Hacks (in this browser): otherwise "Sign in" would just sign you straight back
+        in, because Happy Hacks still remembers you. Happy Hacks then sends you back to this site's home page."""
         ok = hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-')
         session.clear()
-        if ok and hhauth.enabled() and request.form.get('everywhere'):
+        if ok and hhauth.enabled():
             return redirect(hhauth.signout_url(settings.public_url() + '/'), 303)
         return redirect(url_for('index'), 303)
 
