@@ -32,6 +32,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import time
 import urllib.error
 import urllib.request
@@ -313,7 +314,34 @@ def _catalog_plans():
 sync_status = {'at': None, 'error': '', 'report': None}
 
 
+class _CatalogLock:
+    """One catalog change at a time, across all the site's worker processes (a lock file) and threads."""
+    _thread = __import__('threading').Lock()
+
+    def __enter__(self):
+        import fcntl
+        self._thread.acquire()
+        self._f = open(os.path.join(settings.data_dir(), 'square-catalog.lock'), 'w')
+        fcntl.flock(self._f, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *exc):
+        import fcntl
+        fcntl.flock(self._f, fcntl.LOCK_UN)
+        self._f.close()
+        self._thread.release()
+
+
+_sync_lock = _CatalogLock()
+
+
 def sync_catalog():
+    """(One at a time: two runs at once could each add the same variation.)"""
+    with _sync_lock:
+        return _sync_catalog()
+
+
+def _sync_catalog():
     """Make Square's catalog match the website: one "BRB Unlimited" subscription plan with a variation for each option
     on sale (see offers). Safe to run any time: it reuses what's already in Square and only adds what's missing. A price
     change adds a new variation; the old one stays, so existing subscribers keep their price (Square doesn't move
@@ -725,6 +753,11 @@ def keep_with_offer(lic, offer):
 
 def _variation_id_for(o):
     """The Square variation with exactly this pricing (made in Square if it isn't there yet)."""
+    with _sync_lock:
+        return _variation_id_for_locked(o)
+
+
+def _variation_id_for_locked(o):
     spec = _spec(o['phases'])
     q = 'SELECT variation_id FROM square_catalog WHERE env=? AND spec=? AND plan_name=?'
     row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
