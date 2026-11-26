@@ -9,14 +9,18 @@ Settings (.env). SQUARE_ENV picks which set is used; both can sit in .env side b
     SQUARE_PRODUCTION_LOCATION_ID=...
     SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY=...
     SQUARE_WEBHOOK_URL=https://brb.happyhacks.io/api/square/webhook   (the exact URL Square posts to)
-    SUBSCRIPTION_PRICE_CENTS=500
-    EARLY_PRICE_CENTS=250                            early-bird price: subscribing while the computer still has free time
+    MONTHLY_PRICE_CENTS=999                          month to month
+    ANNUAL_PRICE_CENTS=8388                          billed once a year ($6.99/month)
+    PROMO_ANNUAL_PRICE_CENTS=5988                    a special first-year price on the annual plan ($4.99/month)...
+    PROMO_ENDS=2026-12-31                            ...for orders up to the end of this day (Eastern); off = no promo
+    PROMO_NAME=Holiday special
 
 The webhook subscription should send: subscription.created, subscription.updated, invoice.payment_made.
 
 How it works
   - Square's catalog is kept in step with these settings (sync_catalog): one "BRB Unlimited" subscription plan with a
-    monthly variation at the full price and at the early-bird price - checked after every start-up and price change,
+    variation per option sold (monthly, annual, and the promo's annual: first year at the promo price, then the annual
+    price) - checked after every start-up and price change,
     and from Admin > Overview > Square subscriptions. Nothing needs setting up by hand in Square.
   - Subscribe: a Square payment link for the monthly plan. The person is
     signed in with Happy Hacks, so their email is filled in; when they come back (or Square's webhook arrives) their
@@ -44,7 +48,8 @@ PLAN_NAME = 'BRB Unlimited'
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS square_catalog (env TEXT NOT NULL, price_cents INTEGER NOT NULL, variation_id TEXT NOT NULL,
-  created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited', PRIMARY KEY (variation_id));
+  created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited', spec TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (variation_id));
 CREATE TABLE IF NOT EXISTS square_checkouts (id TEXT PRIMARY KEY, env TEXT NOT NULL, user_id TEXT NOT NULL, email TEXT NOT NULL,
   link_id TEXT, url TEXT, status TEXT NOT NULL DEFAULT 'open', created_at REAL NOT NULL,
   price_cents INTEGER NOT NULL DEFAULT 0, device_id TEXT);
@@ -64,12 +69,17 @@ def db():
     if key not in _ready:
         con.executescript(SCHEMA)
         cols = [r[1] for r in con.execute('PRAGMA table_info(square_catalog)')]
+        if cols and 'spec' not in cols and 'plan_name' in cols:   # one row per option sold (its pricing as text)
+            con.execute("ALTER TABLE square_catalog ADD COLUMN spec TEXT NOT NULL DEFAULT ''")
+            con.execute("UPDATE square_catalog SET spec='MONTHLY:' || price_cents")
+            con.commit()
         if 'plan_name' not in cols:   # before the rename to BRB: one plan per price, keyed by (env, price)
             con.executescript("""ALTER TABLE square_catalog RENAME TO square_catalog_old;
               CREATE TABLE square_catalog (env TEXT NOT NULL, price_cents INTEGER NOT NULL, variation_id TEXT NOT NULL,
-                created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited', PRIMARY KEY (variation_id));
-              INSERT INTO square_catalog (env, price_cents, variation_id, created_at)
-                SELECT env, price_cents, variation_id, created_at FROM square_catalog_old;
+                created_at REAL NOT NULL, plan_name TEXT NOT NULL DEFAULT 'Doppleganger Unlimited',
+                spec TEXT NOT NULL DEFAULT '', PRIMARY KEY (variation_id));
+              INSERT INTO square_catalog (env, price_cents, variation_id, created_at, spec)
+                SELECT env, price_cents, variation_id, created_at, 'MONTHLY:' || price_cents FROM square_catalog_old;
               DROP TABLE square_catalog_old;""")
         _ready.add(key)
     return con
@@ -88,18 +98,88 @@ def ready():
     return bool(_setting('ACCESS_TOKEN'))
 
 
-def price_cents():
+def _cents(name, default):
     try:
-        return int(settings.get('SUBSCRIPTION_PRICE_CENTS', 500))
+        return max(0, int(float(settings.get(name, default))))
+    except (TypeError, ValueError):
+        return default
+
+
+def monthly_cents():
+    return _cents('MONTHLY_PRICE_CENTS', 999)
+
+
+def annual_cents():
+    return _cents('ANNUAL_PRICE_CENTS', 8388)
+
+
+def promo_cents():
+    return _cents('PROMO_ANNUAL_PRICE_CENTS', 5988)
+
+
+def promo_name():
+    return str(settings.get('PROMO_NAME', 'Holiday special') or 'Holiday special')
+
+
+def promo_ends():
+    """The promo's last day as a date, or None (no promo)."""
+    raw = str(settings.get('PROMO_ENDS', '2026-12-31') or '').strip()   # 'off' = no promo
+    try:
+        return datetime.strptime(raw[:10], '%Y-%m-%d').date()
     except ValueError:
-        return 500
+        return None
+
+
+def promo_active(now=None):
+    """The first-year annual promo is on: it ends at midnight Eastern after PROMO_ENDS."""
+    end = promo_ends()
+    if end is None or not 0 < promo_cents() < annual_cents():
+        return False
+    from zoneinfo import ZoneInfo
+    stop = datetime(end.year, end.month, end.day, 23, 59, 59, tzinfo=ZoneInfo('America/New_York')).timestamp()
+    return (time.time() if now is None else now) <= stop
+
+
+def per_month(cents_a_year):
+    return price_text(int(round(cents_a_year / 12)))
+
+
+# (older names, still used by a few pages and the app's status)
+def price_cents():
+    return monthly_cents()
 
 
 def early_price_cents():
-    try:
-        return int(settings.get('EARLY_PRICE_CENTS', price_cents() // 2))
-    except ValueError:
-        return price_cents() // 2
+    """The lowest monthly-equivalent price on offer right now."""
+    return int(round((promo_cents() if promo_active() else annual_cents()) / 12))
+
+
+def pricing():
+    """The numbers the pages show."""
+    end = promo_ends()
+    on = promo_active()
+    return {'monthly': price_text(monthly_cents()), 'annual_month': per_month(annual_cents()),
+            'annual_total': price_text(annual_cents()), 'promo': on, 'promo_name': promo_name(),
+            'promo_month': per_month(promo_cents()), 'promo_total': price_text(promo_cents()),
+            'promo_ends': f'{end:%b} {end.day}' if end else '',
+            'from': per_month(promo_cents() if on else annual_cents()),
+            'save_pct': round(100 * (1 - annual_cents() / (12 * monthly_cents()))) if monthly_cents() else 0}
+
+
+def offers():
+    """What's for sale now, by option key. Each: label, phases [(cadence, cents, periods or None)], first payment."""
+    out = {'annual': {'label': 'Annual', 'phases': [('ANNUAL', annual_cents(), None)], 'first': annual_cents()},
+           'monthly': {'label': 'Monthly', 'phases': [('MONTHLY', monthly_cents(), None)], 'first': monthly_cents()}}
+    if promo_active():
+        out['annual'] = {'label': f'Annual, {promo_name().lower()}', 'promo': True,
+                         'phases': [('ANNUAL', promo_cents(), 1), ('ANNUAL', annual_cents(), None)],
+                         'first': promo_cents()}
+    return out
+
+
+def _spec(phases):
+    """A variation's pricing, as text: 'ANNUAL:5988x1|ANNUAL:8388'."""
+    return '|'.join(f'{c}:{a}' + (f'x{n}' if n else '') for c, a, n in phases)
 
 
 def price_text(cents=None):
@@ -141,19 +221,26 @@ def location():
 
 
 def wanted_prices():
-    """The monthly prices the website sells: the full price, and the early-bird price if it's a discount."""
-    out = [price_cents()]
-    if 0 < early_price_cents() < price_cents():
-        out.append(early_price_cents())
-    return out
+    """(The first payment of each option on sale.)"""
+    return [o['first'] for o in offers().values()]
+
+
+def _variation_spec(v):
+    phases = sorted((v.get('subscription_plan_variation_data') or {}).get('phases') or [],
+                    key=lambda ph: ph.get('ordinal') or 0)
+    out = []
+    for ph in phases:
+        money = ((ph.get('pricing') or {}).get('price_money')) or ph.get('recurring_price_money') or {}
+        if (money.get('currency') or 'USD') != 'USD' or money.get('amount') is None:
+            return None
+        out.append(((ph.get('cadence') or '').upper(), int(money['amount']), ph.get('periods')))
+    return _spec(out) if out else None
 
 
 def _variation_price(v):
-    phases = (v.get('subscription_plan_variation_data') or {}).get('phases') or []
-    if len(phases) != 1 or (phases[0].get('cadence') or '').upper() != 'MONTHLY':
-        return None
-    money = ((phases[0].get('pricing') or {}).get('price_money')) or phases[0].get('recurring_price_money') or {}
-    return money.get('amount') if (money.get('currency') or 'USD') == 'USD' else None
+    """(First phase's price.)"""
+    spec = _variation_spec(v)
+    return int(spec.split('|')[0].split(':')[1].split('x')[0]) if spec else None
 
 
 def _catalog_plans():
@@ -187,10 +274,10 @@ sync_status = {'at': None, 'error': '', 'report': None}
 
 
 def sync_catalog():
-    """Make Square's catalog match the website: one "BRB Unlimited" subscription plan with a monthly variation at each
-    price the site sells (full, and early-bird). Safe to run any time: it reuses what's already in Square and only adds
-    what's missing. A price change adds a new variation; the old one stays, so existing subscribers keep their price
-    (Square doesn't move them) - it's just no longer offered. -> report"""
+    """Make Square's catalog match the website: one "BRB Unlimited" subscription plan with a variation for each option
+    on sale (see offers). Safe to run any time: it reuses what's already in Square and only adds what's missing. A price
+    change adds a new variation; the old one stays, so existing subscribers keep their price (Square doesn't move
+    them) - it's just no longer offered. -> report"""
     try:
         found = _catalog_plans()
         plan = max(found, key=lambda pv: len(pv[1]))[0] if found else None
@@ -203,30 +290,31 @@ def sync_catalog():
         have = {}
         for _p, vs in found:
             for v in vs:
-                amt = _variation_price(v)
-                if amt is not None:
-                    have.setdefault(amt, v['id'])
+                spec = _variation_spec(v)
+                if spec:
+                    have.setdefault(spec, v['id'])
         con = db()
-        offered = []
-        for cents in wanted_prices():
-            label = 'Monthly' if cents == price_cents() else 'Monthly early-bird'
-            vid = have.get(cents)
+        offered, wanted = [], set()
+        for key, o in offers().items():
+            spec = _spec(o['phases'])
+            wanted.add(spec)
+            vid = have.get(spec)
             if not vid:
                 var = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
                     'type': 'SUBSCRIPTION_PLAN_VARIATION', 'id': '#variation', 'subscription_plan_variation_data': {
-                        'name': f'{label} ({price_text(cents)})', 'subscription_plan_id': plan['id'],
-                        'phases': [{'cadence': 'MONTHLY', 'ordinal': 0, 'pricing': {
-                            'type': 'STATIC', 'price_money': {'amount': cents, 'currency': 'USD'}}}]}}})['catalog_object']
+                        'name': f'{o["label"]} ({describe(o)})'[:255], 'subscription_plan_id': plan['id'],
+                        'phases': [{'cadence': c, 'ordinal': i, **({'periods': n} if n else {}), 'pricing': {
+                            'type': 'STATIC', 'price_money': {'amount': a, 'currency': 'USD'}}}
+                                   for i, (c, a, n) in enumerate(o['phases'])]}}})['catalog_object']
                 vid = var['id']
-                created.append(f'{label} {price_text(cents)}/month')
-            con.execute('DELETE FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?', (env(), cents, PLAN_NAME))
-            con.execute('INSERT OR REPLACE INTO square_catalog (env, price_cents, variation_id, created_at, plan_name) '
-                        'VALUES (?,?,?,?,?)', (env(), cents, vid, time.time(), PLAN_NAME))
-            offered.append({'label': label, 'price': price_text(cents), 'cents': cents, 'variation_id': vid})
+                created.append(f'{o["label"]}: {describe(o)}')
+            con.execute('INSERT OR REPLACE INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) '
+                        'VALUES (?,?,?,?,?,?)', (env(), o['first'], vid, time.time(), PLAN_NAME, spec))
+            offered.append({'key': key, 'label': o['label'], 'price': describe(o), 'variation_id': vid})
         con.commit()
-        older = sorted({price_text(a) for a in have if a not in wanted_prices()})
+        older = sorted(sp for sp in have if sp not in wanted)
         report = {'env': env(), 'plan_id': plan['id'], 'plan': PLAN_NAME, 'offered': offered, 'created': created,
-                  'older_prices': older, 'duplicate_plans': max(0, len(found) - 1)}
+                  'older_prices': [_spec_words(sp) for sp in older], 'duplicate_plans': max(0, len(found) - 1)}
         sync_status.update(at=time.time(), error='', report=report)
         if created:
             log.info('Square catalog (%s): added %s', env(), ', '.join(created))
@@ -236,17 +324,38 @@ def sync_catalog():
         raise
 
 
-def plan_variation(cents=None):
-    """The monthly plan variation in Square's catalog at this price (the catalog is brought up to date if needed)."""
-    cents = price_cents() if cents is None else int(cents)
-    q = 'SELECT variation_id FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?'
-    row = db().execute(q, (env(), cents, PLAN_NAME)).fetchone()
+def describe(o):
+    """'$9.99/month', '$83.88/year', '$59.88 the first year, then $83.88/year'."""
+    return _spec_words(_spec(o['phases']))
+
+
+def _spec_words(spec):
+    unit = {'MONTHLY': 'month', 'ANNUAL': 'year'}
+    parts = []
+    for ph in spec.split('|'):
+        cad, rest = ph.split(':')
+        amt, _, n = rest.partition('x')
+        parts.append((unit.get(cad, cad.lower()), int(amt), int(n) if n else None))
+    if len(parts) == 2 and parts[0][2] == 1:
+        return f'{price_text(parts[0][1])} the first {parts[0][0]}, then {price_text(parts[1][1])}/{parts[1][0]}'
+    return ', then '.join(f'{price_text(a)}/{u}' for u, a, _n in parts)
+
+
+def plan_variation(option='annual'):
+    """The Square plan variation for an option on sale now ('monthly' / 'annual'); the catalog is brought up to date
+    if needed."""
+    o = offers().get(option)
+    if o is None:
+        raise SquareError("That option isn't offered. Please reload the page.", 409)
+    spec = _spec(o['phases'])
+    q = 'SELECT variation_id FROM square_catalog WHERE env=? AND spec=? AND plan_name=?'
+    row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
     if row:
         return row['variation_id']
     sync_catalog()
-    row = db().execute(q, (env(), cents, PLAN_NAME)).fetchone()
+    row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
     if not row:
-        raise SquareError("That price isn't offered any more. Please reload the page.", 409)
+        raise SquareError("That option isn't offered any more. Please reload the page.", 409)
     return row['variation_id']
 
 
@@ -256,7 +365,7 @@ _synced_for = None
 def sync_in_background():
     """Once per set of prices (startup, or after the .env prices change): bring Square's catalog up to date."""
     global _synced_for
-    want = (env(), tuple(wanted_prices()), bool(ready()))
+    want = (env(), tuple(sorted(_spec(o['phases']) for o in offers().values())), bool(ready()))
     if _synced_for == want or not ready() or settings.get('NO_AUTO_BACKUP'):   # (tests: no background work)
         return
     _synced_for = want
@@ -270,19 +379,20 @@ def sync_in_background():
     threading.Thread(target=run, daemon=True, name='square-sync').start()
 
 
-def checkout(user, return_url, early_device=None, device=None):
-    """A Square checkout page for the monthly plan (at the early-bird price for early_device). The key is put on
-    `device` (the computer whose BRB opened the page) when the purchase goes through. -> url"""
-    device = device or early_device
+def checkout(user, return_url, option='annual', device=None):
+    """A Square checkout page for an option on sale ('annual' - with the promo while it runs - or 'monthly'). The key
+    is put on `device` (the computer whose BRB opened the page) when the purchase goes through. -> url"""
     if not user.get('email'):
         raise SquareError('Add an email address to your Happy Hacks account first (Square sends receipts there).', 400)
+    o = offers().get(option)
+    if o is None:
+        raise SquareError("That option isn't offered. Please reload the page.", 400)
     cid = 'sq' + uuid.uuid4().hex[:16]
-    cents = early_price_cents() if early_device else price_cents()
-    name = f'{PLAN_NAME} (early-bird)' if early_device else PLAN_NAME
     body = {'idempotency_key': _key(),
-            'quick_pay': {'name': name, 'price_money': {'amount': cents, 'currency': 'USD'}, 'location_id': location()},
+            'quick_pay': {'name': f'{PLAN_NAME} - {o["label"]}', 'price_money': {'amount': o['first'], 'currency': 'USD'},
+                          'location_id': location()},
             'checkout_options': {'redirect_url': f'{return_url}?c={cid}', 'ask_for_shipping_address': False,
-                                 'subscription_plan_id': plan_variation(cents)},
+                                 'subscription_plan_id': plan_variation(option)},
             'pre_populated_data': {'buyer_email': user['email']},
             'payment_note': f'BRB {user["id"]} {cid}'}
     link = call('POST', '/v2/online-checkout/payment-links', body).get('payment_link') or {}
@@ -291,7 +401,7 @@ def checkout(user, return_url, early_device=None, device=None):
     con = db()
     con.execute('INSERT INTO square_checkouts (id, env, user_id, email, link_id, url, created_at, price_cents, device_id) '
                 'VALUES (?,?,?,?,?,?,?,?,?)', (cid, env(), user['id'], user['email'].lower(), link.get('id'), link['url'][:500],
-                                               time.time(), cents, device['id'] if device else None))
+                                               time.time(), o['first'], device['id'] if device else None))
     con.commit()
     return link['url']
 
@@ -331,17 +441,18 @@ def apply(sub, user=None):
         user = _user_for_customer(sub.get('customer_id'))
     if user is None:
         return None
-    var = con.execute('SELECT price_cents FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
-    early = var and var['price_cents'] < price_cents()
+    var = con.execute('SELECT spec, price_cents FROM square_catalog WHERE variation_id=?',
+                      (sub.get('plan_variation_id'),)).fetchone()
+    what = _spec_words(var['spec']) if var and var['spec'] else (price_text(var['price_cents']) + '/month' if var else '')
     lic = licenses.create(plan='subscription', max_devices=1, expires_at=expires, email=user.get('email') or '',
                           user_id=user['id'], by='square', square_subscription_id=sub['id'],
                           square_status=(sub.get('status') or '').upper(),
-                          note='Square subscription' + (f' (early-bird {price_text(var["price_cents"])})' if early else ''))
+                          note='Square subscription' + (f' ({what})' if what else ''))
     # the computer whose BRB opened the checkout goes straight onto the key (the app then picks it up by itself)
     ck = con.execute("SELECT device_id FROM square_checkouts WHERE user_id=? AND status='open' AND device_id IS NOT NULL "
                      'ORDER BY created_at DESC', (user['id'],)).fetchone()
     if ck:
-        licenses.bind_device(lic['id'], ck['device_id'], discount=bool(early))
+        licenses.bind_device(lic['id'], ck['device_id'])
     con.execute("UPDATE square_checkouts SET status='done' WHERE user_id=? AND status='open'", (user['id'],))
     con.commit()
     return licenses.get(lic['id'])
@@ -378,7 +489,7 @@ def settle(user):
 
 
 def cancel(lic):
-    """Cancel at the end of the paid month. -> the license (with expires_at set)."""
+    """Cancel at the end of the period already paid for (month or year). -> the license (with expires_at set)."""
     if not lic.get('square_subscription_id'):
         raise SquareError('This key is not a subscription.', 400)
     sub = call('POST', f'/v2/subscriptions/{quote(lic["square_subscription_id"])}/cancel', {}).get('subscription') or {}

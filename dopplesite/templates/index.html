@@ -122,7 +122,8 @@
     Not sure which Mac you have? Apple menu → <b>About This Mac</b>. "Chip: Apple M…" means Apple Silicon;
     "Processor: Intel" means Intel.</p>
 
-  <h2 id="pricing">Free to try, {{ price }}/month for unlimited</h2>
+  {% set pr = pricing() %}
+  <h2 id="pricing">Free to try, from {{ pr.from }}/month for unlimited</h2>
   <div class="plans">
     <div class="plan">
       <h3>Free</h3>
@@ -130,14 +131,7 @@
       <ul><li><b>{{ free_label }} of LOOP time</b> per computer, in total</li><li>The clock only runs while the LOOP is on air</li>
         <li>A warning when 5 minutes are left, and again when it runs out: you won't be cut off mid-sentence, and there's time to get a key before BRB cuts back to LIVE</li></ul>
     </div>
-    <div class="plan plan-pro">
-      <h3>Unlimited</h3>
-      <p class="price">{{ price }}<small>/month</small></p>
-      <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Cancel any time</li>
-        <li><b>{{ percent_off() }}% off ({{ early_price }}/month, for as long as you stay subscribed)</b> if you subscribe before your free time runs out:
-          use <b>Get License Key</b> in the app</li></ul>
-      <a class="btn" href="{{ url_for('api.license_page') }}">Get a license key</a>
-    </div>
+    {% include "_unlimited_plan.html" %}
   </div>
   <p class="note">BRB checks your free time or license with this site, so it needs an internet connection while the LOOP is on air.</p>
 
@@ -195,7 +189,7 @@
         network (no video or audio ever leaves your computer), permissions and file checksums, all in one place. It has a button that starts the email for you.</p></details>
     <details><summary>Can I cancel my subscription?</summary>
       <p>Any time, on the <a href="{{ url_for('api.license_page') }}">license page</a>. Your key keeps working until the
-        end of the month you've paid for.</p></details>
+        end of the month or year you've paid for.</p></details>
   </div>
 
   <p class="note" style="margin-top:40px">

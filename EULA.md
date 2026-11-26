@@ -1,6 +1,6 @@
 # BRB (Be Right Back) End User License Agreement
 
-**Version 1 · Effective November 2, 2026**
+**Version 1 · Effective November 26, 2026**
 
 This End User License Agreement ("Agreement") is between you and Busy Beaver Group LLC, doing business as Happy Hacks ("Happy Hacks", "we", "us"), the maker of BRB (Be Right Back; the "Software"). By installing, opening or using the Software, or by buying a subscription, you agree to this Agreement. If you don't agree, don't install or use the Software.
 
@@ -34,7 +34,7 @@ You may not: copy the Software except as needed to use it; sell, rent, lend or s
 
 ## 4. Subscriptions and payments
 
-BRB Unlimited is a monthly subscription paid through Square at the price shown when you subscribe. It renews each month until you cancel. You can cancel at any time on brb.happyhacks.io/license; your key then keeps working until the end of the month you've paid for. Payments already made are not refunded, except where the law requires it. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
+BRB Unlimited is a subscription paid through Square, billed monthly or yearly at the price shown when you subscribe (including any introductory price, which applies only for the period stated). It renews automatically at the end of each billing period until you cancel. You can cancel at any time on brb.happyhacks.io/license; your key then keeps working until the end of the period you've paid for. Payments already made are not refunded, except where the law requires it. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
 
 ## 5. Your information
 

@@ -80,10 +80,9 @@ def create_app() -> Flask:
         from . import licenses
         return licenses.free_words()
 
-    def percent_off():
+    def pricing():
         from . import square
-        full = square.price_cents()
-        return round(100 * (1 - square.early_price_cents() / full)) if full else 0
+        return square.pricing()
 
     def download_info():
         """For the Download Free dialog in the header: which downloads exist, and their sizes."""
@@ -91,7 +90,7 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject():
-        return {'percent_off': percent_off, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
+        return {'pricing': pricing, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
                 'free_label_text': free_label, 'csp_nonce': csp_nonce}
 

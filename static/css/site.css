@@ -144,6 +144,19 @@ h2 { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: 64px 0 14px; font-weight: 70
 .plan ul { padding-left: 18px; color: var(--text); margin: 8px 0 18px; }
 .plan li { margin: 4px 0; }
 .plan form { margin: 0; }
+/* Unlimited: Annual / Monthly switch */
+.billing-switch { display: inline-flex; background: var(--euca-soft); border-radius: 999px; padding: 3px; margin: 10px 0 4px; }
+.billing-switch button { border: 0; background: transparent; border-radius: 999px; padding: 6px 14px; font: inherit;
+  font-weight: 700; color: var(--ink); cursor: pointer; }
+.billing-switch button[aria-checked="true"] { background: var(--teal); color: var(--ivory); }
+.billing-switch .save { font-weight: 600; font-size: .78rem; color: var(--amber); }
+.billing-switch button[aria-checked="true"] .save { color: var(--apricot); }
+.billing .opt { display: none; }
+.billing[data-billing="annual"] .opt-annual, .billing[data-billing="monthly"] .opt-monthly { display: block; }
+.billing button.opt { display: none; }
+.billing[data-billing="annual"] button.opt-annual, .billing[data-billing="monthly"] button.opt-monthly { display: inline-flex; }
+.plan .billed { color: var(--muted); margin: 0 0 6px; font-size: .92rem; }
+.plan .price .was { color: var(--muted); font-weight: 600; font-size: 1.4rem; }
 .keycard { margin-top: 12px; }
 .keyrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 code.key { font-size: 1.1rem; padding: 6px 10px; letter-spacing: .04em; }

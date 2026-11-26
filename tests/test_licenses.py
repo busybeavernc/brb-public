@@ -47,7 +47,7 @@ class LicenseTests(LicenseBase):
     def test_free_hour_is_tracked_on_the_server(self):
         st = self.api('status').get_json()
         self.assertEqual((st['plan'], st['free_left'], st['can_loop']), ('free', 3600, True))
-        self.assertTrue(st['offer'] and '/license?d=' in st['license_url'])
+        self.assertIn('/license?d=', st['license_url'])
         r = self.api('lease', action='start').get_json()
         self.assertTrue(r['ok'])
         self.assertEqual(r['lease_seconds'], 30)
@@ -114,22 +114,25 @@ class LicenseTests(LicenseBase):
         licenses.update(lic['id'], status='active', expires_at=self.clock.t - 1)
         self.assertIn('expired', self.api('status', key=lic['key']).get_json()['key_problem'])
 
-    def test_early_bird_offer(self):
+    def test_holiday_special_until_dec_31(self):
+        self.clock.t = 1_796_400_000                     # early December 2026
         st = self.api('status').get_json()
         token = st['license_url'].split('?d=')[1]
-        self.assertTrue(licenses.offer_device(token))
-        self.assertIsNone(licenses.offer_device(token[:-2] + 'xx'))                # tampered
-        page = self.c.get('/license?offer=' + token, follow_redirects=True).get_data(as_text=True)   # older apps' link
-        self.assertIn('Early-bird', page)
-        self.assertIn('$2.50', page)
-        self.clock.t += licenses.OFFER_TTL + 1
-        self.assertIsNone(licenses.offer_device(token))                            # expired link
-        self.clock.t -= licenses.OFFER_TTL + 1
-        licenses.db().execute('UPDATE devices SET used_seconds=3600 WHERE id=?', (DEV_A,))
-        licenses.db().commit()
-        self.assertIsNone(licenses.offer_device(token))                            # free time already used up
+        self.assertIsNone(licenses.offer_device(token[:-2] + 'xx'))                # tampered link
+        self.assertTrue(st['offer'] and 'Holiday special' in st['offer_text'] and '$4.99' in st['offer_text'])
+        page = self.c.get('/license?d=' + token, follow_redirects=True).get_data(as_text=True)
+        self.assertIn('$4.99', page)
+        self.assertIn('$59.88 billed for your first year', page)
+        self.assertIn('$9.99', page)
+        self.clock.t = 1_798_779_600 + 3600         # 2027-01-01 01:00 Eastern: over
+        st = self.api('status').get_json()
+        self.assertNotIn('offer', st)
+        page = self.c.get('/license').get_data(as_text=True)
+        self.assertNotIn('$4.99', page)
+        self.assertIn('$6.99', page)
 
     def test_square_subscription_makes_key_and_binds_early_device(self):
+        self.clock.t = 1_796_400_000
         st = self.api('status').get_json()
         token = st['license_url'].split('?d=')[1]
         self.sign_in_with_hh({'id': 'hh9', 'name': 'Pat', 'email': 'pat@example.com', 'email_verified': True})
@@ -157,15 +160,22 @@ class LicenseTests(LicenseBase):
         with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake_call):
             with self.c.session_transaction() as s:
                 csrf = s['csrf']
-            r = self.c.post('/license/subscribe', data={'csrf': csrf, 'early': '1'})
+            r = self.c.post('/license/subscribe', data={'csrf': csrf, 'plan': 'annual'})
             self.assertEqual(r.headers['Location'], 'https://square.test/pay')
             link = [b for m, p, b in calls if p == '/v2/online-checkout/payment-links'][0]
-            self.assertEqual(link['quick_pay']['price_money']['amount'], 250)
-            self.assertEqual(link['checkout_options']['subscription_plan_id'], 'VAR250')
+            self.assertEqual(link['quick_pay']['price_money']['amount'], 5988)        # holiday first year
+            self.assertEqual(link['checkout_options']['subscription_plan_id'], 'VAR5988')
+            promo = [b for m, p, b in calls if p == '/v2/catalog/object' and
+                     b['object']['type'] == 'SUBSCRIPTION_PLAN_VARIATION' and
+                     len(b['object']['subscription_plan_variation_data']['phases']) == 2][0]
+            ph = promo['object']['subscription_plan_variation_data']['phases']
+            self.assertEqual([(p['cadence'], p['pricing']['price_money']['amount'], p.get('periods')) for p in ph],
+                             [('ANNUAL', 5988, 1), ('ANNUAL', 8388, None)])           # then the regular annual price
             # Square's webhook: subscription created
             lic = square.handle({'type': 'subscription.created', 'data': {'object': {'subscription': {
-                'id': 'SUB1', 'status': 'ACTIVE', 'plan_variation_id': 'VAR250', 'customer_id': 'C1'}}}})
+                'id': 'SUB1', 'status': 'ACTIVE', 'plan_variation_id': 'VAR5988', 'customer_id': 'C1'}}}})
         self.assertIn('ACTIVE', lic)
+        self.assertIn('$59.88 the first year, then $83.88/year', licenses.all_licenses()[0]['note'])
         st = self.api('status').get_json()
         self.assertTrue(st['unlimited'])             # the computer that bought it is already on the key
         self.assertNotIn('offer', st)
@@ -202,7 +212,7 @@ class LicenseTests(LicenseBase):
                 amt = o['subscription_plan_variation_data']['phases'][0]['pricing']['price_money']['amount']
                 return {'catalog_object': {'id': f'VAR{amt}'}}
             if path == '/v2/online-checkout/payment-links':
-                self.assertEqual(body['quick_pay']['price_money']['amount'], 500)
+                self.assertEqual(body['quick_pay']['price_money']['amount'], 999)
                 return {'payment_link': {'id': 'PL2', 'url': 'https://square.test/pay'}}
             if path.startswith('/v2/customers/'):
                 return {'customer': {'email_address': 'sam@example.com'}}
@@ -211,9 +221,9 @@ class LicenseTests(LicenseBase):
         with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake_call):
             with self.c.session_transaction() as s:
                 csrf = s['csrf']
-            self.c.post('/license/subscribe', data={'csrf': csrf})
+            self.c.post('/license/subscribe', data={'csrf': csrf, 'plan': 'monthly'})
             square.handle({'type': 'subscription.created', 'data': {'object': {'subscription': {
-                'id': 'SUB2', 'status': 'ACTIVE', 'plan_variation_id': 'VAR500', 'customer_id': 'C2'}}}})
+                'id': 'SUB2', 'status': 'ACTIVE', 'plan_variation_id': 'VAR999', 'customer_id': 'C2'}}}})
         st = self.api('status').get_json()   # no key typed in: the app just asks, and it's unlimited
         self.assertTrue(st['unlimited'] and st['key'].startswith('DG-'))
         self.assertIsNone(licenses.db().execute('SELECT discount_used_at FROM devices WHERE id=?', (DEV_A,)).fetchone()[0])
@@ -256,8 +266,9 @@ class LicenseTests(LicenseBase):
     def test_pricing_on_home_page(self):
         page = self.c.get('/').get_data(as_text=True)
         self.assertIn('1 hour of LOOP time', page)
-        self.assertIn('$5', page)
-        self.assertIn('50% off', page)
+        self.assertIn('$6.99', page)
+        self.assertIn('$83.88 billed yearly', page)
+        self.assertIn('$9.99', page)
         page = self.c.get('/license').get_data(as_text=True)
         self.assertIn('Unlimited', page)
 
@@ -342,21 +353,24 @@ class WordingTests(LicenseBase):
     def test_grace_and_prices_come_from_settings(self):
         st = self.api('status').get_json()
         self.assertEqual(st['grace_seconds'], 1200)
-        self.assertIn('50% off', st['offer_text'])
-        env = {'GRACE_SECONDS': '600', 'SUBSCRIPTION_PRICE_CENTS': '800', 'EARLY_PRICE_CENTS': '600',
-               'OFFER_TEXT': 'Save {percent_off}%: {early_price} instead of {price}.', 'PITCH_TEXT': 'Try {free} free.'}
+        self.assertIn('$6.99/month billed yearly', st['pitch'])
+        env = {'GRACE_SECONDS': '600', 'MONTHLY_PRICE_CENTS': '1200', 'ANNUAL_PRICE_CENTS': '9600',
+               'PROMO_ENDS': '2027-02-01', 'OFFER_TEXT': '{promo_name}: {promo_month} instead of {annual_month}.',
+               'PITCH_TEXT': 'Try {free} free, then {monthly}.'}
         with mock.patch.dict(os.environ, env):
             st = self.api('status').get_json()
         self.assertEqual(st['grace_seconds'], 600)
-        self.assertEqual(st['offer_text'], 'Save 25%: $6 instead of $8.')
-        self.assertEqual(st['pitch'], 'Try 1 hour free.')
+        self.assertEqual(st['offer_text'], 'Holiday special: $4.99 instead of $8.')
+        self.assertEqual(st['pitch'], 'Try 1 hour free, then $12.')
 
     def test_a_typo_in_the_wording_falls_back(self):
+        self.clock.t = 1_796_400_000
         with mock.patch.dict(os.environ, {'OFFER_TEXT': 'Save {percnt}%'}):
-            self.assertIn('% off', self.api('status').get_json()['offer_text'])
+            self.assertIn('first year', self.api('status').get_json()['offer_text'])
 
-    def test_no_offer_without_a_discount(self):
-        with mock.patch.dict(os.environ, {'EARLY_PRICE_CENTS': '500'}):
+    def test_no_offer_without_a_promo(self):
+        self.clock.t = 1_796_400_000
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': 'off'}):
             st = self.api('status').get_json()
         self.assertFalse(st.get('offer'))
         self.assertEqual(st['offer_text'], '')

@@ -37,27 +37,36 @@ class SquareSyncTests(Base):
         self.p.stop()
         super().tearDown()
 
-    def test_creates_the_plan_and_both_prices_once(self):
-        r = square.sync_catalog()
-        self.assertEqual(self.sq.prices(), [250, 500])
-        self.assertEqual(len(r['created']), 3)
-        self.assertEqual(square.sync_catalog()['created'], [])          # nothing new the second time
-        self.assertEqual(len(self.sq.objects), 3)
-        self.assertEqual(square.plan_variation(250), r['offered'][1]['variation_id'])
+    def specs(self):
+        return sorted(square._variation_spec(o) for o in self.sq.objects if o['type'] == 'SUBSCRIPTION_PLAN_VARIATION')
 
-    def test_a_price_change_adds_a_variation_and_keeps_the_old_one(self):
-        square.sync_catalog()
-        with mock.patch.dict(os.environ, {'SUBSCRIPTION_PRICE_CENTS': '700', 'EARLY_PRICE_CENTS': '350'}):
+    def test_creates_the_plan_and_each_option_once(self):
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': '2099-12-31'}):
             r = square.sync_catalog()
-            self.assertEqual(self.sq.prices(), [250, 350, 500, 700])
-            self.assertEqual(r['older_prices'], ['$2.50', '$5'])
-            self.assertEqual(sum(o['type'] == 'SUBSCRIPTION_PLAN' for o in self.sq.objects), 1)
+            self.assertEqual(self.specs(), ['ANNUAL:5988x1|ANNUAL:8388', 'MONTHLY:999'])
+            self.assertEqual(len(r['created']), 3)
+            self.assertEqual(square.sync_catalog()['created'], [])          # nothing new the second time
+            self.assertEqual(len(self.sq.objects), 3)
+            mid = [o['variation_id'] for o in r['offered'] if o['key'] == 'monthly'][0]
+            self.assertEqual(square.plan_variation('monthly'), mid)
 
-    def test_checkout_price_not_yet_in_square_syncs_first(self):
-        self.assertTrue(square.plan_variation(500).startswith('ID'))
-        self.assertEqual(self.sq.prices(), [250, 500])
-
-    def test_no_early_bird_variation_without_a_discount(self):
-        with mock.patch.dict(os.environ, {'EARLY_PRICE_CENTS': '500'}):
+    def test_after_the_promo_the_regular_annual_is_added_and_the_promo_kept(self):
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': '2099-12-31'}):
             square.sync_catalog()
-        self.assertEqual(self.sq.prices(), [500])
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': '2020-12-31'}):
+            r = square.sync_catalog()
+        self.assertEqual(self.specs(), ['ANNUAL:5988x1|ANNUAL:8388', 'ANNUAL:8388', 'MONTHLY:999'])
+        self.assertEqual(r['older_prices'], ['$59.88 the first year, then $83.88/year'])
+        self.assertEqual(sum(o['type'] == 'SUBSCRIPTION_PLAN' for o in self.sq.objects), 1)
+
+    def test_a_price_change_adds_a_variation(self):
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': 'off'}):
+            square.sync_catalog()
+            with mock.patch.dict(os.environ, {'MONTHLY_PRICE_CENTS': '1099'}):
+                square.sync_catalog()
+        self.assertEqual(self.specs(), ['ANNUAL:8388', 'MONTHLY:1099', 'MONTHLY:999'])
+
+    def test_checkout_option_not_yet_in_square_syncs_first(self):
+        with mock.patch.dict(os.environ, {'PROMO_ENDS': 'off'}):
+            self.assertTrue(square.plan_variation('annual').startswith('ID'))
+        self.assertEqual(self.specs(), ['ANNUAL:8388', 'MONTHLY:999'])

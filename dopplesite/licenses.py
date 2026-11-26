@@ -395,24 +395,29 @@ def status(device, key=None):
     # "Link this computer to my account" (Settings > License): signs in, then shows the computer on /account
     out['link_url'] = settings.public_url() + '/account?d=' + offer_token(device['id'])
     from . import square
-    out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
-    # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app)
-    # PITCH_TEXT / OFFER_TEXT in .env replace these words, with {free}, {price}, {early_price} and {percent_off}
-    pct = round(100 * (1 - square.early_price_cents() / square.price_cents())) if square.price_cents() else 0
-    words = dict(free=free_words(), price=out['price'], early_price=out['early_price'], percent_off=pct)
+    pr = square.pricing()
+    out['price'], out['early_price'] = pr['monthly'], pr['from']
+    # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app).
+    # PITCH_TEXT / OFFER_TEXT in .env replace them, with {free} {monthly} {annual_month} {annual_total} {promo_month}
+    # {promo_total} {promo_name} {promo_ends} (and the older {price} {early_price} {percent_off})
+    pct = round(100 * (1 - square.promo_cents() / square.annual_cents())) if square.annual_cents() else 0
+    words = dict(free=free_words(), price=pr['monthly'], early_price=pr['from'], percent_off=pct, monthly=pr['monthly'],
+                 annual_month=pr['annual_month'], annual_total=pr['annual_total'], promo_month=pr['promo_month'],
+                 promo_total=pr['promo_total'], promo_name=pr['promo_name'], promo_ends=pr['promo_ends'])
     out['pitch'] = _words(settings.get('PITCH_TEXT', ''), **words) or (
         f'Every computer gets {free_words()} of free LOOP time (it only counts while the LOOP is on air). '
-        f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
+        f'Unlimited Access: unlimited LOOP time for {pr["annual_month"]}/month billed yearly ({pr["annual_total"]}), '
+        f'or {pr["monthly"]} month to month. Renews automatically; cancel any time.')
     out['offer_text'] = ''
     if not lic:
         # The link carries a signed token for this computer: whatever is bought through it is put on this computer,
-        # and the app picks it up by itself. While free time is left it also unlocks the early-bird price.
+        # and the app picks it up by itself.
         out['license_url'] += '?d=' + offer_token(device['id'])
-    if not lic and out['free_left'] > 0 and not device.get('discount_used_at') and pct > 0:
+    if not lic and pr['promo']:
         out['offer'] = True
         out['offer_text'] = _words(settings.get('OFFER_TEXT', ''), **words) or (
-            f'Special offer: {pct}% off. Subscribe while you still have free time and pay '
-            f'{out["early_price"]}/month instead of {out["price"]}, for as long as you stay subscribed.')
+            f'{pr["promo_name"]}: {pr["promo_month"]}/month for your first year on the annual plan '
+            f'({pr["promo_total"]}, then {pr["annual_total"]}/year) - order by {pr["promo_ends"]}.')
     return out
 
 

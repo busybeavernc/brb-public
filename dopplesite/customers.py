@@ -163,7 +163,8 @@ def metrics():
                                 'ORDER BY created_at DESC LIMIT 1', (lic['user_id'],)).fetchone()
             except Exception:  # noqa: BLE001 - Square tables not created yet
                 r = None
-        mrr += (r['price_cents'] if r and r['price_cents'] else square.price_cents())
+        paid = r['price_cents'] if r and r['price_cents'] else square.price_cents()
+        mrr += paid / 12 if paid > 1.5 * square.monthly_cents() else paid   # a yearly payment: its monthly share
     count = lambda sql, *a: con.execute(sql, a).fetchone()[0]   # noqa: E731
     weeks = []
     for i in range(7, -1, -1):
@@ -180,7 +181,7 @@ def metrics():
         'active_7d': count('SELECT COUNT(*) FROM devices WHERE last_seen > ?', now - 7 * DAY),
         'active_30d': count('SELECT COUNT(*) FROM devices WHERE last_seen > ?', now - 30 * DAY),
         'subscribers': len(subs),
-        'mrr_cents': mrr,
+        'mrr_cents': int(round(mrr)),
         'cancelled_30d': count("SELECT COUNT(*) FROM licenses WHERE plan='subscription' AND square_status='CANCELED' "
                                'AND expires_at > ?', now - 30 * DAY),
         'no_account': count('SELECT COUNT(*) FROM devices WHERE user_id IS NULL'),

@@ -1,0 +1,52 @@
+{# The Unlimited plan card with its Annual / Monthly switch (home page and /license).
+   On /license (subscribe=True) the buttons start a Square checkout for the option shown. #}
+{% set pr = pricing() %}
+<div class="plan plan-pro billing" data-billing="{{ 'monthly' if option == 'monthly' else 'annual' }}">
+  <h3>Unlimited</h3>
+  <div class="billing-switch" role="radiogroup" aria-label="Billing">
+    <button type="button" role="radio" data-pick="annual">Annual{% if pr.save_pct > 0 %} <span class="save">save {{ pr.save_pct }}%</span>{% endif %}</button>
+    <button type="button" role="radio" data-pick="monthly">Monthly</button>
+  </div>
+  <div class="opt opt-annual">
+    {% if pr.promo %}
+      <p class="price"><s class="was">{{ pr.annual_month }}</s> {{ pr.promo_month }}<small>/month</small></p>
+      <p class="billed">{{ pr.promo_total }} billed for your first year, then {{ pr.annual_total }}/year</p>
+      <p class="early"><span class="tag">{{ pr.promo_name }}</span> Order or upgrade by {{ pr.promo_ends }}.</p>
+    {% else %}
+      <p class="price">{{ pr.annual_month }}<small>/month</small></p>
+      <p class="billed">{{ pr.annual_total }} billed yearly</p>
+    {% endif %}
+  </div>
+  <div class="opt opt-monthly">
+    <p class="price">{{ pr.monthly }}<small>/month</small></p>
+    <p class="billed">billed monthly</p>
+  </div>
+  <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Renews automatically; cancel any time</li></ul>
+  {% if subscribe %}
+    {% if user %}
+      {% if square_ready %}
+      <form method="post" action="{{ url_for('api.subscribe') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
+        <input type="hidden" name="plan" value="{{ 'monthly' if option == 'monthly' else 'annual' }}" data-plan-input>
+        <button class="btn opt opt-annual" type="submit">Subscribe: {{ pr.promo_total if pr.promo else pr.annual_total }} for the year</button>
+        <button class="btn opt opt-monthly" type="submit">Subscribe: {{ pr.monthly }}/month</button>
+      </form>
+      {% else %}<p class="note">Subscriptions open soon.</p>{% endif %}
+    {% elif sso %}
+      <a class="btn" href="{{ url_for('hh_start', next='/license') }}">Sign in to subscribe</a>
+    {% endif %}
+  {% else %}
+    <a class="btn" href="{{ url_for('api.license_page') }}" data-plan-link>Get a license key</a>
+  {% endif %}
+</div>
+<script nonce="{{ csp_nonce() }}">
+document.querySelectorAll('.billing').forEach(card => {
+  const pick = v => {
+    card.dataset.billing = v;
+    card.querySelectorAll('[data-pick]').forEach(b => b.setAttribute('aria-checked', b.dataset.pick === v));
+    const inp = card.querySelector('[data-plan-input]'); if (inp) inp.value = v;
+    const a = card.querySelector('[data-plan-link]'); if (a) a.href = a.href.split('?')[0] + (v === 'monthly' ? '?plan=monthly' : '');
+  };
+  card.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => pick(b.dataset.pick)));
+  pick(card.dataset.billing);
+});
+</script>
