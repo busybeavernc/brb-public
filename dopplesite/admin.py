@@ -478,6 +478,18 @@ def square_info():
                    webhook=bool(square._setting('WEBHOOK_SIGNATURE_KEY')))
 
 
+@bp.post('/admin/api/square/promo-check')
+@admin_only
+def square_promo_check():
+    """Run the promo check now (normally hourly) and say what it did."""
+    from . import square
+    try:
+        n = square.promo_safeguard()
+    except square.SquareError as e:
+        return jsonify(error=str(e)), 502
+    return jsonify(moved=n, report=square._promo_check['last'] or ['No promo subscriptions are due within 14 days.'])
+
+
 @bp.post('/admin/api/square/sync')
 @admin_only
 def square_sync():

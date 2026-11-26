@@ -830,7 +830,7 @@ def feedback_list(limit=100):
 
 
 PROMO_CHECK_DAYS = 14     # look at a promo subscription this long before its first renewal
-_promo_check = {'at': 0.0}
+_promo_check = {'at': 0.0, 'last': []}
 
 
 def promo_safeguard(now=None):
@@ -850,6 +850,7 @@ def promo_safeguard(now=None):
                        ).fetchall()
     moved = 0
     seen = set()
+    report = _promo_check['last'] = []
     for r in rows:
         lic = dict(r)
         if lic['id'] in seen:
@@ -870,15 +871,18 @@ def promo_safeguard(now=None):
         regular = [(cad, int(rest.split('x')[0]), None)]
         if not _will_bill_too_little(sub, regular[0][1]):
             seen.add(lic['id'])
+            report.append(f'key …{lic["key"][-4:]}: Square will bill the regular price itself - left alone')
             continue                       # Square will charge the regular price by itself: leave it alone
         if cad == 'DAILY' and test_prices_on():
             # Experiment (staff test subscriptions only): swap the plan instead of cancel-and-replace - no "cancelled"
             # email from Square, if Square then bills the new plan's price rather than the checkout order's.
             try:
-                swap_plan(licenses.get(lic['id']), regular, 'Regular price', 'promo ends (swap test)')
+                act = swap_plan(licenses.get(lic['id']), regular, 'Regular price', 'promo ends (swap test)')
                 moved += 1
+                report.append(f'key …{lic["key"][-4:]}: plan swap scheduled for {act.get("effective_date") or "?"}')
             except SquareError as e:
                 log.warning('promo swap test for key %s: %s', lic['key'][-4:], e)
+                report.append(f'key …{lic["key"][-4:]}: Square refused the plan swap: {e}')
             continue
         try:
             new_lic, _new = replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')

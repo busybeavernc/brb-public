@@ -53,7 +53,8 @@
           <h2>Square subscriptions</h2>
           <span id="sqTag" class="tag dim">checking…</span>
           <span class="sp"></span>
-          {% if role == 'admin' %}<button class="linkbtn" type="button" id="sqSync">Update Square now</button>{% endif %}
+          {% if role == 'admin' %}<button class="linkbtn" type="button" id="sqPromo">Run promo check now</button>
+          <button class="linkbtn" type="button" id="sqSync">Update Square now</button>{% endif %}
         </div>
         <dl class="kv" id="sqInfo"></dl>
         <p class="hint">Square's plan follows the prices in .env (SUBSCRIPTION_PRICE_CENTS, EARLY_PRICE_CENTS): BRB checks
@@ -338,6 +339,12 @@
         (q.error ? `<dt>Problem</dt><dd><span class="tag bad">${esc(q.error)}</span></dd>` : '') +
         `<dt>Webhook</dt><dd>${q.webhook ? 'signature key set' : '<span class="tag warn">set SQUARE_' + esc(q.env.toUpperCase()) + '_WEBHOOK_SIGNATURE_KEY</span>'}</dd>`;
   }
+  const sqPromo = $('#sqPromo');
+  if (sqPromo) sqPromo.addEventListener('click', async () => {
+    sqPromo.disabled = true;
+    try { const d = await post('/admin/api/square/promo-check', {}); alert(d.report.join('\n')); } catch (e) { alert(e.message); }
+    sqPromo.disabled = false;
+  });
   const sqSync = $('#sqSync');
   if (sqSync) sqSync.addEventListener('click', async () => {
     sqSync.disabled = true;
