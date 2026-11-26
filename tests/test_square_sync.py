@@ -147,3 +147,34 @@ class SettleTests(Base):
         page = self.c.get('/license?n=thanks').get_data(as_text=True)
         self.assertIn('/license/check', page)
         self.assertIn('in a moment', page)
+
+    def test_sandbox_paid_checkout_gets_a_test_key(self):
+        from dopplesite import licenses
+        self.sign_in_with_hh({'id': 'hh7', 'name': 'Ana', 'email': 'ana@example.com', 'email_verified': True})
+
+        def fake(method, path, body=None):
+            if path == '/v2/catalog/search':
+                return {'objects': []}
+            if path == '/v2/catalog/object':
+                return {'catalog_object': {'id': 'X' + str(len(path))}}
+            if path == '/v2/locations':
+                return {'locations': [{'id': 'L1'}]}
+            if path == '/v2/online-checkout/payment-links':
+                return {'payment_link': {'id': 'PL5', 'url': 'https://square.test/pay'}}
+            if path == '/v2/customers/search':
+                return {}
+            if path == '/v2/online-checkout/payment-links/PL5':
+                return {'payment_link': {'id': 'PL5', 'order_id': 'O5'}}
+            if path == '/v2/orders/O5':
+                return {'order': {'id': 'O5', 'state': 'OPEN', 'tenders': [{'id': 'T1'}]}}   # paid, no customer, no subscription
+            raise AssertionError(path)
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake):
+            with self.c.session_transaction() as s:
+                csrf = s['csrf']
+            self.c.post('/license/subscribe', data={'csrf': csrf, 'plan': 'monthly'})
+            self.assertEqual(self.c.get('/license/check').get_json()['keys'], 1)
+            self.assertEqual(self.c.get('/license/check').get_json()['keys'], 1)          # only once
+            lic = licenses.all_licenses()[0]
+            self.assertEqual(lic['square_status'], 'SANDBOX')
+            square.cancel(lic)
+        self.assertFalse(licenses.get(lic['id'])['valid'])

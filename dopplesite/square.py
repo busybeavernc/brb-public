@@ -477,6 +477,40 @@ def _user_for_customer(customer_id):
     return users.get(row['user_id']) if row else None
 
 
+def _sandbox_paid_checkouts(user):
+    """Sandbox only. Square's sandbox checkout takes the test payment but never creates the subscription (a known
+    sandbox limitation - production does). So that the rest can still be tested - key on the license page, BRB going
+    unlimited by itself - a paid sandbox checkout gets a test key that ends after 2 days."""
+    if env() != 'sandbox':
+        return []
+    out = []
+    con = db()
+    rows = con.execute("SELECT id, link_id, device_id FROM square_checkouts WHERE user_id=? AND env='sandbox' AND status='open' "
+                       'AND link_id IS NOT NULL AND created_at > ?', (user['id'], time.time() - 86400)).fetchall()
+    for r in rows:
+        try:
+            link = call('GET', f'/v2/online-checkout/payment-links/{quote(r["link_id"])}').get('payment_link') or {}
+            order = call('GET', f'/v2/orders/{quote(link["order_id"])}').get('order') or {} if link.get('order_id') else {}
+        except SquareError as e:
+            log.info('sandbox checkout %s: %s', r['link_id'], e)
+            continue
+        if not order.get('tenders'):
+            continue                                   # not paid (yet)
+        sid = f'sandbox-{order["id"]}'
+        if con.execute('SELECT 1 FROM licenses WHERE square_subscription_id=?', (sid,)).fetchone():
+            continue
+        lic = licenses.create(plan='subscription', max_devices=1, expires_at=time.time() + 2 * 86400,
+                              email=user.get('email') or '', user_id=user['id'], by='square', square_subscription_id=sid,
+                              square_status='SANDBOX', note='Sandbox test purchase (Square sandbox makes no subscription)')
+        if r['device_id']:
+            licenses.bind_device(lic['id'], r['device_id'])
+        con.execute("UPDATE square_checkouts SET status='done' WHERE id=?", (r['id'],))
+        con.commit()
+        log.info('sandbox checkout %s paid: test key %s', r['link_id'], lic['key'][-4:])
+        out.append(licenses.get(lic['id']))
+    return out
+
+
 def _checkout_customers(user):
     """Square customers behind this person's recent checkouts (found through each payment link's order) - so a
     purchase is found even if they typed a different email address at Square's checkout."""
@@ -507,11 +541,11 @@ def settle(user):
                      {'query': {'filter': {'email_address': {'exact': user['email']}}}, 'limit': 10})
         ids = [c['id'] for c in found.get('customers') or []]
     ids += [c for c in _checkout_customers(user) if c not in ids]
-    if not ids:
-        log.info('settle %s: no Square customer yet', user.get('email'))
-        return []
-    subs = call('POST', '/v2/subscriptions/search', {'query': {'filter': {'customer_ids': ids[:30]}}}).get('subscriptions') or []
+    subs = call('POST', '/v2/subscriptions/search', {'query': {'filter': {'customer_ids': ids[:30]}}}).get('subscriptions') or [] \
+        if ids else []
     out = [lic for lic in (apply(s, user) for s in subs) if lic]
+    if not out:
+        out = _sandbox_paid_checkouts(user)
     log.info('settle %s: %d customer(s), %d subscription(s), %d ours', user.get('email'), len(ids), len(subs), len(out))
     return out
 
@@ -520,6 +554,8 @@ def cancel(lic):
     """Cancel at the end of the period already paid for (month or year). -> the license (with expires_at set)."""
     if not lic.get('square_subscription_id'):
         raise SquareError('This key is not a subscription.', 400)
+    if lic['square_subscription_id'].startswith('sandbox-'):      # a sandbox test key: nothing in Square to cancel
+        return licenses.update(lic['id'], square_status='CANCELED', expires_at=time.time())
     sub = call('POST', f'/v2/subscriptions/{quote(lic["square_subscription_id"])}/cancel', {}).get('subscription') or {}
     return apply(sub) or licenses.get(lic['id'])
 
