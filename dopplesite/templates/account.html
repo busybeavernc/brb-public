@@ -13,19 +13,24 @@
 
   <h2>Your computers</h2>
   {% if devices %}
-  <table class="keytable"><thead><tr><th>Computer</th><th>License</th><th>Last used</th><th></th></tr></thead><tbody>
+  <table class="keytable acct"><thead><tr><th>Computer</th><th>License</th><th>Last used</th><th></th></tr></thead><tbody>
   {% for d in devices %}
+    {% set live = d['keys']|selectattr('valid')|list %}
     <tr><td><b>{{ d.name or 'A computer' }}</b><br><span class="note">{{ d.platform }} · BRB {{ d.app_version }}</span></td>
-      <td>{% if d['keys'] %}{% for k in d['keys'] %}<span class="mono">…{{ k.key[-4:] }}</span>{% if moves.get(k.id) is not none %}
-          <form method="post" action="{{ url_for('account_remove_device', lid=k.id, did=d.id) }}" data-confirm="Take {{ d.name or 'this computer' }} off this key? BRB on it goes back to free time; the key then works on the next computer you enter it on.">
-            <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Move this key to another computer</button></form>{% endif %}<br>{% endfor %}
+      <td>{% if live %}{% for k in live %}<span class="mono">…{{ k.key[-4:] }}</span><br>{% endfor %}
           {% else %}Free: {{ (d.free_left // 60)|int }} min left{% endif %}</td>
       <td>{{ d.last_seen|datefmt }}</td>
-      <td>{% if d.linked %}<form method="post" action="{{ url_for('account_unlink', did=d.id) }}" data-confirm="Remove {{ d.name or 'this computer' }} from your account?">
-          <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Remove from account</button></form>{% endif %}</td></tr>
+      <td class="actions">
+        {% for k in live %}{% if moves.get(k.id) is not none %}
+        <form method="post" action="{{ url_for('account_remove_device', lid=k.id, did=d.id) }}" data-confirm="Take {{ d.name or 'this computer' }} off this key? BRB on it goes back to free time; the key then works on the next computer you enter it on.">
+          <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="btn secondary btn-sm" type="submit">Move key{% if live|length > 1 %} …{{ k.key[-4:] }}{% endif %}</button></form>
+        {% endif %}{% endfor %}
+        {% if d.linked %}<form method="post" action="{{ url_for('account_unlink', did=d.id) }}" data-confirm="Remove {{ d.name or 'this computer' }} from your account?">
+          <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="btn secondary btn-sm" type="submit">Remove from account</button></form>{% endif %}
+      </td></tr>
   {% endfor %}</tbody></table>
-  <p class="note">You can move a key to another computer yourself up to {{ per_month }} times a month; after that,
-    <a href="{{ url_for('support_page', topic='license') }}">ask us</a> and we'll do it.</p>
+  <p class="note"><b>Move key</b> frees the key so you can enter it on another computer. You can do this yourself up to
+    {{ per_month }} times a month; after that, <a href="{{ url_for('support_page', topic='license') }}">ask us</a> and we'll do it.</p>
   {% else %}
   <p class="note">No computers yet. In BRB, open <b>Settings → License</b> and click <b>Link this computer to my account</b>
     (computers using one of your keys show up here by themselves).</p>
@@ -33,12 +38,22 @@
 
   <h2>Your license keys</h2>
   {% if keys %}
-    {% for k in keys %}<p><code class="key">{{ k.key }}</code> <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy</button>
-      {% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">ended</span>{% endif %}
-      <span class="note">{% include "_key_dates.html" %} · used on {{ k.devices|length }} of {{ k.max_devices }}</span>
-      {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
-        · <a class="linkbtn" href="{{ url_for('account_cancel', lid=k.id) }}">Cancel subscription</a>{% endif %}</p>{% endfor %}
-    <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
+  <table class="keytable acct"><thead><tr><th>Key</th><th>Plan</th><th>Status</th><th>Computers</th><th></th></tr></thead><tbody>
+  {% for k in keys %}
+    <tr><td><code class="key">{{ k.key }}</code></td>
+      {% set detail = (k.note or '')|replace('Square subscription', '')|trim|trim('()')|trim %}
+      <td>{{ 'Subscription' if k.plan == 'subscription' and 'Sandbox' not in (k.note or '') else 'Sandbox test' if 'Sandbox' in (k.note or '') else 'Unlimited license' }}
+        {% if detail and 'Sandbox' not in detail %}<br><span class="note">{{ detail }}</span>{% endif %}</td>
+      <td class="nowrap">{% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">ended</span>{% endif %}<br>
+        <span class="note">{% include "_key_dates.html" %}</span></td>
+      <td>{{ k.devices|length }} of {{ k.max_devices }}</td>
+      <td class="actions">
+        <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy key</button>
+        {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
+        <a class="btn secondary btn-sm" href="{{ url_for('account_cancel', lid=k.id) }}">Cancel subscription</a>{% endif %}
+      </td></tr>
+  {% endfor %}</tbody></table>
+  <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
   {% else %}<p class="note">No keys yet. <a href="{{ url_for('api.license_page') }}">Get unlimited LOOP time</a>.</p>{% endif %}
 
   <h2>Your support requests</h2>

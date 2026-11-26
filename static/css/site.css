@@ -436,3 +436,17 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .staff-tests { margin-top: 14px; border: 1px dashed var(--amber); }
 .staff-tests form.inline { display: inline-block; margin: 4px 6px 0 0; }
 .plan .terms { color: var(--muted); font-size: .85rem; margin: -8px 0 14px; }
+/* account page tables: actions as buttons */
+.keytable.acct td { vertical-align: middle; }
+.keytable.acct td.actions { text-align: right; white-space: nowrap; }
+.keytable.acct td.actions form { display: inline-block; margin: 2px 0 2px 6px; }
+.keytable.acct td.actions > .btn { margin: 2px 0 2px 6px; }
+.keytable.acct code.key { font-size: .85rem; white-space: nowrap; }
+@media (max-width: 760px) {
+  .keytable.acct thead { display: none; }
+  .keytable.acct tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .keytable.acct td { display: block; border: 0; padding: 3px 0; }
+  .keytable.acct td.actions { text-align: left; white-space: normal; }
+  .keytable.acct td.actions form, .keytable.acct td.actions > .btn { margin: 4px 6px 0 0; }
+}
+.keytable.acct td.nowrap { white-space: nowrap; }
