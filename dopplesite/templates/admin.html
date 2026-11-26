@@ -22,6 +22,24 @@
         <div class="stats" id="metrics"></div>
         <table class="keytable" id="weeks"></table>
       </div>
+      <div class="admin-card" id="pricecard">
+        <div class="admin-card-head"><h2>Pricing</h2><span id="priceTag" class="tag dim">…</span><span class="sp"></span>
+          <span class="hint" id="priceNow"></span></div>
+        <form id="priceForm" class="price-form">
+          <label>Monthly <span class="hint">$/month</span><input name="monthly" inputmode="decimal" required></label>
+          <label>Annual <span class="hint">$/year</span><input name="annual" inputmode="decimal" required></label>
+          <label>Promo first year <span class="hint">$ for year one, on annual</span><input name="promo_price" inputmode="decimal"></label>
+          <label>Promo ends <span class="hint">last day, Eastern; empty = no promo</span><input name="promo_ends" type="date"></label>
+          <label>Promo name<input name="promo_name" maxlength="60"></label>
+          <label class="wide">App's pitch <span class="hint">optional - empty = built-in wording</span><textarea name="pitch" rows="2"></textarea></label>
+          <label class="wide">App's offer line <span class="hint">optional; shown while the promo runs</span><textarea name="offer" rows="2"></textarea></label>
+          <p class="hint wide">Placeholders for the two texts: {free} {monthly} {annual_month} {annual_total} {promo_month}
+            {promo_total} {promo_name} {promo_ends}. Saving updates the website, the app's Get License Key window and
+            Square's plan right away. Existing subscribers keep the price they signed up at.</p>
+          {% if role == 'admin' %}<div class="wide"><button class="btn btn-sm" type="submit">Save pricing</button>
+            <span class="hint" id="priceMsg"></span></div>{% endif %}
+        </form>
+      </div>
       <div class="admin-card" id="sqcard">
         <div class="admin-card-head">
           <h2>Square subscriptions</h2>
@@ -257,6 +275,32 @@
     $('#supCount').textContent = m.open_requests ? m.open_requests : '';
   }
 
+  async function loadPricing(d) {
+    d = d || await api('/admin/api/pricing');
+    const f = $('#priceForm'), v = d.values, pr = d.preview;
+    for (const k of ['monthly', 'annual', 'promo_price']) f[k].value = Number(v[k]).toFixed(2);
+    f.promo_ends.value = v.promo_ends || ''; f.promo_name.value = v.promo_name || '';
+    f.pitch.value = v.pitch || ''; f.offer.value = v.offer || '';
+    {% if role != 'admin' %}f.querySelectorAll('input,textarea').forEach(i => i.disabled = true);{% endif %}
+    const tag = $('#priceTag');
+    tag.className = 'tag ' + (pr.promo ? 'ok' : 'dim');
+    tag.textContent = pr.promo ? `${pr.promo_name} until ${pr.promo_ends}` : 'no promo running';
+    $('#priceNow').textContent = 'Selling now: ' + Object.entries(d.options).map(([k, t]) => `${k} ${t}`).join(' · ');
+  }
+  $('#priceForm').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const f = ev.target, body = Object.fromEntries(new FormData(f)), msg = $('#priceMsg');
+    msg.textContent = 'Saving…';
+    try {
+      const d = await post('/admin/api/pricing', body);
+      loadPricing(d);
+      msg.textContent = 'Saved.' + (d.warning ? ' ' + d.warning : '') +
+        (d.square ? (d.square.created.length ? ' Square: added ' + d.square.created.join(', ') + '.' : ' Square already matches.') : '') +
+        (d.square_error ? ' Square: ' + d.square_error : '');
+      loadSquare().catch(() => {});
+    } catch (e) { msg.textContent = e.message; }
+  });
+
   async function loadSquare() {
     const q = await api('/admin/api/square'), r = q.report;
     const tag = $('#sqTag');
@@ -304,6 +348,7 @@
   }
   $('#appRefresh').addEventListener('click', () => loadApp(true).catch(fail));
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+  loadPricing().catch(e => { $('#priceNow').textContent = e.message; });
   loadSquare().catch(e => { $('#sqInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
 
   if (ADMIN) {

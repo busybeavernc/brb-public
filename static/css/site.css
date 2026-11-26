@@ -414,3 +414,9 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .msgcard.note-msg { background: #FFF6E0; border-color: #F4CF9C; }
 .row .sp { flex: 1; }
 .bulk { margin-top: 0; }
+
+/* admin: pricing form */
+.price-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px; }
+.price-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; color: var(--ink); }
+.price-form .wide { grid-column: 1 / -1; }
+.price-form input, .price-form textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--line-hi); border-radius: 8px; }

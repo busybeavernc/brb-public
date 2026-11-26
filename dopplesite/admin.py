@@ -372,6 +372,87 @@ def metrics():
                          'error': mailin.status['last_error']})
 
 
+def _pricing_json():
+    from . import licenses, square
+    saved = settings.saved()
+    end = square.promo_ends()
+    fields = {
+        'monthly': ('MONTHLY_PRICE_CENTS', square.monthly_cents() / 100),
+        'annual': ('ANNUAL_PRICE_CENTS', square.annual_cents() / 100),
+        'promo_price': ('PROMO_ANNUAL_PRICE_CENTS', square.promo_cents() / 100),
+        'promo_ends': ('PROMO_ENDS', end.isoformat() if end else ''),
+        'promo_name': ('PROMO_NAME', square.promo_name()),
+        'pitch': ('PITCH_TEXT', settings.get('PITCH_TEXT', '') or ''),
+        'offer': ('OFFER_TEXT', settings.get('OFFER_TEXT', '') or ''),
+    }
+    pr = square.pricing()
+    return {'values': {k: v for k, (_n, v) in fields.items()},
+            'from_admin': {k: n in saved for k, (n, _v) in fields.items()},
+            'promo_active': pr['promo'], 'preview': pr,
+            'options': {k: square.describe(o) for k, o in square.offers().items()},
+            'free': licenses.free_words()}
+
+
+@bp.get('/admin/api/pricing')
+@login_required
+def pricing_get():
+    return jsonify(_pricing_json())
+
+
+@bp.post('/admin/api/pricing')
+@admin_only
+def pricing_set():
+    """Save prices / the promo / the app's wording (blank = back to .env), then bring Square up to date."""
+    from datetime import date
+    from . import square
+    d = request.get_json(silent=True) or {}
+
+    def cents(key, label):
+        raw = str(d.get(key, '')).strip().replace('$', '').replace(',', '')
+        if raw == '':
+            return ''
+        try:
+            c = int(round(float(raw) * 100))
+        except ValueError:
+            raise ValueError(f'{label}: enter an amount like 9.99.')
+        if not 50 <= c <= 1_000_000:
+            raise ValueError(f'{label}: between $0.50 and $10,000.')
+        return str(c)
+    try:
+        new = {'MONTHLY_PRICE_CENTS': cents('monthly', 'Monthly price'),
+               'ANNUAL_PRICE_CENTS': cents('annual', 'Annual price'),
+               'PROMO_ANNUAL_PRICE_CENTS': cents('promo_price', 'Promo first-year price')}
+        ends = str(d.get('promo_ends', '')).strip()
+        if ends and ends.lower() != 'off':
+            try:
+                date.fromisoformat(ends)
+            except ValueError:
+                raise ValueError('Promo ends: pick a date (or leave it empty for no promo).')
+        new['PROMO_ENDS'] = ends or 'off'
+        new['PROMO_NAME'] = str(d.get('promo_name', '')).strip()[:60]
+        new['PITCH_TEXT'] = str(d.get('pitch', '')).strip()[:600]
+        new['OFFER_TEXT'] = str(d.get('offer', '')).strip()[:600]
+        m = int(new['MONTHLY_PRICE_CENTS'] or square.monthly_cents())
+        a = int(new['ANNUAL_PRICE_CENTS'] or square.annual_cents())
+        p = int(new['PROMO_ANNUAL_PRICE_CENTS'] or square.promo_cents())
+        if new['PROMO_ENDS'] != 'off' and p >= a:
+            raise ValueError('The promo first-year price must be lower than the annual price.')
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    before = _pricing_json()['values']
+    settings.save(new, by=_who())
+    after = _pricing_json()['values']
+    audit.log(_who(), 'pricing', 'site', **{k: f'{before[k]} -> {after[k]}' for k in after if before[k] != after[k]})
+    out = _pricing_json()
+    out['warning'] = ('Annual costs more than 12 months of monthly.' if a > 12 * m else '')
+    if square.ready():
+        try:
+            out['square'] = square.sync_catalog()
+        except square.SquareError as e:
+            out['square_error'] = str(e)
+    return jsonify(out)
+
+
 @bp.get('/admin/api/square')
 @login_required
 def square_info():

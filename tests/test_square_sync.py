@@ -70,3 +70,34 @@ class SquareSyncTests(Base):
         with mock.patch.dict(os.environ, {'PROMO_ENDS': 'off'}):
             self.assertTrue(square.plan_variation('annual').startswith('ID'))
         self.assertEqual(self.specs(), ['ANNUAL:8388', 'MONTHLY:999'])
+
+
+class PricingAdminTests(Base):
+    def test_admin_changes_prices_and_they_win_over_env(self):
+        from dopplesite import settings
+        self.admin_login() if hasattr(self, 'admin_login') else None
+        settings.save({'MONTHLY_PRICE_CENTS': '1299', 'PROMO_ENDS': 'off'}, by='test')
+        self.assertEqual(square.monthly_cents(), 1299)
+        self.assertFalse(square.promo_active())
+        page = self.c.get('/').get_data(as_text=True)
+        self.assertIn('$12.99', page)
+        settings.save({'MONTHLY_PRICE_CENTS': ''})                     # cleared: back to .env / built-in
+        self.assertEqual(square.monthly_cents(), 999)
+        with self.assertRaises(KeyError):
+            settings.save({'SECRET_KEY': 'x'})                        # only the pricing settings
+
+    def test_pricing_api(self):
+        self.c.post('/admin/login', data={'password': 'test-pw'})
+        with self.c.session_transaction() as s:
+            h = {'X-CSRF-Token': s['csrf']}
+        d = self.c.get('/admin/api/pricing').get_json()
+        self.assertEqual(d['values']['monthly'], 9.99)
+        r = self.c.post('/admin/api/pricing', headers=h, json={'monthly': '11.99', 'annual': '95.88',
+                        'promo_price': '59.88', 'promo_ends': '2099-01-31', 'promo_name': 'Spring sale'})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        self.assertEqual(r.get_json()['values']['monthly'], 11.99)
+        self.assertIn('$7.99', self.c.get('/').get_data(as_text=True))        # 95.88 / 12
+        bad = self.c.post('/admin/api/pricing', headers=h, json={'monthly': '9.99', 'annual': '50',
+                          'promo_price': '59.88', 'promo_ends': '2099-01-31'})
+        self.assertEqual(bad.status_code, 400)                                 # promo not lower than annual
+        self.assertIn('pricing', [e['action'] for e in self.c.get('/admin/api/audit').get_json()['entries']])
