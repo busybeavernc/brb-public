@@ -434,7 +434,8 @@ def apply(sub, user=None):
     expires = _expires_for(sub)
     if row:
         before = licenses.get(row['id'])
-        lic = licenses.update(row['id'], square_status=(sub.get('status') or '').upper(), expires_at=expires)
+        lic = licenses.update(row['id'], square_status=(sub.get('status') or '').upper(), expires_at=expires,
+                              renews_at=None if expires else _day_end(sub.get('charged_through_date')))
         if before and not before.get('expires_at') and expires:       # just cancelled: tell them once
             _mail_cancelled(lic)
         return lic
@@ -460,6 +461,8 @@ def apply(sub, user=None):
         licenses.bind_device(lic['id'], ck['device_id'])
     con.execute("UPDATE square_checkouts SET status='done' WHERE user_id=? AND status='open'", (user['id'],))
     con.commit()
+    if not expires and sub.get('charged_through_date'):
+        licenses.update(lic['id'], renews_at=_day_end(sub.get('charged_through_date')))
     _mail_confirmation(licenses.get(lic['id']), user, what, renews=_day_end(sub.get('charged_through_date')),
                        device_id=ck['device_id'] if ck else None)
     return licenses.get(lic['id'])

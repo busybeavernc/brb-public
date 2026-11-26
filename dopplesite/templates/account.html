@@ -34,7 +34,7 @@
   {% if keys %}
     {% for k in keys %}<p><code class="key">{{ k.key }}</code> <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy</button>
       {% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">ended</span>{% endif %}
-      <span class="note">used on {{ k.devices|length }} of {{ k.max_devices }}</span></p>{% endfor %}
+      <span class="note">{% include "_key_dates.html" %} · used on {{ k.devices|length }} of {{ k.max_devices }}</span></p>{% endfor %}
     <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
   {% else %}<p class="note">No keys yet. <a href="{{ url_for('api.license_page') }}">Get unlimited LOOP time</a>.</p>{% endif %}
 

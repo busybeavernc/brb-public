@@ -52,7 +52,7 @@
         </div>
         <p class="note">
           {{ (k.note|replace('Square subscription', 'Subscription')) if k.plan == 'subscription' else 'Unlimited license' }}
-          {% if k.expires_at %} · {{ 'works until' if k.valid else 'ended' }} {{ k.expires_at|datefmt }}{% endif %}
+          · {% include "_key_dates.html" %}
           · used on {{ k.devices|length }} of {{ k.max_devices }} computer{{ '' if k.max_devices == 1 else 's' }}
           {% for d in k.devices %}<br>· {{ d.name or 'A computer' }} ({{ d.platform }}){% endfor %}
         </p>

@@ -182,7 +182,7 @@ def no_store(resp):
 # ------------------------------------------------------------------ license keys and computers
 def _lic_json(lic):
     out = {k: lic.get(k) for k in ('id', 'key', 'plan', 'status', 'max_devices', 'expires_at', 'email', 'note',
-                                   'square_status', 'created_at', 'created_by', 'valid', 'why')}
+                                   'square_status', 'created_at', 'created_by', 'valid', 'why', 'renews_at')}
     out['devices'] = [{k: d.get(k) for k in ('id', 'name', 'platform', 'app_version', 'added_at', 'last_seen')}
                       for d in lic.get('devices', [])]
     return out

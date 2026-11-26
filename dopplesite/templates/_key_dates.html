@@ -1,0 +1,12 @@
+{# One license key's dates: renews / expires / ended / no expiry. #}
+{%- if not k.valid -%}
+  ended{% if k.expires_at %} {{ k.expires_at|datefmt }}{% endif %}
+{%- elif k.expires_at -%}
+  {% if k.plan == 'subscription' and k.square_status not in ('SANDBOX',) %}cancelled · works until {{ k.expires_at|datefmt }}{% else %}expires {{ k.expires_at|datefmt }}{% endif %}
+{%- elif k.renews_at -%}
+  renews {{ k.renews_at|datefmt }}
+{%- elif k.plan == 'subscription' -%}
+  renews automatically
+{%- else -%}
+  never expires
+{%- endif -%}

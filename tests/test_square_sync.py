@@ -204,3 +204,22 @@ class SettleTests(Base):
         canc = [m for m in mailer.sent if 'cancelled' in m['subject']]
         self.assertEqual(len(canc), 1)
         self.assertIn('keeps working until November 26, 2027', canc[0]['body'])
+
+    def test_account_page_shows_each_keys_dates(self):
+        from dopplesite import licenses, users
+        self.sign_in_with_hh({'id': 'hh11', 'name': 'Sam', 'email': 'sam2@example.com', 'email_verified': True})
+        user = dict(users.db().execute("SELECT * FROM users WHERE email='sam2@example.com'").fetchone())
+        con = square.db()
+        con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) "
+                    "VALUES ('sandbox', 999, 'VM', 0, ?, 'MONTHLY:999')", (square.PLAN_NAME,))
+        con.commit()
+        sub = {'id': 'S2', 'status': 'ACTIVE', 'plan_variation_id': 'VM', 'charged_through_date': '2027-01-05'}
+        square.apply(sub, user)
+        licenses.create(plan='unlimited', email='sam2@example.com', user_id=user['id'])
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('renews Jan 5, 2027', page)
+        self.assertIn('never expires', page)
+        square.apply({**sub, 'canceled_date': '2027-01-05'})
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('cancelled · works until Jan 5, 2027', page)
+        self.assertIn('cancelled · works until Jan 5, 2027', self.c.get('/license').get_data(as_text=True))

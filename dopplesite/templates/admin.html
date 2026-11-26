@@ -450,7 +450,7 @@
 
   // ---------------------------------------------------------------- customers
   function keyMini(k) {
-    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : '<span class="tag ok">active</span>';
+    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : k.renews_at ? `<span class="tag ok">renews ${esc(day(k.renews_at))}</span>` : '<span class="tag ok">active</span>';
     return `<div class="mini"><span class="mono">${esc(k.key)}</span> ${state} <span class="hint">${esc(k.plan)}${k.square_status ? ' · ' + esc(k.square_status) : ''} · ${k.devices.length}/${k.max_devices} computers${k.moves_left != null ? ' · ' + k.moves_left + ' self-moves left' : ''}</span>
       ${k.devices.map(d => `<div>· ${esc(d.name || d.id.slice(0, 8))} <button class="linkbtn" data-rm="${k.id}|${d.id}">remove from key</button></div>`).join('')}</div>`;
   }
@@ -490,7 +490,7 @@
 
   // ---------------------------------------------------------------- keys & computers
   function keyRow(k) {
-    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : '<span class="tag ok">active</span>';
+    const state = !k.valid ? `<span class="tag bad">${esc(k.why || 'off')}</span>` : k.expires_at ? `<span class="tag warn">until ${esc(day(k.expires_at))}</span>` : k.renews_at ? `<span class="tag ok">renews ${esc(day(k.renews_at))}</span>` : '<span class="tag ok">active</span>';
     const devs = k.devices.map(d => `<div>${esc(d.name || d.id.slice(0, 8))} <span class="mono">(${esc(d.platform)})</span> <button class="linkbtn" data-rm="${k.id}|${d.id}">remove</button></div>`).join('') || '<span class="hint">none yet</span>';
     return `<tr><td><span class="mono">${esc(k.key)}</span><br>${state}</td><td>${esc(k.plan)}${k.square_status ? '<br><span class="hint">' + esc(k.square_status) + '</span>' : ''}</td>
       <td>${k.email ? custLink(k.email) : ''}<br><span class="hint">${esc(k.note)}</span></td><td>${k.devices.length} of ${k.max_devices}${devs}</td>

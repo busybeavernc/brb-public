@@ -100,6 +100,10 @@ def db():
         if 'user_id' not in cols:   # the account this computer is linked to (from BRB's "Link to my account")
             con.execute('ALTER TABLE devices ADD COLUMN user_id TEXT')
             con.commit()
+        lcols = [r[1] for r in con.execute('PRAGMA table_info(licenses)')]
+        if 'renews_at' not in lcols:   # a subscription's next renewal (paid up to then), from Square
+            con.execute('ALTER TABLE licenses ADD COLUMN renews_at REAL')
+            con.commit()
         con.executescript(INDEXES)
         _ready.add(key)
     return con
@@ -207,7 +211,7 @@ def for_user(user_id, email=None):
 
 
 def update(lid, **changes):
-    allowed = {'status', 'max_devices', 'expires_at', 'email', 'note', 'user_id', 'square_status', 'plan'}
+    allowed = {'status', 'max_devices', 'expires_at', 'email', 'note', 'user_id', 'square_status', 'plan', 'renews_at'}
     sets = {k: v for k, v in changes.items() if k in allowed}
     if not sets:
         return get(lid)
