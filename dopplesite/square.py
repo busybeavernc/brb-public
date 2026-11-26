@@ -815,6 +815,9 @@ def promo_safeguard(now=None):
             continue
         cad, rest = spec.split('|')[-1].split(':')
         regular = [(cad, int(rest.split('x')[0]), None)]
+        if not _will_bill_too_little(sub, regular[0][1]):
+            seen.add(lic['id'])
+            continue                       # Square will charge the regular price by itself: leave it alone
         try:
             replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')
             moved += 1
@@ -827,6 +830,24 @@ def promo_safeguard(now=None):
                             f'{sub.get("charged_through_date")}, and BRB could not move it onto the regular price: {e}\n\n'
                             'Please check it in Square so it renews at the regular price.')
     return moved
+
+
+def _will_bill_too_little(sub, regular_cents):
+    """Will Square's next bill for this subscription be below the regular price? Square bills from the subscription's
+    order template when it has one (a checkout-made subscription does: its first, promo-priced order); without one, the
+    plan's phase pricing applies, which is right. Only a template below the regular price needs fixing."""
+    ids = [sub.get('order_template_id')] + [ph.get('order_template_id') for ph in (sub.get('phases') or [])
+                                            if (ph.get('ordinal') or 0) >= 1]
+    ids = [i for i in ids if i]
+    for oid in ids:
+        try:
+            order = call('GET', f'/v2/orders/{quote(oid)}').get('order') or {}
+        except SquareError:
+            return True                    # can't tell: fix it, to be safe
+        amount = ((order.get('total_money') or {}).get('amount'))
+        if amount is not None and int(amount) < regular_cents:
+            return True
+    return False
 
 
 def maybe_check_promos():

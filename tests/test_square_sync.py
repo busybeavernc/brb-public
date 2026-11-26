@@ -320,10 +320,13 @@ class PromoSafeguardTests(Base):
         con.commit()
         due = dt.date.today() + dt.timedelta(days=200)
         subs = {'P1': {'id': 'P1', 'status': 'ACTIVE', 'plan_variation_id': 'VP', 'customer_id': 'C', 'card_id': 'K',
-                       'location_id': 'L', 'charged_through_date': due.isoformat()}}
+                       'location_id': 'L', 'charged_through_date': due.isoformat(), 'order_template_id': 'T1'}}
         made = []
+        template = {'amount': 8388}
 
         def fake(method, path, body=None):
+            if path == '/v2/orders/T1':
+                return {'order': {'id': 'T1', 'total_money': {'amount': template['amount'], 'currency': 'USD'}}}
             if method == 'GET' and path.startswith('/v2/subscriptions/'):
                 return {'subscription': subs[path.rsplit('/', 1)[1]]}
             if path.endswith('/cancel'):
@@ -337,6 +340,9 @@ class PromoSafeguardTests(Base):
             lic = square.apply(subs['P1'], user)
             self.assertEqual(square.promo_safeguard(), 0)                      # 200 days away: not yet
             subs['P1']['charged_through_date'] = (dt.date.today() + dt.timedelta(days=10)).isoformat()
+            self.assertEqual(square.promo_safeguard(), 0)                      # Square will bill $83.88 itself: untouched
+            self.assertEqual(made, [])
+            template['amount'] = 5988                                          # ...but stuck at the promo price: fixed
             self.assertEqual(square.promo_safeguard(), 1)
             self.assertEqual((made[0]['plan_variation_id'], made[0]['start_date'], made[0]['card_id']),
                              ('VA', subs['P1']['charged_through_date'], 'K'))
