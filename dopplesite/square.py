@@ -436,6 +436,7 @@ def apply(sub, user=None):
         return licenses.update(row['id'], square_status=(sub.get('status') or '').upper(), expires_at=expires)
     var_ok = con.execute('SELECT 1 FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
     if not var_ok:
+        log.info('Square subscription %s: plan %s is not one of BRB\'s', sub.get('id'), sub.get('plan_variation_id'))
         return None
     if user is None:
         user = _user_for_customer(sub.get('customer_id'))
@@ -476,16 +477,43 @@ def _user_for_customer(customer_id):
     return users.get(row['user_id']) if row else None
 
 
+def _checkout_customers(user):
+    """Square customers behind this person's recent checkouts (found through each payment link's order) - so a
+    purchase is found even if they typed a different email address at Square's checkout."""
+    ids = []
+    rows = db().execute("SELECT link_id FROM square_checkouts WHERE user_id=? AND env=? AND status='open' AND link_id IS NOT NULL "
+                        'AND created_at > ? ORDER BY created_at DESC LIMIT 5', (user['id'], env(), time.time() - 3 * 86400))
+    for r in rows.fetchall():
+        try:
+            link = call('GET', f'/v2/online-checkout/payment-links/{quote(r["link_id"])}').get('payment_link') or {}
+            if not link.get('order_id'):
+                continue
+            order = call('GET', f'/v2/orders/{quote(link["order_id"])}').get('order') or {}
+            if order.get('customer_id'):
+                ids.append(order['customer_id'])
+        except SquareError as e:
+            log.info('settle: checkout %s: %s', r['link_id'], e)
+    return ids
+
+
 def settle(user):
-    """Look this person's subscriptions up in Square now (when they come back from checkout, before the webhook)."""
-    if not ready() or not user.get('email'):
+    """Look this person's subscriptions up in Square now (when they come back from checkout, and while the license
+    page waits - before or without the webhook). -> the licenses made or updated"""
+    if not ready():
         return []
-    found = call('POST', '/v2/customers/search', {'query': {'filter': {'email_address': {'exact': user['email']}}}, 'limit': 10})
-    ids = [c['id'] for c in found.get('customers') or []]
+    ids = []
+    if user.get('email'):
+        found = call('POST', '/v2/customers/search',
+                     {'query': {'filter': {'email_address': {'exact': user['email']}}}, 'limit': 10})
+        ids = [c['id'] for c in found.get('customers') or []]
+    ids += [c for c in _checkout_customers(user) if c not in ids]
     if not ids:
+        log.info('settle %s: no Square customer yet', user.get('email'))
         return []
-    subs = call('POST', '/v2/subscriptions/search', {'query': {'filter': {'customer_ids': ids}}}).get('subscriptions') or []
-    return [lic for lic in (apply(s, user) for s in subs) if lic]
+    subs = call('POST', '/v2/subscriptions/search', {'query': {'filter': {'customer_ids': ids[:30]}}}).get('subscriptions') or []
+    out = [lic for lic in (apply(s, user) for s in subs) if lic]
+    log.info('settle %s: %d customer(s), %d subscription(s), %d ours', user.get('email'), len(ids), len(subs), len(out))
+    return out
 
 
 def cancel(lic):

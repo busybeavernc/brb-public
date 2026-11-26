@@ -3,7 +3,25 @@
 {% block content %}
 <section class="page wrap narrow">
   <h1>Your license</h1>
-  {% if notice == 'thanks' %}<p class="msg">Thank you! {% if keys %}Your license key is below. If you subscribed from BRB, it's already on that computer: BRB switches to unlimited by itself.{% else %}Square is finishing your subscription; your key appears here within a minute. Reload the page if it doesn't.{% endif %}</p>{% endif %}
+  {% if notice == 'thanks' %}<p class="msg" id="thanks">Thank you! {% if keys %}Your license key is below. If you subscribed from BRB, it's already on that computer: BRB switches to unlimited by itself.{% else %}Square is finishing your subscription; your key appears here in a moment<span id="wait">…</span>{% endif %}</p>
+  {% if not keys and user %}
+  <script nonce="{{ csp_nonce() }}">
+  (function () {   // ask until the key is here (Square can take a few seconds), then show it
+    var tries = 0, dots = document.getElementById('wait');
+    function check() {
+      tries++;
+      fetch('{{ url_for('api.license_check') }}', {credentials: 'same-origin'}).then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.keys > 0) { location.replace('{{ url_for('api.license_page', n='thanks') }}'); return; }
+          if (tries < 40) { dots.textContent = '.'.repeat(1 + tries % 3); setTimeout(check, 4000); }
+          else document.getElementById('thanks').innerHTML = 'Your payment went through, but your key hasn\'t arrived yet. ' +
+            'Please <a href="{{ url_for('support_page') }}">contact support</a> and we\'ll sort it out quickly.';
+        }).catch(function () { if (tries < 40) setTimeout(check, 4000); });
+    }
+    setTimeout(check, 1500);
+  })();
+  </script>
+  {% endif %}{% endif %}
   {% if notice == 'canceled' %}<p class="msg">Your subscription is cancelled. Your key keeps working until the end of the period you've paid for.</p>{% endif %}
   {% if notice == 'expired' %}<p class="msg err">That page was open too long. Please try again.</p>{% endif %}
 

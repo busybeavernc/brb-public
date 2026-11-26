@@ -101,3 +101,49 @@ class PricingAdminTests(Base):
                           'promo_price': '59.88', 'promo_ends': '2099-01-31'})
         self.assertEqual(bad.status_code, 400)                                 # promo not lower than annual
         self.assertIn('pricing', [e['action'] for e in self.c.get('/admin/api/audit').get_json()['entries']])
+
+
+class SettleTests(Base):
+    def test_key_found_through_the_checkout_even_with_another_email_at_square(self):
+        from dopplesite import licenses
+        self.sign_in_with_hh({'id': 'hh5', 'name': 'Lee', 'email': 'lee@example.com', 'email_verified': True})
+        calls = []
+
+        def fake(method, path, body=None):
+            calls.append(path)
+            if path == '/v2/catalog/search':
+                return {'objects': []}
+            if path == '/v2/catalog/object':
+                o = body['object']
+                if o['type'] == 'SUBSCRIPTION_PLAN':
+                    return {'catalog_object': {'id': 'PLAN1'}}
+                return {'catalog_object': {'id': 'VAR' + str(o['subscription_plan_variation_data']['phases'][0]['pricing']['price_money']['amount'])}}
+            if path == '/v2/locations':
+                return {'locations': [{'id': 'L1'}]}
+            if path == '/v2/online-checkout/payment-links':
+                return {'payment_link': {'id': 'PL9', 'url': 'https://square.test/pay'}}
+            if path == '/v2/customers/search':
+                return {}                                    # nobody with lee@example.com at Square
+            if path == '/v2/online-checkout/payment-links/PL9':
+                return {'payment_link': {'id': 'PL9', 'order_id': 'O1'}}
+            if path == '/v2/orders/O1':
+                return {'order': {'id': 'O1', 'customer_id': 'C77'}}
+            if path == '/v2/subscriptions/search':
+                assert body['query']['filter']['customer_ids'] == ['C77']
+                return {'subscriptions': [{'id': 'S9', 'status': 'ACTIVE', 'customer_id': 'C77',
+                                           'plan_variation_id': 'VAR999'}]}
+            raise AssertionError(path)
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake):
+            with self.c.session_transaction() as s:
+                csrf = s['csrf']
+            self.c.post('/license/subscribe', data={'csrf': csrf, 'plan': 'monthly'})
+            self.assertEqual(self.c.get('/license/check').get_json()['keys'], 1)
+        self.assertEqual(len(licenses.all_licenses()), 1)
+        page = self.c.get('/license?n=thanks').get_data(as_text=True)
+        self.assertIn('Your license key is below', page)
+
+    def test_thank_you_page_waits_for_the_key(self):
+        self.sign_in_with_hh({'id': 'hh6', 'name': 'Kim', 'email': 'kim@example.com', 'email_verified': True})
+        page = self.c.get('/license?n=thanks').get_data(as_text=True)
+        self.assertIn('/license/check', page)
+        self.assertIn('in a moment', page)

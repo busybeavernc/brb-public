@@ -127,6 +127,21 @@ def subscribe():
     return redirect(url, 303)
 
 
+@bp.get('/license/check')
+def license_check():
+    """The license page, just back from checkout, asks every few seconds: is the key here yet? (Looks in Square too.)"""
+    if not g.user:
+        return jsonify(keys=0), 401
+    n = len(licenses.for_user(g.user['id'], g.user.get('email')))
+    if not n and square.ready():
+        try:
+            square.settle(g.user)
+        except square.SquareError as e:
+            log.warning('license check: %s', e)
+        n = len(licenses.for_user(g.user['id'], g.user.get('email')))
+    return jsonify(keys=n)
+
+
 @bp.get('/license/return')
 def subscribe_return():
     if g.user:
