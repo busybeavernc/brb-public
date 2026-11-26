@@ -172,8 +172,9 @@
         scrambled device ID, your computer's name, operating system and BRB version; and, if you subscribe, your name
         and email. Nothing is sold or shared. Read the <a href="{{ url_for('privacy') }}">Privacy Policy</a>.</p></details>
     <details><summary>Why does it need an internet connection?</summary>
-      <p>Free LOOP time and license keys are checked with brb.happyhacks.io while the LOOP is on air, so reinstalling
-        doesn't reset free time. Your live camera works without a connection.</p></details>
+      <p>Free LOOP time is counted on brb.happyhacks.io, so reinstalling doesn't reset it: the LOOP needs a connection to
+        go on air. With a license key, BRB keeps working for up to 14 days without one (on a plane, say, or if our site is
+        down). Your live camera always works without a connection.</p></details>
     <details><summary>How long can the loop be?</summary>
       <p>You choose: from 1 to 10 minutes (90 seconds by default). Longer loops look more natural for longer breaks.</p></details>
     <details><summary>Can people tell when I've stepped away?</summary>
@@ -187,6 +188,12 @@
     <details><summary>My company's IT needs to approve software. What do I send them?</summary>
       <p>Send them our <a href="{{ url_for('for_it') }}">page for IT teams</a>: what BRB installs, what it sends over the
         network (no video or audio ever leaves your computer), permissions and file checksums, all in one place. It has a button that starts the email for you.</p></details>
+    <details><summary>Can I move my key to another computer?</summary>
+      <p>Yes. A key works on one computer at a time. To move it (a new laptop, say), open your
+        <a href="{{ url_for('account') }}">account page</a>, click <b>Move this key to another computer</b> next to the old
+        one, then enter the key in BRB on the new computer (<b>Get License Key</b>, or Settings → License). You can do this
+        yourself {{ self_moves }} times a month; after that, <a href="{{ url_for('support_page', topic='license') }}">contact
+        support</a> and we'll move it for you. A key can't be shared between people.</p></details>
     <details><summary>Can I cancel my subscription?</summary>
       <p>Any time, on your <a href="{{ url_for('account') }}">account page</a>. Cancelling stops the next renewal, and your
         key keeps working until the end of the month or year you've paid for.</p></details>

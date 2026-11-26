@@ -90,7 +90,8 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject():
-        return {'pricing': pricing, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
+        from . import licenses as _lic
+        return {'pricing': pricing, 'self_moves': _lic.SELF_MOVES_PER_MONTH, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
                 'free_label_text': free_label, 'csp_nonce': csp_nonce}
 
