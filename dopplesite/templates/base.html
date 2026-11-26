@@ -31,7 +31,7 @@
         <a href="{{ url_for('support_page') }}">Support</a>
         {% if user %}
           {% if user.role in ('admin', 'support') %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
-          <a class="who" href="{{ url_for('account') }}" title="Your keys, computers and support requests">{{ (user.name or user.email or 'Account').split()[0] }}</a>
+          <a class="who" href="{{ url_for('account') }}" title="Your keys, computers and support requests">{{ user|first_name }}</a>
           <form method="post" action="{{ url_for('signout') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
             <button class="linkbtn" type="submit">Sign out</button></form>
         {% elif sso %}

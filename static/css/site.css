@@ -36,7 +36,9 @@ code { background: var(--euca-soft); color: var(--ink); border-radius: 5px; padd
 .nav nav a { color: var(--ink); text-decoration: none; font-weight: 600; }
 .nav nav a:hover { color: var(--teal-dark); text-decoration: underline; text-decoration-color: var(--apricot); }
 .nav form { margin: 0; }
-.who { color: var(--muted) !important; font-size: .9rem; }
+.who { color: var(--muted) !important; font-size: .9rem; max-width: 14ch; overflow: hidden; text-overflow: ellipsis; }
+.nav nav a, .nav nav .linkbtn { white-space: nowrap; }
+@media (max-width: 1280px) { .nav nav { gap: 16px; } }
 .foot { border-top: 1px solid var(--line); margin-top: 72px; padding: 28px 0 40px; color: var(--muted); font-size: .9rem; }
 .foot-inner { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
 .foot-inner .sp { flex: 1; }

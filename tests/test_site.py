@@ -263,3 +263,12 @@ class SignOutTests(Base):
         self.assertIn('/account/signout?return_to=', r.headers['Location'])
         with self.c.session_transaction() as s:
             self.assertNotIn('uid', s)
+
+
+class NameShownTests(Base):
+    def test_an_email_in_the_name_field_isnt_shown_as_a_name(self):
+        self.sign_in_with_hh({'id': 'hh1', 'name': 'brash@example.com', 'email': 'busy@example.com', 'email_verified': True})
+        page = self.c.get('/').get_data(as_text=True)
+        self.assertIn('>Account</a>', page)
+        self.assertNotIn('brash@example.com', page)
+        self.assertIn('Signed in as busy@example.com.', self.c.get('/account').get_data(as_text=True))

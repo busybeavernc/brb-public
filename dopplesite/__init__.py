@@ -90,6 +90,13 @@ def create_app() -> Flask:
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
                 'free_label_text': free_label, 'csp_nonce': csp_nonce}
 
+    @app.template_filter('first_name')
+    def first_name(u):
+        """What to call someone in the header: their first name - not an email address or number that ended up in
+        the name field (accounts made before Happy Hacks asked for a name)."""
+        first = str((u or {}).get('name') or '').strip().split(' ')[0]
+        return first if first and '@' not in first and not any(c.isdigit() for c in first) else 'Account'
+
     @app.template_filter('datefmt')
     def datefmt(ts):
         import datetime as _dt

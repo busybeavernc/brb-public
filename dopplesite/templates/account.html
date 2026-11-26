@@ -3,7 +3,8 @@
 {% block content %}
 <section class="page wrap narrow">
   <h1>Your account</h1>
-  <p class="note">Signed in as {{ user.name or user.email }}{{ ' (' + user.email + ')' if user.name and user.email }}.
+  {% set real_name = user.name if user.name and '@' not in user.name else '' %}
+  <p class="note">Signed in as {{ real_name or user.email or user.phone }}{{ ' (' + user.email + ')' if real_name and user.email }}.
     Name, email and sign-in are managed in your <a href="{{ hh_account }}">Happy Hacks account</a>.</p>
   {% if linked %}<p class="msg">✓ {{ linked.name or 'This computer' }} is now linked to your account.</p>{% endif %}
   {% if notice == 'moved' %}<p class="msg">Done: that computer is off your key. The key now works on the next computer you enter it on.</p>{% endif %}
