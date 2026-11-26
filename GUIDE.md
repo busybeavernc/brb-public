@@ -62,7 +62,7 @@ Release files are signed with a self-signed certificate (`doppleganger-publisher
 | **Mini Bar (F10) / Record loop (R)** | Switch to the Mini Bar; record a new loop (see below). |
 | **Webcam** | Pick which camera is your live feed (virtual cameras are never offered). |
 | **Loops** | Your loop library: thumbnails, names (*Rename*), *Use*, *Delete*. BRB adjusts the loop's brightness and colour to your room's light right now (*Settings → Match the loop to the room's lighting*, on by default; your live picture is never changed), so a cut doesn't jump if the light has changed since you recorded. A ⚠ appears when the difference is too big for that (a much darker or brighter room, very different light). |
-| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top strip with a live thumbnail, sync meter and Cut, to park beside your meeting. Drag it by the logo; *Full view*, **F10** or **M** brings the window back. |
+| **Mini Bar** (*View → Mini Bar*) | A compact always-on-top window to park beside your meeting: just the preview, as large as it fits, with the ON AIR sign, a small **Cut** button and **Full view** under it, and the sync meter along the bottom. Outlines are drawn bolder here. Drag it by the BRB mark (or the picture); *Full view*, **F10** or **M** brings the window back. |
 | **Settings** | License, text size, privacy, crossfade, guides, outlines, overlay strength, **recording length (60-600 s, default 90)**, the camera, updates. |
 
 **Optional BRB watermark:** the *BRB Watermark* switch (in the main window, or *Settings → Watermark*) adds a "BRB · Be right back" watermark to what your meeting sees, only while the LOOP is on air. It's off by default; turn it on if your organizer asks for it, or if you prefer people to know you've stepped away. While you're LIVE the preview shows it faintly: drag it to move it and scroll over it to resize it (*Settings → Watermark* also has a size slider and a reset). Keep it on you, low on your chest say: meeting apps' background blur and virtual backgrounds replace everything that isn't you, including a watermark in a corner.
@@ -77,6 +77,7 @@ Release files are signed with a self-signed certificate (`doppleganger-publisher
 |---|---|
 | **F9** | **Tap** = cut now. **Hold** = cut when in sync |
 | **F10** | Switch between the full window and the Mini Bar |
+| **P** | Rehearse cut (in BRB's window) |
 | Space | Same as F9 (tap/hold), while the BRB window is focused |
 | R | Record a loop; press again (or Esc) to **cancel** a recording in progress. Nothing is saved |
 | M | Same as F10, while a BRB window is focused |
@@ -141,7 +142,8 @@ While the LOOP is on air, BRB listens to your meeting for those names. When some
 - **After that**, the preview shows the off-air feed faded over the on-air one: the loop while you're LIVE, your camera while the LOOP is on air. Line up until the green border appears, or hold F9.
 - **Outlines** (O, or the switch under the sync meter): a green line traces you live and an apricot line traces the loop. When the two lines sit on top of each other, the cut is seamless.
 - **Face guide**: the loop's eyes, nose and mouth and yours, with a hint to line them up - while you're LIVE and while the LOOP is on air (to come back seamlessly). Not shown in the Mini Bar, where it's too small to read.
-- **Rehearse cut** (under the cut button): plays the cut in the preview exactly as the meeting would see it - lighting match, watermark and all - then goes back to normal. Nothing changes on air.
+- **Green glow**: when a cut would be seamless, a green glow appears around you - the same signal as at the end of recording a loop - in the full window and the Mini Bar.
+- **Rehearse cut** (**P**, or the button under the cut button): plays the cut in the preview exactly as the meeting would see it - lighting match, watermark and all - then goes back to normal. Nothing changes on air.
 - **Background** switch: turn it off to see just yourself on a plain backdrop in the preview, without the room. It only changes your preview; the meeting still sees your camera (or loop) as usual.
 
 ## The HappyHacks Virtual Camera
