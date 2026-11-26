@@ -80,3 +80,58 @@ def kept(lic, user, offer):
              f'Manage your subscription any time: {site}/account',
              f'Questions: {site}/support (or just reply to this email)', '', 'The BRB team at Happy Hacks']
     return mailer.send(to, f'Your BRB discount: {offer["price"]} for your next renewal', '\n'.join(lines))
+
+
+def _pay_lines(amount, url, site):
+    return [f'Pay the {amount} now (you can use a different card, and save it for future renewals):', f'  {url}' if url else
+            f'  {site}/account', '']
+
+
+def payment_failed(lic, user, amount, url, works_until):
+    to = lic.get('email') or (user or {}).get('email')
+    if not to:
+        return False
+    site = settings.public_url()
+    hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
+    lines = [hi, '', f"Your BRB Unlimited renewal of {amount} didn't go through - usually an expired card or a bank "
+             'check.', ''] + _pay_lines(amount, url, site) + [
+             f'Your key keeps working until {_date(works_until)} while you sort it out. After that, unlimited LOOP time '
+             'pauses until the payment goes through, and switches back on by itself when it does.', '',
+             f'Your account: {site}/account', f'Questions: {site}/support (or just reply to this email)', '',
+             'The BRB team at Happy Hacks']
+    return mailer.send(to, "BRB: your payment didn't go through", '\n'.join(lines))
+
+
+def payment_reminder(lic, user, amount, url, works_until):
+    to = lic.get('email') or (user or {}).get('email')
+    if not to:
+        return False
+    site = settings.public_url()
+    hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
+    lines = [hi, '', f'A reminder: your BRB Unlimited renewal of {amount} is still unpaid, and unlimited LOOP time pauses '
+             f'on {_date(works_until)}.', ''] + _pay_lines(amount, url, site) + ['The BRB team at Happy Hacks']
+    return mailer.send(to, 'BRB: unlimited LOOP time pauses soon', '\n'.join(lines))
+
+
+def payment_paused(lic, user, amount, url, cancel_on):
+    to = lic.get('email') or (user or {}).get('email')
+    if not to:
+        return False
+    site = settings.public_url()
+    hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
+    lines = [hi, '', f'Your BRB Unlimited renewal of {amount} is still unpaid, so unlimited LOOP time is paused (BRB '
+             'goes back to free time).', ''] + _pay_lines(amount, url, site) + [
+             'It switches back on by itself as soon as the payment goes through.',
+             f'If it stays unpaid, your subscription is cancelled on {_date(cancel_on)}.', '',
+             'The BRB team at Happy Hacks']
+    return mailer.send(to, 'BRB: unlimited LOOP time is paused', '\n'.join(lines))
+
+
+def payment_recovered(lic, user):
+    to = lic.get('email') or (user or {}).get('email')
+    if not to:
+        return False
+    hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
+    lines = [hi, '', 'Thanks - your BRB Unlimited payment went through, and unlimited LOOP time is on again.',
+             f'Next renewal: {_date(lic["renews_at"])}' if lic.get('renews_at') else '', '', 'The BRB team at Happy Hacks']
+    return mailer.send(to, 'BRB: payment received, all set', '\n'.join(lines))

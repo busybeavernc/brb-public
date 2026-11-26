@@ -107,6 +107,10 @@ def db():
         if 'renews_at' not in lcols:   # a subscription's next renewal (paid up to then), from Square
             con.execute('ALTER TABLE licenses ADD COLUMN renews_at REAL')
             con.commit()
+        if 'payment_failed_at' not in lcols:   # a renewal that didn't go through: since when, where to pay, what we've said
+            con.executescript('ALTER TABLE licenses ADD COLUMN payment_failed_at REAL; '
+                              'ALTER TABLE licenses ADD COLUMN pay_url TEXT; ALTER TABLE licenses ADD COLUMN payment_notice TEXT;')
+            con.commit()
         con.executescript(INDEXES)
         _ready.add(key)
     return con
@@ -198,12 +202,20 @@ def _with_devices(lic):
     return lic
 
 
+PAYMENT_PAUSED = ("Your subscription's last payment didn't go through, so unlimited LOOP time is paused. Pay it at "
+                  'brb.happyhacks.io/account and it switches back on by itself.')
+
+
 def valid(lic):
     """(True, '') or (False, the reason in words)."""
     if lic['status'] == 'revoked':
         return False, 'This license key has been turned off.'
     if lic.get('expires_at') and lic['expires_at'] < time.time():
         return False, ('Your subscription has ended.' if lic['plan'] == 'subscription' else 'This license key has expired.')
+    if lic.get('payment_failed_at'):
+        from . import square
+        if time.time() - lic['payment_failed_at'] > square.grace_days() * 86400:
+            return False, PAYMENT_PAUSED
     return True, ''
 
 
@@ -214,7 +226,8 @@ def for_user(user_id, email=None):
 
 
 def update(lid, **changes):
-    allowed = {'status', 'max_devices', 'expires_at', 'email', 'note', 'user_id', 'square_status', 'plan', 'renews_at'}
+    allowed = {'status', 'max_devices', 'expires_at', 'email', 'note', 'user_id', 'square_status', 'plan', 'renews_at',
+               'payment_failed_at', 'pay_url', 'payment_notice'}
     sets = {k: v for k, v in changes.items() if k in allowed}
     if not sets:
         return get(lid)
@@ -329,6 +342,15 @@ def needs_account(device):
     return bool(device.get('vm')) and not device.get('user_id')
 
 
+def _paused_here(device_id):
+    """A key on this computer that's paused for a failed payment: the words to show, else ''."""
+    for r in db().execute('SELECT license_id FROM license_devices WHERE device_id=?', (device_id,)):
+        lic = get(r['license_id'])
+        if lic and not lic['valid'] and lic.get('payment_failed_at') and not lic.get('expires_at'):
+            return lic['why']
+    return ''
+
+
 def _bound_license(device_id):
     """A valid key this computer was put on (bought from it, or given by an admin)."""
     for r in db().execute('SELECT license_id FROM license_devices WHERE device_id=? ORDER BY added_at DESC', (device_id,)):
@@ -343,7 +365,8 @@ def _license_for(device_id, key):
     -> (license or None, message for the person or '')."""
     if not key:
         # no key typed in yet: a key this computer was put on (bought from it, or given by an admin)
-        return _bound_license(device_id), ''
+        bound = _bound_license(device_id)
+        return bound, ('' if bound else _paused_here(device_id))
     lic, problem = _license_for_key(device_id, key)
     if lic is None:
         # the typed key doesn't work here (mistyped, expired, used elsewhere), but this computer may have a key of its

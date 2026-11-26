@@ -15,7 +15,8 @@ Settings (.env). SQUARE_ENV picks which set is used; both can sit in .env side b
     PROMO_ENDS=2026-12-31                            ...for orders up to the end of this day (Eastern); off = no promo
     PROMO_NAME=Holiday special
 
-The webhook subscription should send: subscription.created, subscription.updated, invoice.payment_made.
+The webhook subscription should send: subscription.created, subscription.updated, invoice.payment_made,
+invoice.scheduled_charge_failed (a failed renewal is also found by the hourly check, just later).
 
 How it works
   - Square's catalog is kept in step with these settings (sync_catalog): one "BRB Unlimited" subscription plan with a
@@ -897,7 +898,194 @@ def maybe_check_promos():
                 log.info('promo safeguard: %d subscription(s) moved onto the regular price', n)
         except Exception:  # noqa: BLE001
             log.exception('promo safeguard')
+        try:
+            res = check_payments()
+            if len(res) > 1:
+                log.info('payment check: %s', res)
+        except Exception:  # noqa: BLE001
+            log.exception('payment check')
     threading.Thread(target=run, daemon=True, name='promo-check').start()
+
+
+# ------------------------------------------------------------------ billing: next payment, card, history, failed payments
+PAYMENT_GRACE_DAYS = 7     # a failed renewal: the key keeps working this long (PAYMENT_GRACE_DAYS)...
+CANCEL_UNPAID_DAYS = 30    # ...and the subscription is cancelled after this long unpaid (CANCEL_UNPAID_DAYS)
+_billing_cache = {}
+
+
+def grace_days():
+    return max(0, _cents('PAYMENT_GRACE_DAYS', PAYMENT_GRACE_DAYS))
+
+
+def cancel_unpaid_days():
+    return max(grace_days() + 1, _cents('CANCEL_UNPAID_DAYS', CANCEL_UNPAID_DAYS))
+
+
+def _sub_ids(lic):
+    sid = lic.get('square_subscription_id') or ''
+    olds = [r['old_sub_id'] for r in db().execute('SELECT old_sub_id FROM square_replacements WHERE license_id=?', (lic['id'],))]
+    return [x for x in [sid] + olds if x and not x.startswith('sandbox-')]
+
+
+def _invoices(lic, sub):
+    """This subscription's invoices (and those of the subscriptions it replaced), newest first."""
+    ids = set(_sub_ids(lic))
+    if not sub.get('customer_id'):
+        return []
+    body = {'query': {'filter': {'location_ids': [sub.get('location_id') or location()], 'customer_ids': [sub['customer_id']]},
+                      'sort': {'field': 'INVOICE_SORT_DATE', 'order': 'DESC'}}, 'limit': 50}
+    found = call('POST', '/v2/invoices/search', body).get('invoices') or []
+    return [i for i in found if i.get('subscription_id') in ids]
+
+
+def _due(inv):
+    reqs = inv.get('payment_requests') or [{}]
+    return reqs[0].get('due_date') or (inv.get('scheduled_at') or inv.get('created_at') or '')[:10]
+
+
+def _amount(inv):
+    reqs = inv.get('payment_requests') or [{}]
+    m = reqs[0].get('computed_amount_money') or reqs[0].get('total_completed_amount_money') or {}
+    return int(m.get('amount') or 0)
+
+
+UNPAID = ('UNPAID', 'FAILED', 'PARTIALLY_PAID', 'PAYMENT_PENDING')
+STATUS_WORDS = {'PAID': 'paid', 'UNPAID': 'not paid', 'FAILED': 'failed', 'PARTIALLY_PAID': 'partly paid',
+                'PAYMENT_PENDING': 'processing', 'SCHEDULED': 'scheduled', 'REFUNDED': 'refunded',
+                'PARTIALLY_REFUNDED': 'partly refunded', 'CANCELED': 'cancelled', 'DRAFT': 'draft'}
+
+
+def _next_payment(lic, sub, invoices):
+    """(date, cents) of the next charge, or None."""
+    if sub.get('canceled_date') or (sub.get('status') or '').upper() in ('CANCELED', 'DEACTIVATED'):
+        return None
+    row = db().execute('SELECT spec FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
+    spec = row['spec'] if row else ''
+    if not spec:
+        return None
+    phases = [p.split(':') for p in spec.split('|')]
+    prices = [int(rest.split('x')[0]) for _c, rest in phases]
+    if (sub.get('status') or '').upper() == 'PENDING':          # starts later (a stay offer / regular price switch)
+        return sub.get('start_date'), prices[0]
+    paid = sum(1 for i in invoices if i.get('subscription_id') == sub.get('id') and i.get('status') == 'PAID')
+    return sub.get('charged_through_date'), prices[min(paid, len(prices) - 1)] if len(prices) > 1 else prices[0]
+
+
+def billing(lic, fresh=False):
+    """For the account page: {'next': (date, '$x'), 'card': {...}, 'history': [...], 'unpaid': {...} or None}."""
+    sid = lic.get('square_subscription_id') or ''
+    if not ready() or not sid or sid.startswith('sandbox-'):
+        return None
+    hit = _billing_cache.get(lic['id'])
+    if hit and not fresh and time.time() - hit[0] < 60:
+        return hit[1]
+    try:
+        sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
+        invoices = _invoices(lic, sub)
+        card = None
+        if sub.get('card_id'):
+            try:
+                c = call('GET', f'/v2/cards/{quote(sub["card_id"])}').get('card') or {}
+                card = {'brand': (c.get('card_brand') or 'Card').replace('_', ' ').title(), 'last4': c.get('last_4') or '',
+                        'exp': f'{int(c.get("exp_month") or 0):02d}/{str(c.get("exp_year") or "")[-2:]}',
+                        'exp_ts': _day_end(f'{c.get("exp_year")}-{int(c.get("exp_month") or 1):02d}-28') if c.get('exp_year') else None}
+            except SquareError:
+                card = None
+        nxt = _next_payment(lic, sub, invoices)
+        history = [{'date': _due(i), 'amount': price_text(_amount(i)), 'status': STATUS_WORDS.get(i.get('status'), (i.get('status') or '').lower()),
+                    'ok': i.get('status') == 'PAID', 'url': i.get('public_url') or '', 'title': i.get('title') or 'BRB Unlimited'}
+                   for i in invoices[:24]]
+        unpaid = next(({'date': _due(i), 'amount': price_text(_amount(i)), 'url': i.get('public_url') or ''}
+                       for i in invoices if i.get('status') in UNPAID and _due(i) <= time.strftime('%Y-%m-%d')), None)
+        out = {'next': (nxt[0], price_text(nxt[1])) if nxt else None, 'card': card, 'history': history, 'unpaid': unpaid,
+               'card_expires_first': bool(card and card.get('exp_ts') and nxt and _day_end(nxt[0]) and card['exp_ts'] < _day_end(nxt[0]))}
+    except Exception as e:  # noqa: BLE001 - billing details must never break the account page
+        log.info('billing for key %s: %s', lic['key'][-4:], e)
+        out = {'error': "Billing details aren't available right now. Please try again in a few minutes."}
+    _billing_cache[lic['id']] = (time.time(), out)
+    return out
+
+
+def check_payment(lic, now=None):
+    """Keep a subscription's payment state in step with Square: a failed renewal is recorded (the key keeps working for
+    the grace period, with emails), paid again clears it, and long unpaid cancels it. -> 'ok' / 'failing' / 'paused' /
+    'cancelled' / 'recovered'"""
+    from . import purchasemail
+    now = time.time() if now is None else now
+    sid = lic.get('square_subscription_id') or ''
+    if not sid or sid.startswith('sandbox-'):
+        return 'ok'
+    sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
+    invoices = _invoices(lic, sub)
+    today = time.strftime('%Y-%m-%d', time.localtime(now))
+    unpaid = [i for i in invoices if i.get('status') in UNPAID and _due(i) <= today]
+    user = users.get(lic['user_id']) if lic.get('user_id') else None
+    _billing_cache.pop(lic['id'], None)
+    if not unpaid:
+        if lic.get('payment_failed_at'):
+            licenses.update(lic['id'], payment_failed_at=None, pay_url=None, payment_notice=None,
+                            renews_at=_day_end(sub.get('charged_through_date')) or lic.get('renews_at'))
+            purchasemail.payment_recovered(licenses.get(lic['id']), user)
+            return 'recovered'
+        return 'ok'
+    inv = unpaid[-1]                                    # the oldest unpaid one
+    since = _day_end(_due(inv)) - 86399 if _due(inv) else now
+    url = inv.get('public_url') or ''
+    days = (now - since) / 86400
+    sent = lic.get('payment_notice') or ''
+    if not lic.get('payment_failed_at'):
+        licenses.update(lic['id'], payment_failed_at=since, pay_url=url, payment_notice='failed')
+        purchasemail.payment_failed(licenses.get(lic['id']), user, price_text(_amount(inv)), url,
+                                    since + grace_days() * 86400)
+        return 'failing'
+    if url and url != lic.get('pay_url'):
+        licenses.update(lic['id'], pay_url=url)
+    if days >= cancel_unpaid_days():
+        cancel(licenses.get(lic['id']))
+        licenses.update(lic['id'], expires_at=now, payment_notice='cancelled')
+        return 'cancelled'
+    if days >= grace_days() and sent != 'paused':
+        licenses.update(lic['id'], payment_notice='paused')
+        purchasemail.payment_paused(licenses.get(lic['id']), user, price_text(_amount(inv)), url,
+                                    since + cancel_unpaid_days() * 86400)
+        return 'paused'
+    if grace_days() - 2 <= days < grace_days() and sent == 'failed':
+        licenses.update(lic['id'], payment_notice='reminded')
+        purchasemail.payment_reminder(licenses.get(lic['id']), user, price_text(_amount(inv)), url,
+                                      since + grace_days() * 86400)
+    return 'paused' if days >= grace_days() else 'failing'
+
+
+def check_payments(now=None):
+    """Hourly: subscriptions past their renewal date that Square hasn't moved on (a payment may have failed), and
+    those already failing. -> {'checked': n, ...outcomes}"""
+    if not ready():
+        return {}
+    now = time.time() if now is None else now
+    rows = db().execute("SELECT id FROM licenses WHERE plan='subscription' AND status='active' AND "
+                        "(payment_failed_at IS NOT NULL OR (renews_at IS NOT NULL AND renews_at < ? AND "
+                        "(expires_at IS NULL OR expires_at > ?)))", (now, now)).fetchall()
+    out = {'checked': 0}
+    for r in rows:
+        try:
+            res = check_payment(licenses.get(r['id']), now)
+        except SquareError as e:
+            log.info('payment check: %s', e)
+            continue
+        out['checked'] += 1
+        out[res] = out.get(res, 0) + 1
+    return out
+
+
+def check_subscription_payment(subscription_id):
+    """A webhook said a subscription's invoice changed: check that one now."""
+    row = db().execute('SELECT id FROM licenses WHERE square_subscription_id=?', (subscription_id,)).fetchone()
+    if not row:
+        rep = db().execute('SELECT license_id AS id FROM square_replacements WHERE old_sub_id=?', (subscription_id,)).fetchone()
+        row = rep
+    if row:
+        return check_payment(licenses.get(row['id']))
+    return 'not ours'
 
 
 def settle_if_pending(user):
@@ -950,5 +1138,11 @@ def handle(event):
         if sid:
             sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
             lic = apply(sub)
-            return 'month paid' if lic else 'not one of ours'
+            if lic and lic.get('payment_failed_at'):
+                check_subscription_payment(sid)          # paid after all: the key is back to normal
+            return 'paid' if lic else 'not one of ours'
+    if kind in ('invoice.scheduled_charge_failed', 'invoice.updated'):
+        inv = obj.get('invoice') or {}
+        if inv.get('subscription_id') and (kind != 'invoice.updated' or inv.get('status') in UNPAID + ('PAID',)):
+            return 'payment ' + check_subscription_payment(inv['subscription_id'])
     return 'ignored'

@@ -370,3 +370,82 @@ class PromoSafeguardTests(Base):
             page = self.c.get('/license').get_data(as_text=True)
         self.assertIn('Staff only', page)
         self.assertIn('$1 the first day, then $2/day', page)
+
+
+class BillingTests(Base):
+    def setUp(self):
+        super().setUp()
+        from dopplesite import users
+        self.sign_in_with_hh({'id': 'hh40', 'name': 'Max Ray', 'email': 'max@example.com', 'email_verified': True})
+        self.user = dict(users.db().execute("SELECT * FROM users WHERE email='max@example.com'").fetchone())
+        con = square.db()
+        con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) "
+                    "VALUES ('sandbox', 999, 'VM', 0, ?, 'MONTHLY:999')", (square.PLAN_NAME,))
+        con.commit()
+        self.sub = {'id': 'S1', 'status': 'ACTIVE', 'plan_variation_id': 'VM', 'customer_id': 'C1', 'card_id': 'K1',
+                    'location_id': 'L1', 'charged_through_date': '2026-12-26'}
+        self.invoices = [{'id': 'I1', 'subscription_id': 'S1', 'status': 'PAID', 'public_url': 'https://sq/i1',
+                          'payment_requests': [{'due_date': '2026-11-26', 'computed_amount_money': {'amount': 999}}]}]
+
+        def fake(method, path, body=None):
+            if path.startswith('/v2/subscriptions/'):
+                return {'subscription': self.sub}
+            if path == '/v2/invoices/search':
+                return {'invoices': list(self.invoices)}
+            if path == '/v2/cards/K1':
+                return {'card': {'card_brand': 'VISA', 'last_4': '4242', 'exp_month': 8, 'exp_year': 2028}}
+            if path.endswith('/cancel'):
+                self.sub = {**self.sub, 'canceled_date': '2026-12-26'}
+                return {'subscription': self.sub}
+            raise AssertionError(path)
+        p = mock.patch.object(square, 'call', fake)
+        p.start()
+        self.addCleanup(p.stop)
+        e = mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'})
+        e.start()
+        self.addCleanup(e.stop)
+        self.lic = square.apply(self.sub, self.user)
+
+    def test_billing_section(self):
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('Billing', page)
+        self.assertIn('<b>$9.99</b> on Dec 26, 2026', page)
+        self.assertIn('Visa ending 4242', page)
+        self.assertIn('https://sq/i1', page)                 # receipt
+        self.assertIn('Receipt', page)
+
+    def test_failed_payment_grace_pause_recover(self):
+        import datetime as dt
+        from dopplesite import licenses, mailer
+        mailer.sent.clear()
+        self.invoices.insert(0, {'id': 'I2', 'subscription_id': 'S1', 'status': 'UNPAID', 'public_url': 'https://sq/pay2',
+                                 'payment_requests': [{'due_date': '2026-12-26', 'computed_amount_money': {'amount': 999}}]})
+        due = dt.datetime(2026, 12, 26, 12).timestamp()
+        self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due), 'failing')
+        lic = licenses.get(self.lic['id'])
+        self.assertTrue(lic['valid'] and lic['pay_url'] == 'https://sq/pay2')
+        self.assertTrue(any("didn't go through" in m['subject'] for m in mailer.sent))
+        with mock.patch.object(licenses.time, 'time', lambda: due):
+            page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn("Your payment didn't go through", page)
+        self.assertIn('https://sq/pay2', page)
+        self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due + 6 * 86400), 'failing')   # reminder
+        self.assertTrue(any('pauses soon' in m['subject'] for m in mailer.sent))
+        with mock.patch.object(licenses.time, 'time', lambda: due + 8 * 86400):
+            self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due + 8 * 86400), 'paused')
+            lic = licenses.get(self.lic['id'])
+            self.assertFalse(lic['valid'])
+            self.assertIn('payment', lic['why'])
+        self.invoices[0]['status'] = 'PAID'                      # they paid
+        self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due + 9 * 86400), 'recovered')
+        self.assertTrue(licenses.get(self.lic['id'])['valid'])
+        self.assertTrue(any('all set' in m['subject'] for m in mailer.sent))
+
+    def test_long_unpaid_is_cancelled(self):
+        import datetime as dt
+        from dopplesite import licenses
+        self.invoices.insert(0, {'id': 'I2', 'subscription_id': 'S1', 'status': 'UNPAID', 'public_url': 'https://sq/pay2',
+                                 'payment_requests': [{'due_date': '2026-12-26', 'computed_amount_money': {'amount': 999}}]})
+        due = dt.datetime(2026, 12, 26, 12).timestamp()
+        square.check_payment(licenses.get(self.lic['id']), due)
+        self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due + 31 * 86400), 'cancelled')

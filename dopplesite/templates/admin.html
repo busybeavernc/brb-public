@@ -494,6 +494,10 @@
     const d = await api('/admin/api/customer?who=' + encodeURIComponent(who)), c = d.customer, box = $('#custView');
     box.hidden = false;
     box.innerHTML = `<div class="admin-card">${customerSummary(c)}
+      ${Object.keys(c.billing || {}).length ? '<h4>Billing</h4>' + Object.entries(c.billing).map(([lid, b]) => b.error ? `<p class="hint">${esc(b.error)}</p>` :
+        `<div class="mini">Next: ${b.next ? esc(b.next[1] + ' on ' + b.next[0]) : 'none (cancelled)'} · ${b.card ? esc(`${b.card.brand} …${b.card.last4} exp ${b.card.exp}`) : 'no card'}` +
+        `${b.card_expires_first ? ' <span class="tag warn">card expires first</span>' : ''}${b.unpaid ? ` <span class="tag bad">unpaid ${esc(b.unpaid.amount)} since ${esc(b.unpaid.date)}</span>` : ''}</div>` +
+        b.history.map(h => `<div class="mini hint">${esc(h.date)} · ${esc(h.amount)} · ${esc(h.status)}${h.url ? ` · <a href="${esc(h.url)}" target="_blank" rel="noopener">invoice</a>` : ''}</div>`).join('')).join('') : ''}
       <h4>Support requests</h4>${c.tickets.map(t => `<div class="mini"><a href="#support/${t.id}">#${t.id} ${esc(t.subject)}</a> ${stTag(t.status)} <span class="hint">${esc(when(t.updated_at))}</span></div>`).join('') || '<p class="hint">none</p>'}
       <h4>History</h4><table class="keytable"><tbody>${c.history.map(h => `<tr><td>${esc(when(h.at))}</td><td>${esc(h.who)}</td><td>${esc(h.action.replace(/_/g, ' '))}</td><td class="hint">${esc(h.details)}</td></tr>`).join('') || '<tr><td class="hint">nothing yet</td></tr>'}</tbody></table></div>`;
     box.scrollIntoView({ behavior: 'smooth' });

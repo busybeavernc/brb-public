@@ -450,3 +450,7 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
   .keytable.acct td.actions form, .keytable.acct td.actions > .btn { margin: 4px 6px 0 0; }
 }
 .keytable.acct td.nowrap { white-space: nowrap; }
+.billing-card { margin: 10px 0 14px; }
+.billing-top { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 6px; }
+.pay-problem { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pay-problem p { margin: 0; }

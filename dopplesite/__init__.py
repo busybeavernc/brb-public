@@ -2,6 +2,7 @@
 import hmac
 import logging
 import os
+import time
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -101,6 +102,14 @@ def create_app() -> Flask:
         the name field (accounts made before Happy Hacks asked for a name)."""
         first = str((u or {}).get('name') or '').strip().split(' ')[0]
         return first if first and '@' not in first and not any(c.isdigit() for c in first) else 'Account'
+
+    @app.template_filter('isodate')
+    def isodate(d):
+        import datetime as _dt
+        try:
+            return _dt.date.fromisoformat(str(d)[:10]).strftime('%b %-d, %Y')
+        except ValueError:
+            return str(d or '')
 
     @app.template_filter('datefmt')
     def datefmt(ts):
@@ -332,7 +341,14 @@ def create_app() -> Flask:
                 audit.log(g.user.get('email') or g.user['id'], 'link_computer', dev['id'])
                 linked = dev
         keys = licenses.for_user(g.user['id'], g.user.get('email'))
-        return render_template('account.html', keys=keys, devices=licenses.user_devices(g.user['id'], g.user.get('email')),
+        billing = {}
+        for k in keys:
+            if k.get('plan') == 'subscription' and (k['valid'] or k.get('payment_failed_at')) and not \
+                    (k.get('expires_at') and k['expires_at'] < time.time()):
+                b = square.billing(k)
+                if b:
+                    billing[k['id']] = b
+        return render_template('account.html', keys=keys, billing=billing, grace_days=square.grace_days(), devices=licenses.user_devices(g.user['id'], g.user.get('email')),
                                moves={k['id']: licenses.self_moves_left(k['id']) for k in keys},
                                tickets=support.search(email=g.user.get('email'), user_id=g.user['id'], limit=50)[0],
                                linked=linked, notice=request.args.get('n'), error=request.args.get('e'),

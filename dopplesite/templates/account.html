@@ -10,6 +10,15 @@
   {% if notice == 'canceled' %}<p class="msg">Your subscription is cancelled. Your key keeps working until the end of the period you've paid for.</p>{% endif %}
   {% if notice == 'moved' %}<p class="msg">Done: that computer is off your key. The key now works on the next computer you enter it on.</p>{% endif %}
   {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+  {% for k in keys if k.payment_failed_at and not k.expires_at %}
+  <div class="msg err pay-problem">
+    <p><b>Your payment didn't go through.</b>
+      {% if k.valid %}Your key (…{{ k.key[-4:] }}) keeps working until <b>{{ (k.payment_failed_at + grace_days * 86400)|datefmt }}</b>.
+      {% else %}Unlimited LOOP time is paused on key …{{ k.key[-4:] }} until it's paid.{% endif %}
+      Paying switches everything back on by itself; you can use a different card and save it for future renewals.</p>
+    {% if k.pay_url %}<a class="btn btn-sm" href="{{ k.pay_url }}" target="_blank" rel="noopener">Pay now</a>{% endif %}
+  </div>
+  {% endfor %}
 
   <h2>Your computers</h2>
   {% if devices %}
@@ -55,6 +64,34 @@
   {% endfor %}</tbody></table>
   <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
   {% else %}<p class="note">No keys yet. <a href="{{ url_for('api.license_page') }}">Get unlimited LOOP time</a>.</p>{% endif %}
+
+  {% if billing %}
+  <h2>Billing</h2>
+  {% for k in keys if billing.get(k.id) %}{% set b = billing[k.id] %}
+  <div class="card billing-card">
+    <p class="note">Key …{{ k.key[-4:] }}</p>
+    {% if b.error %}<p class="note">{{ b.error }}</p>{% else %}
+    <div class="billing-top">
+      <div><span class="note">Next payment</span><br>{% if b.next %}<b>{{ b.next[1] }}</b> on {{ b.next[0]|isodate }}{% else %}None (cancelled){% endif %}</div>
+      <div><span class="note">Card</span><br>{% if b.card %}{{ b.card.brand }} ending {{ b.card.last4 }} · expires {{ b.card.exp }}{% else %}-{% endif %}
+        {% if b.card_expires_first %}<br><span class="tag warn">expires before your next payment</span>{% endif %}</div>
+    </div>
+    {% if b.unpaid %}<p class="msg err">{{ b.unpaid.amount }} due {{ b.unpaid.date|isodate }} is unpaid.
+      {% if b.unpaid.url %}<a class="btn btn-sm" href="{{ b.unpaid.url }}" target="_blank" rel="noopener">Pay now</a>{% endif %}</p>{% endif %}
+    {% if b.history %}
+    <table class="keytable acct"><thead><tr><th>Date</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+    {% for h in b.history %}
+      <tr><td>{{ h.date|isodate }}</td><td>{{ h.amount }}</td>
+        <td><span class="tag {{ 'ok' if h.ok else 'bad' if h.status in ('failed', 'not paid') else 'dim' }}">{{ h.status }}</span></td>
+        <td class="actions">{% if h.url %}<a class="btn secondary btn-sm" href="{{ h.url }}" target="_blank" rel="noopener">{{ 'Receipt' if h.ok else 'Pay now' if h.status in ('failed', 'not paid', 'partly paid') else 'View' }}</a>{% endif %}</td></tr>
+    {% endfor %}</tbody></table>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+  <p class="note">Payments are handled by Square. All payments are final (no refunds); cancel any time to stop the next renewal.
+    Need to change the card for future renewals? <a href="{{ url_for('support_page', topic='license') }}">Ask us</a>.</p>
+  {% endif %}
 
   <h2>Your support requests</h2>
   {% if tickets %}

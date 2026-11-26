@@ -82,8 +82,12 @@ def customer(who):
     history = audit.recent(100, target=targets) if targets else []
     if not (u or keys or devs or tickets):
         return None
+    from . import square
+    billing = {k['id']: square.billing(k) for k in keys if k.get('plan') == 'subscription' and
+               not (k.get('expires_at') and k['expires_at'] < time.time())}
     return {'user': u, 'email': email, 'keys': keys, 'devices': devs, 'tickets': tickets, 'history': history,
-            'self_moves_left': {k['id']: licenses.self_moves_left(k['id']) for k in keys}}
+            'self_moves_left': {k['id']: licenses.self_moves_left(k['id']) for k in keys},
+            'billing': {k: v for k, v in billing.items() if v}}
 
 
 # ------------------------------------------------------------------ saved filters
@@ -107,8 +111,9 @@ def run_filter(name, limit=500):
     con = _db()
     now = time.time()
     if name == 'payment_problem':
-        rows = con.execute("SELECT id FROM licenses WHERE plan='subscription' AND square_status IN "
-                           "('DEACTIVATED','PAUSED','DELINQUENT','PAST_DUE') ORDER BY created_at DESC LIMIT ?", (limit,))
+        rows = con.execute("SELECT id FROM licenses WHERE plan='subscription' AND (payment_failed_at IS NOT NULL OR "
+                           "square_status IN ('DEACTIVATED','PAUSED','DELINQUENT','PAST_DUE')) ORDER BY created_at DESC LIMIT ?",
+                           (limit,))
         return 'keys', [licenses.get(r['id']) for r in rows]
     if name == 'cancelled':
         rows = con.execute("SELECT id FROM licenses WHERE plan='subscription' AND square_status='CANCELED' AND "
