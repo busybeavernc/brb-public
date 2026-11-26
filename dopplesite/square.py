@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS square_checkouts (id TEXT PRIMARY KEY, env TEXT NOT N
   price_cents INTEGER NOT NULL DEFAULT 0, device_id TEXT);
 CREATE TABLE IF NOT EXISTS square_replacements (old_sub_id TEXT PRIMARY KEY, new_sub_id TEXT, license_id TEXT NOT NULL,
   reason TEXT NOT NULL DEFAULT '', created_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS square_swaps (sub_id TEXT PRIMARY KEY, variation_id TEXT NOT NULL, reason TEXT NOT NULL,
+  created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS cancel_feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, license_id TEXT NOT NULL, user_id TEXT,
   email TEXT NOT NULL DEFAULT '', plan TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '',
   feedback TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL DEFAULT 'started', created_at REAL NOT NULL, updated_at REAL);
@@ -742,6 +744,22 @@ def replace_subscription(lic, phases, label, reason):
     return lic, new
 
 
+def swap_plan(lic, phases, label, reason):
+    """Move a subscription onto other pricing from its next billing day with Square's SwapPlan (same subscription:
+    no cancellation). -> the scheduled action"""
+    sid = lic.get('square_subscription_id') or ''
+    var_id = _variation_id_for({'label': label, 'phases': phases})
+    r = call('POST', f'/v2/subscriptions/{quote(sid)}/swap-plan', {'new_plan_variation_id': var_id})
+    con = db()
+    con.execute('INSERT OR REPLACE INTO square_swaps (sub_id, variation_id, reason, created_at) VALUES (?,?,?,?)',
+                (sid, var_id, reason, time.time()))
+    con.commit()
+    acts = r.get('actions') or []
+    log.info('%s: subscription %s swaps to %s (%s) on %s', reason, sid, var_id, _spec(phases),
+             acts[0].get('effective_date') if acts else '?')
+    return acts[0] if acts else {}
+
+
 def keep_with_offer(lic, offer):
     """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price."""
     sid = lic.get('square_subscription_id') or ''
@@ -828,7 +846,8 @@ def promo_safeguard(now=None):
     rows = con.execute("SELECT * FROM licenses WHERE plan='subscription' AND status='active' AND expires_at IS NULL "
                        "AND square_subscription_id IS NOT NULL AND square_subscription_id NOT LIKE 'sandbox-%' "
                        "AND square_subscription_id NOT IN (SELECT new_sub_id FROM square_replacements "
-                       "WHERE new_sub_id IS NOT NULL)").fetchall()
+                       "WHERE new_sub_id IS NOT NULL) AND square_subscription_id NOT IN (SELECT sub_id FROM square_swaps)"
+                       ).fetchall()
     moved = 0
     seen = set()
     for r in rows:
@@ -852,6 +871,15 @@ def promo_safeguard(now=None):
         if not _will_bill_too_little(sub, regular[0][1]):
             seen.add(lic['id'])
             continue                       # Square will charge the regular price by itself: leave it alone
+        if cad == 'DAILY' and test_prices_on():
+            # Experiment (staff test subscriptions only): swap the plan instead of cancel-and-replace - no "cancelled"
+            # email from Square, if Square then bills the new plan's price rather than the checkout order's.
+            try:
+                swap_plan(licenses.get(lic['id']), regular, 'Regular price', 'promo ends (swap test)')
+                moved += 1
+            except SquareError as e:
+                log.warning('promo swap test for key %s: %s', lic['key'][-4:], e)
+            continue
         try:
             new_lic, _new = replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')
             moved += 1

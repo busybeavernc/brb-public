@@ -452,3 +452,37 @@ class BillingTests(Base):
         due = dt.datetime(2026, 12, 26, 12).timestamp()
         square.check_payment(licenses.get(self.lic['id']), due)
         self.assertEqual(square.check_payment(licenses.get(self.lic['id']), due + 31 * 86400), 'cancelled')
+
+    def test_staff_daily_promo_is_swapped_not_replaced(self):
+        import datetime as dt
+        from dopplesite import users
+        self.sign_in_with_hh({'id': 'hh33', 'name': 'Sw', 'email': 'sw@example.com', 'email_verified': True})
+        user = dict(users.db().execute("SELECT * FROM users WHERE email='sw@example.com'").fetchone())
+        con = square.db()
+        con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) VALUES "
+                    "('sandbox', 100, 'VT', 0, ?, 'DAILY:100x1|DAILY:200'), ('sandbox', 200, 'VD', 0, ?, 'DAILY:200')",
+                    (square.PLAN_NAME, square.PLAN_NAME))
+        con.commit()
+        sub = {'id': 'T1', 'status': 'ACTIVE', 'plan_variation_id': 'VT', 'customer_id': 'C', 'card_id': 'K', 'location_id': 'L',
+               'charged_through_date': (dt.date.today() + dt.timedelta(days=1)).isoformat(), 'order_template_id': 'O'}
+        calls = []
+
+        def fake(method, path, body=None):
+            calls.append((method, path, body))
+            if path == '/v2/subscriptions/T1':
+                return {'subscription': sub}
+            if path.startswith('/v2/subscriptions/') and path.count('/') == 3:
+                return {'subscription': {'id': path.rsplit('/', 1)[1], 'plan_variation_id': 'VM', 'status': 'ACTIVE'}}
+            if path == '/v2/orders/O':
+                return {'order': {'total_money': {'amount': 100}}}
+            if path.endswith('/swap-plan'):
+                return {'subscription': sub, 'actions': [{'type': 'SWAP_PLAN', 'effective_date': sub['charged_through_date']}]}
+            raise AssertionError(path)
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't', 'TEST_PRICES': 'on'}), \
+                mock.patch.object(square, 'call', fake):
+            square.apply(sub, user)
+            self.assertEqual(square.promo_safeguard(), 1)
+            self.assertEqual(square.promo_safeguard(), 0)                          # once
+        swaps = [b for m, p, b in calls if p.endswith('/swap-plan')]
+        self.assertEqual(swaps, [{'new_plan_variation_id': 'VD'}])
+        self.assertFalse(any(p.endswith('/cancel') for m, p, b in calls))
