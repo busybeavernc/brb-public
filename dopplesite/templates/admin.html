@@ -22,6 +22,18 @@
         <div class="stats" id="metrics"></div>
         <table class="keytable" id="weeks"></table>
       </div>
+      <div class="admin-card" id="sqcard">
+        <div class="admin-card-head">
+          <h2>Square subscriptions</h2>
+          <span id="sqTag" class="tag dim">checking…</span>
+          <span class="sp"></span>
+          {% if role == 'admin' %}<button class="linkbtn" type="button" id="sqSync">Update Square now</button>{% endif %}
+        </div>
+        <dl class="kv" id="sqInfo"></dl>
+        <p class="hint">Square's plan follows the prices in .env (SUBSCRIPTION_PRICE_CENTS, EARLY_PRICE_CENTS): BRB checks
+          after every start-up and price change, and adds what's missing. A new price never changes what existing
+          subscribers pay - their old price stays in Square, it's just not offered any more.</p>
+      </div>
       <div class="admin-card" id="appcard">
         <div class="admin-card-head">
           <h2>BRB app</h2>
@@ -245,6 +257,29 @@
     $('#supCount').textContent = m.open_requests ? m.open_requests : '';
   }
 
+  async function loadSquare() {
+    const q = await api('/admin/api/square'), r = q.report;
+    const tag = $('#sqTag');
+    tag.className = 'tag ' + (!q.ready ? 'warn' : q.error ? 'bad' : r ? 'ok' : 'dim');
+    tag.textContent = !q.ready ? 'not set up' : q.error ? 'problem' : r ? `in step (${q.env})` : q.env;
+    $('#sqInfo').innerHTML = !q.ready
+      ? `<dt>Set up</dt><dd>Add SQUARE_${q.env.toUpperCase()}_ACCESS_TOKEN (and LOCATION_ID) to .env.</dd>`
+      : `<dt>Prices offered</dt><dd>${q.prices.map(esc).join(' and ')} per month</dd>` +
+        (r ? `<dt>In Square</dt><dd>${esc(r.plan)}: ${r.offered.map(o => esc(`${o.label} ${o.price}`)).join(', ')}` +
+             (r.older_prices.length ? ` · older prices kept for existing subscribers: ${r.older_prices.map(esc).join(', ')}` : '') +
+             (r.duplicate_plans ? ` · <span class="tag warn">${r.duplicate_plans} extra "${esc(r.plan)}" plan(s) in Square</span>` : '') + `</dd>` : '') +
+        (q.synced_at ? `<dt>Last checked</dt><dd>${esc(when(q.synced_at))}${r && r.created.length ? ' · added ' + esc(r.created.join(', ')) : ''}</dd>` : '') +
+        (q.error ? `<dt>Problem</dt><dd><span class="tag bad">${esc(q.error)}</span></dd>` : '') +
+        `<dt>Webhook</dt><dd>${q.webhook ? 'signature key set' : '<span class="tag warn">set SQUARE_' + esc(q.env.toUpperCase()) + '_WEBHOOK_SIGNATURE_KEY</span>'}</dd>`;
+  }
+  const sqSync = $('#sqSync');
+  if (sqSync) sqSync.addEventListener('click', async () => {
+    sqSync.disabled = true;
+    try { await post('/admin/api/square/sync', {}); } catch (e) { alert(e.message); }
+    sqSync.disabled = false;
+    loadSquare();
+  });
+
   async function loadApp(fresh = false) {
     const a = await api('/admin/api/app' + (fresh ? '?fresh=1' : ''));
     const r = a.release;
@@ -269,6 +304,7 @@
   }
   $('#appRefresh').addEventListener('click', () => loadApp(true).catch(fail));
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
+  loadSquare().catch(e => { $('#sqInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
 
   if (ADMIN) {
     async function loadUpd(fetchGit = true) {

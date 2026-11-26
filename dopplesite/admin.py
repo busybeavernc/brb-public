@@ -372,6 +372,28 @@ def metrics():
                          'error': mailin.status['last_error']})
 
 
+@bp.get('/admin/api/square')
+@login_required
+def square_info():
+    from . import square
+    st = square.sync_status
+    return jsonify(ready=square.ready(), env=square.env(), prices=[square.price_text(c) for c in square.wanted_prices()],
+                   synced_at=st['at'], error=st['error'], report=st['report'],
+                   webhook=bool(square._setting('WEBHOOK_SIGNATURE_KEY')))
+
+
+@bp.post('/admin/api/square/sync')
+@admin_only
+def square_sync():
+    from . import square
+    try:
+        report = square.sync_catalog()
+    except square.SquareError as e:
+        return jsonify(error=str(e)), 502
+    audit.log(_who(), 'square_sync', report['plan_id'], created=', '.join(report['created']) or 'nothing')
+    return jsonify(report=report)
+
+
 @bp.get('/admin/export/<kind>.csv')
 @login_required
 @admin_only

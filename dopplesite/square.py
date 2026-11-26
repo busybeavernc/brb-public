@@ -15,7 +15,10 @@ Settings (.env). SQUARE_ENV picks which set is used; both can sit in .env side b
 The webhook subscription should send: subscription.created, subscription.updated, invoice.payment_made.
 
 How it works
-  - Subscribe: a Square payment link for the monthly plan (created in Square's catalog on first use). The person is
+  - Square's catalog is kept in step with these settings (sync_catalog): one "BRB Unlimited" subscription plan with a
+    monthly variation at the full price and at the early-bird price - checked after every start-up and price change,
+    and from Admin > Overview > Square subscriptions. Nothing needs setting up by hand in Square.
+  - Subscribe: a Square payment link for the monthly plan. The person is
     signed in with Happy Hacks, so their email is filled in; when they come back (or Square's webhook arrives) their
     subscription is found and a license key is made for it, shown on /license.
   - Cancel (on /license, or in Square): the key keeps working until the end of the month already paid for.
@@ -137,25 +140,134 @@ def location():
     return locs[0]['id']
 
 
+def wanted_prices():
+    """The monthly prices the website sells: the full price, and the early-bird price if it's a discount."""
+    out = [price_cents()]
+    if 0 < early_price_cents() < price_cents():
+        out.append(early_price_cents())
+    return out
+
+
+def _variation_price(v):
+    phases = (v.get('subscription_plan_variation_data') or {}).get('phases') or []
+    if len(phases) != 1 or (phases[0].get('cadence') or '').upper() != 'MONTHLY':
+        return None
+    money = ((phases[0].get('pricing') or {}).get('price_money')) or phases[0].get('recurring_price_money') or {}
+    return money.get('amount') if (money.get('currency') or 'USD') == 'USD' else None
+
+
+def _catalog_plans():
+    """Square's BRB plans and their variations: [(plan, [variation, ...])]."""
+    plans, variations, cursor = [], [], None
+    while True:
+        body = {'object_types': ['SUBSCRIPTION_PLAN'], 'include_related_objects': True}
+        if cursor:
+            body['cursor'] = cursor
+        r = call('POST', '/v2/catalog/search', body)
+        plans += [o for o in r.get('objects') or [] if not o.get('is_deleted')]
+        variations += [o for o in r.get('related_objects') or []
+                       if o.get('type') == 'SUBSCRIPTION_PLAN_VARIATION' and not o.get('is_deleted')]
+        cursor = r.get('cursor')
+        if not cursor:
+            break
+    ours = [p for p in plans if (p.get('subscription_plan_data') or {}).get('name') == PLAN_NAME]
+    by_plan = {p['id']: [] for p in ours}
+    for v in variations:
+        pid = (v.get('subscription_plan_variation_data') or {}).get('subscription_plan_id')
+        if pid in by_plan:
+            by_plan[pid].append(v)
+    for p in ours:   # variations Square nests in the plan itself
+        for v in (p.get('subscription_plan_data') or {}).get('subscription_plan_variations') or []:
+            if not v.get('is_deleted') and all(v['id'] != x['id'] for x in by_plan[p['id']]):
+                by_plan[p['id']].append(v)
+    return [(p, by_plan[p['id']]) for p in ours]
+
+
+sync_status = {'at': None, 'error': '', 'report': None}
+
+
+def sync_catalog():
+    """Make Square's catalog match the website: one "BRB Unlimited" subscription plan with a monthly variation at each
+    price the site sells (full, and early-bird). Safe to run any time: it reuses what's already in Square and only adds
+    what's missing. A price change adds a new variation; the old one stays, so existing subscribers keep their price
+    (Square doesn't move them) - it's just no longer offered. -> report"""
+    try:
+        found = _catalog_plans()
+        plan = max(found, key=lambda pv: len(pv[1]))[0] if found else None
+        created = []
+        if plan is None:
+            plan = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
+                'type': 'SUBSCRIPTION_PLAN', 'id': '#plan', 'subscription_plan_data': {'name': PLAN_NAME}}})['catalog_object']
+            found = [(plan, [])]
+            created.append(f'plan "{PLAN_NAME}"')
+        have = {}
+        for _p, vs in found:
+            for v in vs:
+                amt = _variation_price(v)
+                if amt is not None:
+                    have.setdefault(amt, v['id'])
+        con = db()
+        offered = []
+        for cents in wanted_prices():
+            label = 'Monthly' if cents == price_cents() else 'Monthly early-bird'
+            vid = have.get(cents)
+            if not vid:
+                var = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
+                    'type': 'SUBSCRIPTION_PLAN_VARIATION', 'id': '#variation', 'subscription_plan_variation_data': {
+                        'name': f'{label} ({price_text(cents)})', 'subscription_plan_id': plan['id'],
+                        'phases': [{'cadence': 'MONTHLY', 'ordinal': 0, 'pricing': {
+                            'type': 'STATIC', 'price_money': {'amount': cents, 'currency': 'USD'}}}]}}})['catalog_object']
+                vid = var['id']
+                created.append(f'{label} {price_text(cents)}/month')
+            con.execute('DELETE FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?', (env(), cents, PLAN_NAME))
+            con.execute('INSERT OR REPLACE INTO square_catalog (env, price_cents, variation_id, created_at, plan_name) '
+                        'VALUES (?,?,?,?,?)', (env(), cents, vid, time.time(), PLAN_NAME))
+            offered.append({'label': label, 'price': price_text(cents), 'cents': cents, 'variation_id': vid})
+        con.commit()
+        older = sorted({price_text(a) for a in have if a not in wanted_prices()})
+        report = {'env': env(), 'plan_id': plan['id'], 'plan': PLAN_NAME, 'offered': offered, 'created': created,
+                  'older_prices': older, 'duplicate_plans': max(0, len(found) - 1)}
+        sync_status.update(at=time.time(), error='', report=report)
+        if created:
+            log.info('Square catalog (%s): added %s', env(), ', '.join(created))
+        return report
+    except SquareError as e:
+        sync_status.update(at=time.time(), error=str(e))
+        raise
+
+
 def plan_variation(cents=None):
-    """The monthly plan in Square's catalog at this price (created there the first time)."""
+    """The monthly plan variation in Square's catalog at this price (the catalog is brought up to date if needed)."""
     cents = price_cents() if cents is None else int(cents)
-    row = db().execute('SELECT variation_id FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?',
-                       (env(), cents, PLAN_NAME)).fetchone()
+    q = 'SELECT variation_id FROM square_catalog WHERE env=? AND price_cents=? AND plan_name=?'
+    row = db().execute(q, (env(), cents, PLAN_NAME)).fetchone()
     if row:
         return row['variation_id']
-    plan = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
-        'type': 'SUBSCRIPTION_PLAN', 'id': '#plan', 'subscription_plan_data': {'name': PLAN_NAME}}})['catalog_object']
-    var = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
-        'type': 'SUBSCRIPTION_PLAN_VARIATION', 'id': '#variation', 'subscription_plan_variation_data': {
-            'name': f'{PLAN_NAME} monthly ({price_text(cents)})', 'subscription_plan_id': plan['id'],
-            'phases': [{'cadence': 'MONTHLY', 'ordinal': 0,
-                        'pricing': {'type': 'STATIC', 'price_money': {'amount': cents, 'currency': 'USD'}}}]}}})['catalog_object']
-    con = db()
-    con.execute('INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name) VALUES (?,?,?,?,?)',
-                (env(), cents, var['id'], time.time(), PLAN_NAME))
-    con.commit()
-    return var['id']
+    sync_catalog()
+    row = db().execute(q, (env(), cents, PLAN_NAME)).fetchone()
+    if not row:
+        raise SquareError("That price isn't offered any more. Please reload the page.", 409)
+    return row['variation_id']
+
+
+_synced_for = None
+
+
+def sync_in_background():
+    """Once per set of prices (startup, or after the .env prices change): bring Square's catalog up to date."""
+    global _synced_for
+    want = (env(), tuple(wanted_prices()), bool(ready()))
+    if _synced_for == want or not ready() or settings.get('NO_AUTO_BACKUP'):   # (tests: no background work)
+        return
+    _synced_for = want
+    import threading
+
+    def run():
+        try:
+            sync_catalog()
+        except Exception:  # noqa: BLE001
+            log.exception('Square catalog sync')
+    threading.Thread(target=run, daemon=True, name='square-sync').start()
 
 
 def checkout(user, return_url, early_device=None, device=None):

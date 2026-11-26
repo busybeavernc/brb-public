@@ -236,6 +236,8 @@ def create_app() -> Flask:
         if request.endpoint not in (None, 'static', 'healthz'):
             backup.maybe_run()
             mailin.start()       # read the support mailbox in the background (if IMAP_ settings are set)
+            from . import square
+            square.sync_in_background()   # Square's plan matches the prices in .env (after start-up or a price change)
 
     def _form_csrf_ok():
         return hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-')

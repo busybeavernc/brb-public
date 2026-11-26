@@ -140,9 +140,14 @@ class LicenseTests(LicenseBase):
             calls.append((method, path, body))
             if path == '/v2/locations':
                 return {'locations': [{'id': 'L1'}]}
+            if path == '/v2/catalog/search':
+                return {'objects': []}
             if path == '/v2/catalog/object':
-                t = body['object']['type']
-                return {'catalog_object': {'id': 'PLAN1' if t == 'SUBSCRIPTION_PLAN' else 'VAR250'}}
+                o = body['object']
+                if o['type'] == 'SUBSCRIPTION_PLAN':
+                    return {'catalog_object': {'id': 'PLAN1'}}
+                amt = o['subscription_plan_variation_data']['phases'][0]['pricing']['price_money']['amount']
+                return {'catalog_object': {'id': f'VAR{amt}'}}
             if path == '/v2/online-checkout/payment-links':
                 return {'payment_link': {'id': 'PL1', 'url': 'https://square.test/pay'}}
             if path.startswith('/v2/customers/'):
@@ -188,9 +193,14 @@ class LicenseTests(LicenseBase):
         def fake_call(method, path, body=None):
             if path == '/v2/locations':
                 return {'locations': [{'id': 'L1'}]}
+            if path == '/v2/catalog/search':
+                return {'objects': []}
             if path == '/v2/catalog/object':
-                t = body['object']['type']
-                return {'catalog_object': {'id': 'PLAN1' if t == 'SUBSCRIPTION_PLAN' else 'VAR500'}}
+                o = body['object']
+                if o['type'] == 'SUBSCRIPTION_PLAN':
+                    return {'catalog_object': {'id': 'PLAN1'}}
+                amt = o['subscription_plan_variation_data']['phases'][0]['pricing']['price_money']['amount']
+                return {'catalog_object': {'id': f'VAR{amt}'}}
             if path == '/v2/online-checkout/payment-links':
                 self.assertEqual(body['quick_pay']['price_money']['amount'], 500)
                 return {'payment_link': {'id': 'PL2', 'url': 'https://square.test/pay'}}
