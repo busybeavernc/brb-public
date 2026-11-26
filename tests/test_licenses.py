@@ -396,3 +396,41 @@ class OfflinePassTests(LicenseBase):
         self.assertAlmostEqual(body['until'], self.clock.t + 3 * 86400, delta=2)
         with mock.patch.dict(os.environ, {'OFFLINE_DAYS': '0'}):
             self.assertIsNone(self.api('status', key=lic['key']).get_json()['offline_pass'])
+
+
+class VirtualMachineTests(LicenseBase):
+    def test_vm_needs_an_account_and_shares_one_allowance(self):
+        st = self.api('status', vm=True).get_json()
+        self.assertTrue(st['need_account'] and st['free_left'] == 0 and 'virtual machine' in st['notice'])
+        r = self.api('lease', action='start', vm=True).get_json()
+        self.assertFalse(r['ok'])
+        self.assertIn('virtual machine', r['message'])
+        # sign in and link this VM: the free hour works; a second VM on the same account shares it
+        uid = users.sign_in({'id': 'hhvm', 'name': 'V', 'email': 'v@example.com', 'email_verified': True})['id']
+        licenses.link_device(DEV_A, uid)
+        self.assertEqual(self.api('status', vm=True).get_json()['free_left'], 3600)
+        licenses.db().execute('UPDATE devices SET used_seconds=3000 WHERE id=?', (DEV_A,))
+        licenses.db().commit()
+        self.api('lease', action='start', device_id=DEV_B, vm=True)
+        licenses.link_device(DEV_B, uid)
+        self.assertEqual(round(self.api('status', device_id=DEV_B, vm=True).get_json()['free_left']), 600)
+
+    def test_a_real_computer_is_unaffected_and_vm_flag_sticks(self):
+        self.assertEqual(self.api('status').get_json()['free_left'], 3600)
+        self.api('lease', action='start')
+        self.api('status', vm=True)
+        self.api('status')                                   # (a later report without the flag doesn't clear it)
+        self.assertEqual(licenses.db().execute('SELECT vm FROM devices WHERE id=?', (DEV_A,)).fetchone()['vm'], 1)
+
+    def test_suspicious_lists_and_blocking(self):
+        from dopplesite import customers
+        with mock.patch.dict(os.environ, {'NEW_DEVICES_PER_IP_DAY': '10'}):
+            ids = [hashlib.sha256(f'pc {i}'.encode()).hexdigest() for i in range(4)]
+            for i in ids:
+                self.api('lease', action='start', device_id=i)
+        kind, rows = customers.run_filter('busy_connections')
+        self.assertEqual((kind, len(rows)), ('computers', 4))
+        self.assertEqual(customers.bulk_block(ids[:2], 'admin'), 2)
+        self.assertEqual(self.api('status', device_id=ids[0]).get_json()['free_left'], 0)
+        self.assertGreater(self.api('status', device_id=ids[2]).get_json()['free_left'], 0)
+        self.assertEqual(len(customers.run_filter('blocked')[1]), 2)

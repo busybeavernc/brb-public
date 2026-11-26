@@ -96,6 +96,10 @@ FILTERS = {
     'stale': 'Computers not seen for 90 days',
     'no_account': 'Computers with no account (e.g. downloaded straight from GitHub)',
     'new_accounts': 'Accounts created in the last 7 days',
+    'busy_connections': 'Suspicious: internet connections that started 3+ new computers in the last 30 days',
+    'busy_accounts': 'Suspicious: accounts with 3+ computers on free time',
+    'virtual_machines': 'Computers that are virtual machines',
+    'blocked': 'Computers with free time taken away',
 }
 
 
@@ -133,10 +137,44 @@ def run_filter(name, limit=500):
                            'ld JOIN licenses l ON l.id = ld.license_id WHERE ld.device_id = d.id AND (l.user_id IS NOT NULL '
                            "OR l.email <> '')) ORDER BY d.last_seen DESC LIMIT ?", (limit,))
         return 'computers', [_dev(r) for r in rows]
+    if name == 'busy_connections':
+        rows = con.execute('SELECT d.* FROM devices d JOIN (SELECT first_ip FROM devices WHERE first_seen > ? AND first_ip <> \'\' '
+                           'GROUP BY first_ip HAVING COUNT(*) >= 3) b ON b.first_ip = d.first_ip WHERE d.first_seen > ? '
+                           'ORDER BY d.first_ip, d.first_seen LIMIT ?', (now - 30 * DAY, now - 30 * DAY, limit))
+        return 'computers', [_dev(r) for r in rows]
+    if name == 'busy_accounts':
+        rows = con.execute('SELECT d.* FROM devices d JOIN (SELECT user_id FROM devices dd WHERE user_id IS NOT NULL AND NOT EXISTS '
+                           '(SELECT 1 FROM license_devices ld WHERE ld.device_id = dd.id) GROUP BY user_id HAVING COUNT(*) >= 3) b '
+                           'ON b.user_id = d.user_id ORDER BY d.user_id, d.first_seen LIMIT ?', (limit,))
+        return 'computers', [_dev(r) for r in rows]
+    if name == 'virtual_machines':
+        rows = con.execute('SELECT * FROM devices WHERE vm=1 ORDER BY last_seen DESC LIMIT ?', (limit,))
+        return 'computers', [_dev(r) for r in rows]
+    if name == 'blocked':
+        rows = con.execute("SELECT * FROM devices WHERE note LIKE 'Free time taken away%' ORDER BY last_seen DESC LIMIT ?", (limit,))
+        return 'computers', [_dev(r) for r in rows]
     if name == 'new_accounts':
         rows = con.execute('SELECT * FROM users WHERE created_at > ? ORDER BY created_at DESC LIMIT ?', (now - 7 * DAY, limit))
         return 'accounts', [dict(r) for r in rows]
     raise KeyError(name)
+
+
+def bulk_block(ids, who):
+    """Take away free time from these computers (abuse): what's left becomes 0. A key still works on them."""
+    con = _db()
+    n = 0
+    for did in ids:
+        row = con.execute('SELECT * FROM devices WHERE id=?', (did,)).fetchone()
+        if not row:
+            continue
+        left = licenses.free_left(dict(row))
+        con.execute("UPDATE devices SET bonus_seconds = bonus_seconds - ?, note = ? WHERE id=?",
+                    (left, f'Free time taken away by {who} on {time.strftime("%Y-%m-%d")}', did))
+        n += 1
+    con.commit()
+    from . import audit
+    audit.log(who, 'block_free_time', ','.join(ids)[:500], computers=n)
+    return n
 
 
 def _dev(row):

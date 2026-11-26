@@ -159,6 +159,7 @@
         {% if role == 'admin' %}
         <div class="row bulk"><span class="hint" id="selCount">0 selected</span>
           <button class="linkbtn" type="button" id="bulkFree">add free time to selected</button>
+          <button class="linkbtn" type="button" id="bulkBlock">take free time away from selected</button>
           <button class="linkbtn" type="button" id="bulkDel">delete selected</button></div>
         {% endif %}
         <table class="keytable"><thead><tr><th></th><th>Computer</th><th>Free time left</th><th>Keys</th><th>Last seen</th><th></th></tr></thead><tbody id="devRows"><tr><td colspan="6">…</td></tr></tbody></table>
@@ -505,7 +506,19 @@
   async function runFilter(name) {
     const d = await api('/admin/api/filters/' + name), out = $('#filterOut');
     if (d.kind === 'keys') out.innerHTML = d.rows.map(keyMini).join('') || '<p class="hint">None.</p>';
-    else if (d.kind === 'computers') out.innerHTML = d.rows.map(v => devMini({ ...v, keys: [] }) + (v.customer ? `<div class="hint">customer: ${custLink(v.customer)}</div>` : '')).join('') || '<p class="hint">None.</p>';
+    else if (d.kind === 'computers') {
+      out.innerHTML = (ADMIN && d.rows.length ? `<p class="row"><button class="btn btn-sm secondary" type="button" id="blockAll">Take free time away from these ${d.rows.length} computers</button>
+          <span class="hint">A key still works on them. Undo for one computer with "add free time".</span></p>` : '') +
+        d.rows.map(v => devMini({ ...v, keys: [] }) + `<div class="hint">first seen ${esc(when(v.first_seen))} from ${esc(v.first_ip || '?')}` +
+          `${v.vm ? ' · <span class="tag warn">virtual machine</span>' : ''} · free left ${Math.round((v.free_left || 0) / 60)} min` +
+          `${v.customer ? ' · customer: ' + custLink(v.customer) : ''}${v.note ? ' · ' + esc(v.note) : ''}</div>`).join('') || '<p class="hint">None.</p>';
+      const b = $('#blockAll');
+      if (b) b.addEventListener('click', async () => {
+        if (!confirm(`Take the free LOOP time away from ${d.rows.length} computers?`)) return;
+        try { const r = await post('/admin/api/bulk', { action: 'block', devices: d.rows.map(v => v.id) }); alert(`Done: ${r.count} computers.`); runFilter(name); }
+        catch (e) { fail(e); }
+      });
+    }
     else out.innerHTML = d.rows.map(u => `<div class="mini">${custLink(u.email || u.id, u.name || u.email)} <span class="hint">${esc(when(u.created_at))}</span></div>`).join('') || '<p class="hint">None.</p>';
   }
   loadFilters().catch(() => {});
@@ -551,6 +564,11 @@
       if (!selected.size) return alert('Tick some computers first.');
       const v = prompt(`Add how many minutes of free LOOP time to ${selected.size} computers?`, '30'); if (!v) return;
       try { const d = await post('/admin/api/bulk', { action: 'free_time', minutes: parseFloat(v), devices: [...selected] }); alert(`Done: ${d.count} computers.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
+    });
+    $('#bulkBlock').addEventListener('click', async () => {
+      if (!selected.size) return alert('Tick some computers first.');
+      if (!confirm(`Take the free LOOP time away from ${selected.size} computers? A key still works on them.`)) return;
+      try { const d = await post('/admin/api/bulk', { action: 'block', devices: [...selected] }); alert(`Done: ${d.count} computers.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
     });
     $('#bulkDel').addEventListener('click', async () => {
       if (!selected.size) return alert('Tick some computers first.');

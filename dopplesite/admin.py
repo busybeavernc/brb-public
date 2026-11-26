@@ -516,6 +516,8 @@ def bulk():
             n = customers.bulk_free_time(ids, float(d.get('minutes') or 0), _who())
         except ValueError:
             return jsonify(error='Minutes must be a number.'), 400
+    elif d.get('action') == 'block':
+        n = customers.bulk_block(ids, _who())
     elif d.get('action') == 'delete':
         n = customers.bulk_delete_devices(ids, _who())
     else:

@@ -30,7 +30,7 @@ def _too_many(ip, limit=600, window=60):   # generous: many people can share one
 def _device(create):
     d = request.get_json(silent=True) or {}
     dev = licenses.touch_device(d.get('device_id'), d.get('device_name', ''), d.get('platform', ''), d.get('app_version', ''),
-                                request.remote_addr or '', create=create)
+                                request.remote_addr or '', create=create, vm=bool(d.get('vm')))
     return d, dev
 
 

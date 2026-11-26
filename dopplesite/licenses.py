@@ -100,6 +100,9 @@ def db():
         if 'user_id' not in cols:   # the account this computer is linked to (from BRB's "Link to my account")
             con.execute('ALTER TABLE devices ADD COLUMN user_id TEXT')
             con.commit()
+        if 'vm' not in cols:   # BRB says it runs in a virtual machine: free time there needs an account
+            con.execute('ALTER TABLE devices ADD COLUMN vm INTEGER NOT NULL DEFAULT 0')
+            con.commit()
         lcols = [r[1] for r in con.execute('PRAGMA table_info(licenses)')]
         if 'renews_at' not in lcols:   # a subscription's next renewal (paid up to then), from Square
             con.execute('ALTER TABLE licenses ADD COLUMN renews_at REAL')
@@ -262,7 +265,7 @@ def new_devices_per_ip_day():
         return 3
 
 
-def touch_device(device_id, name='', platform='', app_version='', ip='', create=True):
+def touch_device(device_id, name='', platform='', app_version='', ip='', create=True, vm=False):
     """This computer's record, refreshed. create=False (a status check): a computer we haven't seen yet isn't
     recorded - it gets a full free allowance on paper, and is recorded the first time it puts the LOOP on air."""
     if not plausible_device_id(device_id):
@@ -271,13 +274,14 @@ def touch_device(device_id, name='', platform='', app_version='', ip='', create=
     now = time.time()
     con = db()
     name, platform, app_version, ip = str(name)[:80], str(platform)[:20], str(app_version)[:20], str(ip)[:60]
+    vm = 1 if vm else 0
     if con.execute('SELECT 1 FROM devices WHERE id=?', (device_id,)).fetchone():
-        con.execute('UPDATE devices SET name=?, platform=?, app_version=?, last_seen=?, last_ip=? WHERE id=?',
-                    (name, platform, app_version, now, ip, device_id))
+        con.execute('UPDATE devices SET name=?, platform=?, app_version=?, last_seen=?, last_ip=?, vm=MAX(vm, ?) WHERE id=?',
+                    (name, platform, app_version, now, ip, vm, device_id))
     elif not create:
         return {'id': device_id, 'name': name, 'platform': platform, 'app_version': app_version, 'used_seconds': 0.0,
                 'bonus_seconds': 0.0, 'first_seen': now, 'last_seen': now, 'last_ip': ip, 'first_ip': ip, 'note': '',
-                'discount_used_at': None, 'new': True}
+                'discount_used_at': None, 'new': True, 'vm': vm, 'user_id': None}
     else:
         # A brake on making up device ids for more free time: only so many new computers per internet connection
         # per day (an office shares one address, so it's a handful, not one).
@@ -287,8 +291,8 @@ def touch_device(device_id, name='', platform='', app_version='', ip='', create=
             raise LicenseError('Too many new computers have started BRB from this internet connection today. '
                                'Please try again tomorrow, or contact support from brb.happyhacks.io/license.',
                                'too_many_devices', 429)
-        con.execute('INSERT INTO devices (id, name, platform, app_version, first_seen, last_seen, last_ip, first_ip) '
-                    'VALUES (?,?,?,?,?,?,?,?)', (device_id, name, platform, app_version, now, now, ip, ip))
+        con.execute('INSERT INTO devices (id, name, platform, app_version, first_seen, last_seen, last_ip, first_ip, vm) '
+                    'VALUES (?,?,?,?,?,?,?,?,?)', (device_id, name, platform, app_version, now, now, ip, ip, vm))
     con.commit()
     return dict(con.execute('SELECT * FROM devices WHERE id=?', (device_id,)).fetchone())
 
@@ -303,8 +307,26 @@ def delete_device(device_id):
     return n
 
 
+VM_NOTICE = ('BRB is running in a virtual machine. Free LOOP time in virtual machines needs a BRB account (one free '
+             'allowance per account): in BRB, open Settings > License and click "Link this computer to my account", then '
+             'sign in.')
+
+
 def free_left(device):
-    return max(0.0, free_seconds() + float(device.get('bonus_seconds') or 0) - float(device.get('used_seconds') or 0))
+    """Free time this computer has left. In a virtual machine (each one looks like a new computer), free time needs
+    an account, and all of an account's virtual machines share one allowance."""
+    bonus, used = float(device.get('bonus_seconds') or 0), float(device.get('used_seconds') or 0)
+    if device.get('vm'):
+        if not device.get('user_id'):
+            return 0.0
+        row = db().execute('SELECT COALESCE(SUM(used_seconds), 0) AS u FROM devices WHERE user_id=? AND vm=1 AND id<>?',
+                           (device['user_id'], device['id'])).fetchone()
+        used += float(row['u'] or 0)
+    return max(0.0, free_seconds() + bonus - used)
+
+
+def needs_account(device):
+    return bool(device.get('vm')) and not device.get('user_id')
 
 
 def _bound_license(device_id):
@@ -394,6 +416,9 @@ def status(device, key=None):
     else:
         out.update(plan='free', unlimited=False, key=None, key_problem=problem)
     out['free_left'] = free_left(device)
+    if not lic and needs_account(device):
+        out['need_account'] = True
+        out['notice'] = VM_NOTICE
     out['can_loop'] = out['unlimited'] or out['free_left'] > 0
     out['license_url'] = settings.public_url() + '/license'
     # "Link this computer to my account" (Settings > License): signs in, then shows the computer on /account
@@ -461,7 +486,8 @@ def lease(device, key=None, action='start'):
     if secs <= 0:
         con.commit()
         return {**st, 'ok': False, 'lease_seconds': 0,
-                'message': 'Your free LOOP time is used up. Get a license key for unlimited use.'}
+                'message': VM_NOTICE if st.get('need_account') else
+                'Your free LOOP time is used up. Get a license key for unlimited use.'}
     lid = uuid.uuid4().hex[:16]
     con.execute('INSERT INTO leases (id, device_id, license_id, charged, started_at, until) VALUES (?,?,?,?,?,?)',
                 (lid, dev['id'], None, charge, now, now + secs))
