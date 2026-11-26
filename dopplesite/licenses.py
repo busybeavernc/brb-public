@@ -17,12 +17,28 @@ import hashlib
 import hmac
 import re
 import secrets
+import json
 import time
 import uuid
 
 from . import settings, users
 
-LEASE_SECONDS = 30
+LEASE_SECONDS = 30   # default; LEASE_SECONDS in .env (15-300): longer = fewer requests from computers on air
+
+
+def lease_seconds():
+    try:
+        return max(15, min(300, int(float(settings.get('LEASE_SECONDS', LEASE_SECONDS)))))
+    except ValueError:
+        return LEASE_SECONDS
+
+
+def check_every():
+    """How often an idle app re-checks its license (STATUS_SECONDS, 60-3600, default 300)."""
+    try:
+        return max(60, min(3600, int(float(settings.get('STATUS_SECONDS', 300)))))
+    except ValueError:
+        return 300
 KEY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'   # Crockford base32: no I, L, O, U
 DEVICE_ID = re.compile(r'^[0-9a-f]{64}$')
 
@@ -335,13 +351,42 @@ def _license_for_key(device_id, key):
     return get(lic['id']), ''
 
 
+OFFLINE_PASS_PREFIX = b'BRB-OFFLINE-PASS\n'   # signed passes can never be mistaken for a signed reply, or the reverse
+
+
+def offline_days():
+    try:
+        return max(0.0, min(60.0, float(settings.get('OFFLINE_DAYS', 14))))
+    except ValueError:
+        return 14.0
+
+
+def offline_pass(device_id, lic):
+    """A licensed computer's pass for when this site can't be reached: signed, for this computer only, valid for
+    OFFLINE_DAYS (default 14) - or until the license ends, if sooner. Renewed with every status/lease reply, so a
+    cancelled or removed license simply stops being renewed. None when OFFLINE_DAYS is 0."""
+    days = offline_days()
+    if not days:
+        return None
+    from . import signing
+    now = time.time()
+    until = now + days * 86400
+    if lic.get('expires_at'):
+        until = min(until, float(lic['expires_at']))
+    body = json.dumps({'device_id': device_id, 'plan': lic['plan'], 'issued': int(now), 'until': int(until)},
+                      separators=(',', ':'), sort_keys=True)
+    return {'body': body, 'sig': signing.sign(OFFLINE_PASS_PREFIX + body.encode())}
+
+
 def status(device, key=None):
     """What this computer may do right now (no time is charged)."""
     lic, problem = _license_for(device['id'], key)
-    out = {'free_total': free_seconds(), 'grace_seconds': grace_seconds(), 'server_time': time.time()}
+    out = {'free_total': free_seconds(), 'grace_seconds': grace_seconds(), 'check_every': check_every(),
+           'server_time': time.time()}
     if lic:
         out.update(plan=lic['plan'], unlimited=True, key=lic['key'], key_problem='',
                    expires_at=lic.get('expires_at'), max_devices=lic['max_devices'], devices=len(lic['devices']))
+        out['offline_pass'] = offline_pass(device['id'], lic)
     else:
         out.update(plan='free', unlimited=False, key=None, key_problem=problem)
     out['free_left'] = free_left(device)
@@ -400,9 +445,9 @@ def lease(device, key=None, action='start'):
     dev = dict(con.execute('SELECT * FROM devices WHERE id=?', (device['id'],)).fetchone())
     st = status(dev, key)
     if st['unlimited']:
-        charge, secs = 0.0, LEASE_SECONDS
+        charge, secs = 0.0, lease_seconds()
     else:
-        secs = min(LEASE_SECONDS, st['free_left'])
+        secs = min(lease_seconds(), st['free_left'])
         charge = secs
     if secs <= 0:
         con.commit()

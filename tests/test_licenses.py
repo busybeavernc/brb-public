@@ -350,3 +350,25 @@ class WordingTests(LicenseBase):
             st = self.api('status').get_json()
         self.assertFalse(st.get('offer'))
         self.assertEqual(st['offer_text'], '')
+
+
+class OfflinePassTests(LicenseBase):
+    def test_licensed_computers_get_a_signed_pass_free_ones_dont(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from dopplesite import signing
+        self.assertNotIn('offline_pass', self.api('status').get_json())
+        lic = licenses.create(plan='unlimited')
+        st = self.api('status', key=lic['key']).get_json()
+        p = st['offline_pass']
+        body = json.loads(p['body'])
+        self.assertEqual(body['device_id'], DEV_A)
+        self.assertAlmostEqual(body['until'] - self.clock.t, 14 * 86400, delta=2)
+        pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(signing.public_key()))
+        pub.verify(base64.b64decode(p['sig']), licenses.OFFLINE_PASS_PREFIX + p['body'].encode())   # raises if not
+
+    def test_pass_ends_with_the_license_and_can_be_switched_off(self):
+        lic = licenses.create(plan='subscription', expires_at=self.clock.t + 3 * 86400)
+        body = json.loads(self.api('status', key=lic['key']).get_json()['offline_pass']['body'])
+        self.assertAlmostEqual(body['until'], self.clock.t + 3 * 86400, delta=2)
+        with mock.patch.dict(os.environ, {'OFFLINE_DAYS': '0'}):
+            self.assertIsNone(self.api('status', key=lic['key']).get_json()['offline_pass'])
