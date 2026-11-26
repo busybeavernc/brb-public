@@ -187,14 +187,31 @@ def retention_pct():
     return max(0, min(90, _cents('RETENTION_PCT', 30)))
 
 
+def test_prices_on():
+    """Staff test prices (TEST_PRICES, set in Admin > Pricing): small daily-billed options only staff see, to test real
+    payments, renewals, the promo's price change and the stay offer in production within a day or two."""
+    return str(settings.get('TEST_PRICES', '') or '').lower() in ('1', 'on', 'true', 'yes')
+
+
+def test_offers():
+    if not test_prices_on():
+        return {}
+    return {'test_daily': {'label': 'Staff test, daily', 'test': True, 'phases': [('DAILY', 100, None)], 'first': 100},
+            'test_promo': {'label': 'Staff test, promo then daily', 'test': True,
+                           'phases': [('DAILY', 100, 1), ('DAILY', 200, None)], 'first': 100}}
+
+
 def stay_offers():
     """Variations for the "stay" offer: the next billing period at RETENTION_PCT off, then the normal price."""
     pct = retention_pct()
     if not pct:
         return {}
     out = {}
-    for cad, base, label in (('MONTHLY', monthly_cents(), 'monthly'), ('ANNUAL', annual_cents(), 'annual')):
-        disc = int(round(base * (100 - pct) / 100))
+    kinds = [('MONTHLY', monthly_cents(), 'monthly'), ('ANNUAL', annual_cents(), 'annual')]
+    if test_prices_on():
+        kinds.append(('DAILY', 200, 'daily'))
+    for cad, base, label in kinds:
+        disc = max(100 if cad == 'DAILY' else 0, int(round(base * (100 - pct) / 100)))
         out['stay_' + label] = {'label': f'Stay offer, {label} ({pct}% off one renewal)', 'stay': True, 'cadence': cad,
                                 'phases': [(cad, disc, 1), (cad, base, None)], 'first': disc, 'then': base}
     return out
@@ -318,7 +335,7 @@ def sync_catalog():
                     have.setdefault(spec, v['id'])
         con = db()
         offered, wanted = [], set()
-        for key, o in {**offers(), **stay_offers()}.items():
+        for key, o in {**offers(), **stay_offers(), **test_offers()}.items():
             spec = _spec(o['phases'])
             wanted.add(spec)
             vid = have.get(spec)
@@ -353,7 +370,7 @@ def describe(o):
 
 
 def _spec_words(spec):
-    unit = {'MONTHLY': 'month', 'ANNUAL': 'year'}
+    unit = {'MONTHLY': 'month', 'ANNUAL': 'year', 'DAILY': 'day'}
     parts = []
     for ph in spec.split('|'):
         cad, rest = ph.split(':')
@@ -388,7 +405,8 @@ _synced_for = None
 def sync_in_background():
     """Once per set of prices (startup, or after the .env prices change): bring Square's catalog up to date."""
     global _synced_for
-    want = (env(), tuple(sorted(_spec(o['phases']) for o in {**offers(), **stay_offers()}.values())), bool(ready()))
+    want = (env(), tuple(sorted(_spec(o['phases']) for o in {**offers(), **stay_offers(), **test_offers()}.values())),
+            bool(ready()))
     if _synced_for == want or not ready() or settings.get('NO_AUTO_BACKUP'):   # (tests: no background work)
         return
     _synced_for = want
@@ -402,12 +420,12 @@ def sync_in_background():
     threading.Thread(target=run, daemon=True, name='square-sync').start()
 
 
-def checkout(user, return_url, option='annual', device=None):
+def checkout(user, return_url, option='annual', device=None, staff=False):
     """A Square checkout page for an option on sale ('annual' - with the promo while it runs - or 'monthly'). The key
     is put on `device` (the computer whose BRB opened the page) when the purchase goes through. -> url"""
     if not user.get('email'):
         raise SquareError('Add an email address to your Happy Hacks account first (Square sends receipts there).', 400)
-    o = offers().get(option)
+    o = offers().get(option) or (test_offers().get(option) if staff else None)
     if o is None:
         raise SquareError("That option isn't offered. Please reload the page.", 400)
     cid = 'sq' + uuid.uuid4().hex[:16]
@@ -415,7 +433,8 @@ def checkout(user, return_url, option='annual', device=None):
             'quick_pay': {'name': f'{PLAN_NAME} - {o["label"]}', 'price_money': {'amount': o['first'], 'currency': 'USD'},
                           'location_id': location()},
             'checkout_options': {'redirect_url': f'{return_url}?c={cid}', 'ask_for_shipping_address': False,
-                                 'subscription_plan_id': plan_variation(option)},
+                                 'subscription_plan_id': plan_variation(option) if not o.get('test') else
+                                 _variation_id_for(o)},
             'pre_populated_data': {'buyer_email': user['email']},
             'payment_note': f'BRB {user["id"]} {cid}'}
     link = call('POST', '/v2/online-checkout/payment-links', body).get('payment_link') or {}
@@ -633,7 +652,8 @@ def plan_kind(lic):
             spec = ''
     spec = spec or ('ANNUAL' if '/year' in (lic.get('note') or '') else 'MONTHLY' if '/month' in (lic.get('note') or '') else '')
     last = spec.split('|')[-1]
-    return 'annual' if last.startswith('ANNUAL') else 'monthly' if last.startswith('MONTHLY') else None
+    return ('annual' if last.startswith('ANNUAL') else 'monthly' if last.startswith('MONTHLY') else
+            'daily' if last.startswith('DAILY') else None)
 
 
 def stay_offer_for(lic):
@@ -647,32 +667,30 @@ def stay_offer_for(lic):
     if not o:
         return None
     return {'kind': kind, 'pct': retention_pct(), 'price': price_text(o['first']), 'then': price_text(o['then']),
-            'unit': 'month' if kind == 'monthly' else 'year', 'renews_at': lic.get('renews_at'), 'variation': o}
+            'unit': {'monthly': 'month', 'annual': 'year', 'daily': 'day'}[kind], 'renews_at': lic.get('renews_at'),
+            'variation': o}
 
 
-def keep_with_offer(lic, offer):
-    """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price.
+def replace_subscription(lic, phases, label, reason):
+    """Move a subscription onto new pricing from its next billing day, same card, same key.
     Square can't change the price of a subscription bought through a checkout link (its first order keeps setting the
-    price), so BRB ends the current one when its paid period ends and starts a new one the same day, on the same card,
-    with the offer's pricing. The key, the computer and the dates stay as they are. -> the license"""
+    price), so BRB ends the current one when its paid period ends and starts a new one that day, on the same card,
+    with the new pricing. The key, the computer and the dates stay as they are. -> (license, new subscription)"""
     sid = lic.get('square_subscription_id') or ''
-    if sid.startswith('sandbox-'):   # a sandbox test key: nothing in Square
-        return licenses.update(lic['id'], renews_at=lic.get('renews_at') or time.time() + 30 * 86400,
-                               note=(lic.get('note') or '') + f' · stay offer {offer["price"]}')
     sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
     start = sub.get('charged_through_date')
     if not (sub.get('card_id') and sub.get('customer_id') and start):
-        raise SquareError("We couldn't apply the offer to this subscription automatically. Please contact support and "
-                          "we'll set it up for you.", 409)
-    var_id = _variation_id_for(offer['variation'])
+        raise SquareError("We couldn't change this subscription automatically (no card on file in Square). Please contact "
+                          "support and we'll set it up for you.", 409)
+    var_id = _variation_id_for({'label': label, 'phases': phases})
     con = db()
     con.execute('INSERT OR REPLACE INTO square_replacements (old_sub_id, new_sub_id, license_id, reason, created_at) '
-                "VALUES (?, NULL, ?, 'stay offer', ?)", (sid, lic['id'], time.time()))
+                'VALUES (?, NULL, ?, ?, ?)', (sid, lic['id'], reason, time.time()))
     con.commit()
     cancelled = call('POST', f'/v2/subscriptions/{quote(sid)}/cancel', {})
     try:
         new = call('POST', '/v2/subscriptions', {
-            'idempotency_key': f'stay-{sid}', 'location_id': sub.get('location_id') or location(),
+            'idempotency_key': f'{reason[:10]}-{sid}', 'location_id': sub.get('location_id') or location(),
             'plan_variation_id': var_id, 'customer_id': sub['customer_id'], 'card_id': sub['card_id'],
             'start_date': start}).get('subscription') or {}
         if not new.get('id'):
@@ -682,29 +700,60 @@ def keep_with_offer(lic, offer):
             try:
                 call('DELETE', f'/v2/subscriptions/{quote(sid)}/actions/{quote(a["id"])}')
             except SquareError:
-                log.exception('stay offer: undoing the cancel of %s', sid)
+                log.exception('undoing the cancel of %s', sid)
         con.execute('DELETE FROM square_replacements WHERE old_sub_id=?', (sid,))
         con.commit()
         raise
     con.execute('UPDATE square_replacements SET new_sub_id=? WHERE old_sub_id=?', (new['id'], sid))
     con.execute('UPDATE licenses SET square_subscription_id=? WHERE id=?', (new['id'], lic['id']))
     con.commit()
-    log.info('stay offer: %s -> %s from %s', sid, new['id'], start)
-    return licenses.update(lic['id'], expires_at=None, renews_at=_day_end(start) or lic.get('renews_at'),
-                           square_status=(new.get('status') or 'PENDING').upper(),
-                           note=(lic.get('note') or '') + f' · stay offer {offer["price"]} once')
+    log.info('%s: subscription %s -> %s from %s (%s)', reason, sid, new['id'], start, _spec(phases))
+    lic = licenses.update(lic['id'], expires_at=None, renews_at=_day_end(start) or lic.get('renews_at'),
+                          square_status=(new.get('status') or 'PENDING').upper())
+    return lic, new
+
+
+def keep_with_offer(lic, offer):
+    """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price."""
+    sid = lic.get('square_subscription_id') or ''
+    if sid.startswith('sandbox-'):   # a sandbox test key: nothing in Square
+        return licenses.update(lic['id'], renews_at=lic.get('renews_at') or time.time() + 30 * 86400,
+                               note=(lic.get('note') or '') + f' · stay offer {offer["price"]}')
+    lic, _new = replace_subscription(lic, offer['variation']['phases'], offer['variation']['label'], 'stay offer')
+    return licenses.update(lic['id'], note=(lic.get('note') or '') + f' · stay offer {offer["price"]} once')
 
 
 def _variation_id_for(o):
+    """The Square variation with exactly this pricing (made in Square if it isn't there yet)."""
     spec = _spec(o['phases'])
     q = 'SELECT variation_id FROM square_catalog WHERE env=? AND spec=? AND plan_name=?'
     row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
-    if not row:
-        sync_catalog()
-        row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
-    if not row:
-        raise SquareError("That offer isn't set up in Square yet. Please try again in a minute.", 409)
-    return row['variation_id']
+    if row:
+        return row['variation_id']
+    found = _catalog_plans()
+    for _p, vs in found:
+        for v in vs:
+            if _variation_spec(v) == spec:
+                _remember(v['id'], o, spec)
+                return v['id']
+    plan = max(found, key=lambda pv: len(pv[1]))[0] if found else call('POST', '/v2/catalog/object', {
+        'idempotency_key': _key(), 'object': {'type': 'SUBSCRIPTION_PLAN', 'id': '#plan',
+                                              'subscription_plan_data': {'name': PLAN_NAME}}})['catalog_object']
+    var = call('POST', '/v2/catalog/object', {'idempotency_key': _key(), 'object': {
+        'type': 'SUBSCRIPTION_PLAN_VARIATION', 'id': '#variation', 'subscription_plan_variation_data': {
+            'name': f'{o.get("label") or "BRB"} ({_spec_words(spec)})'[:255], 'subscription_plan_id': plan['id'],
+            'phases': [{'cadence': c, 'ordinal': i, **({'periods': n} if n else {}), 'pricing': {
+                'type': 'STATIC', 'price_money': {'amount': a, 'currency': 'USD'}}}
+                       for i, (c, a, n) in enumerate(o['phases'])]}}})['catalog_object']
+    _remember(var['id'], o, spec)
+    return var['id']
+
+
+def _remember(vid, o, spec):
+    con = db()
+    con.execute('INSERT OR REPLACE INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) '
+                'VALUES (?,?,?,?,?,?)', (env(), o['phases'][0][1], vid, time.time(), PLAN_NAME, spec))
+    con.commit()
 
 
 def record_feedback(lic, user, reason, feedback, outcome='started', fid=None):
@@ -726,6 +775,75 @@ def feedback_list(limit=100):
     counts = db().execute("SELECT reason, COUNT(*) AS n, SUM(outcome='kept') AS kept FROM cancel_feedback "
                           'GROUP BY reason ORDER BY n DESC').fetchall()
     return [dict(r) for r in rows], [dict(r) for r in counts]
+
+
+PROMO_CHECK_DAYS = 14     # look at a promo subscription this long before its first renewal
+_promo_check = {'at': 0.0}
+
+
+def promo_safeguard(now=None):
+    """Promo subscriptions (a cheaper first period, then the regular price) bought through a checkout link: Square may
+    keep billing the first order's (promo) price after the promo ends. Shortly before the first renewal, move each onto
+    the regular price from that renewal day (replace_subscription). -> how many were moved"""
+    if not ready():
+        return 0
+    now = time.time() if now is None else now
+    con = db()
+    if not con.execute("SELECT 1 FROM square_catalog WHERE env=? AND spec LIKE '%x1|%'", (env(),)).fetchone():
+        return 0   # no promo pricing ever sold
+    rows = con.execute("SELECT * FROM licenses WHERE plan='subscription' AND status='active' AND expires_at IS NULL "
+                       "AND square_subscription_id IS NOT NULL AND square_subscription_id NOT LIKE 'sandbox-%' "
+                       "AND square_subscription_id NOT IN (SELECT new_sub_id FROM square_replacements "
+                       "WHERE new_sub_id IS NOT NULL)").fetchall()
+    moved = 0
+    seen = set()
+    for r in rows:
+        lic = dict(r)
+        if lic['id'] in seen:
+            continue
+        try:
+            sub = call('GET', f'/v2/subscriptions/{quote(lic["square_subscription_id"])}').get('subscription') or {}
+        except SquareError:
+            continue
+        cat = con.execute('SELECT spec FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
+        spec = cat['spec'] if cat else ''
+        if '|' not in spec or sub.get('canceled_date') or (sub.get('status') or '').upper() not in ('ACTIVE', 'PENDING'):
+            continue
+        seen.add(lic['id'])
+        due = _day_end(sub.get('charged_through_date'))
+        if not due or due - now > PROMO_CHECK_DAYS * 86400:
+            continue
+        cad, rest = spec.split('|')[-1].split(':')
+        regular = [(cad, int(rest.split('x')[0]), None)]
+        try:
+            replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')
+            moved += 1
+        except SquareError as e:
+            log.warning('promo safeguard for key %s: %s', lic['key'][-4:], e)
+            from . import mailer
+            if mailer.staff():
+                mailer.send(mailer.staff(), 'BRB: a promo subscription needs a look',
+                            f'The promo subscription for {lic.get("email")} (key ending {lic["key"][-4:]}) renews on '
+                            f'{sub.get("charged_through_date")}, and BRB could not move it onto the regular price: {e}\n\n'
+                            'Please check it in Square so it renews at the regular price.')
+    return moved
+
+
+def maybe_check_promos():
+    """Called on requests: runs promo_safeguard about once an hour, in the background."""
+    if settings.get('NO_AUTO_BACKUP') or not ready() or time.time() - _promo_check['at'] < 3600:
+        return
+    _promo_check['at'] = time.time()
+    import threading
+
+    def run():
+        try:
+            n = promo_safeguard()
+            if n:
+                log.info('promo safeguard: %d subscription(s) moved onto the regular price', n)
+        except Exception:  # noqa: BLE001
+            log.exception('promo safeguard')
+    threading.Thread(target=run, daemon=True, name='promo-check').start()
 
 
 def settle_if_pending(user):

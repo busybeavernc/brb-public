@@ -35,6 +35,17 @@
     {% set subscribe = True %}
     {% include "_unlimited_plan.html" %}
   </div>
+  {% if staff_tests and square_ready %}
+  <div class="card staff-tests">
+    <p><span class="tag warn">Staff only</span> <b>Test subscriptions</b> - real charges, billed daily,
+      so renewals, the promo's price change and the stay offer can be checked within a day or two. Turn off in Admin &gt; Pricing.</p>
+    {% for key, o in staff_tests.items() %}
+    <form method="post" action="{{ url_for('api.subscribe') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf() }}">
+      <input type="hidden" name="plan" value="{{ key }}">
+      <button class="btn secondary btn-sm" type="submit">{{ o.label }}: {{ describe(o) }}</button></form>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% if user and square_ready and computer %}<p class="note">Your key goes straight onto <b>{{ computer.name or 'this computer' }}</b>:
     BRB switches to unlimited by itself a few seconds after you subscribe. No key to copy.</p>{% endif %}
   {% if user and square_ready %}<p class="note">By subscribing, you agree to the <a href="{{ url_for('eula') }}">EULA</a>. See our

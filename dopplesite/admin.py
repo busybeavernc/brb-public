@@ -385,6 +385,7 @@ def _pricing_json():
         'pitch': ('PITCH_TEXT', settings.get('PITCH_TEXT', '') or ''),
         'offer': ('OFFER_TEXT', settings.get('OFFER_TEXT', '') or ''),
         'stay_pct': ('RETENTION_PCT', square.retention_pct()),
+        'test_prices': ('TEST_PRICES', square.test_prices_on()),
     }
     pr = square.pricing()
     return {'values': {k: v for k, (_n, v) in fields.items()},
@@ -437,6 +438,7 @@ def pricing_set():
         if sp and not (sp.isdigit() and 0 <= int(sp) <= 90):
             raise ValueError('Stay offer: a whole percent from 0 (no offer) to 90.')
         new['RETENTION_PCT'] = sp
+        new['TEST_PRICES'] = 'on' if d.get('test_prices') in (True, 'on', 'true', '1') else 'off'
         m = int(new['MONTHLY_PRICE_CENTS'] or square.monthly_cents())
         a = int(new['ANNUAL_PRICE_CENTS'] or square.annual_cents())
         p = int(new['PROMO_ANNUAL_PRICE_CENTS'] or square.promo_cents())

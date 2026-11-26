@@ -432,3 +432,6 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .offer-card h2 { margin-top: 6px; }
 .cancel-flow .decline { margin-top: 14px; }
 .btn.danger { background: var(--danger); border-color: var(--danger); }
+.price-form label.check { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
+.staff-tests { margin-top: 14px; border: 1px dashed var(--amber); }
+.staff-tests form.inline { display: inline-block; margin: 4px 6px 0 0; }

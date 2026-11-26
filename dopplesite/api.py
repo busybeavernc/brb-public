@@ -109,7 +109,9 @@ def license_page():
         return redirect(url_for('api.license_page', n=request.args.get('n')), 303)
     return render_template('license.html', keys=keys, free_minutes=licenses.free_seconds() // 60,
                            computer=computer, square_ready=square.ready(), sso=hhauth.enabled(),
-                           notice=request.args.get('n'), option=request.args.get('plan', 'annual'))
+                           notice=request.args.get('n'), option=request.args.get('plan', 'annual'),
+                           staff_tests=square.test_offers() if g.user and g.user.get('role') in ('admin', 'support') else {},
+                           describe=square.describe)
 
 
 @bp.post('/license/subscribe')
@@ -119,9 +121,10 @@ def subscribe():
     if not _csrf_ok():
         return redirect(url_for('api.license_page', n='expired'), 303)
     try:
-        option = 'monthly' if request.form.get('plan') == 'monthly' else 'annual'
+        staff = g.user.get('role') in ('admin', 'support')
+        option = request.form.get('plan') if request.form.get('plan') in ('monthly', 'test_daily', 'test_promo') else 'annual'
         url = square.checkout(g.user, settings.public_url() + url_for('api.subscribe_return'), option=option,
-                              device=_linked_device())
+                              device=_linked_device(), staff=staff)
     except square.SquareError as e:
         return render_template('message.html', title="Couldn't open checkout", body=str(e),
                                action=('Back to your license', url_for('api.license_page'))), e.status

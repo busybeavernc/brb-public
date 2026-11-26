@@ -32,6 +32,8 @@
           <label>Promo ends <span class="hint">last day, Eastern; empty = no promo</span><input name="promo_ends" type="date"></label>
           <label>Promo name<input name="promo_name" maxlength="60"></label>
           <label>Stay offer <span class="hint">% off the next renewal when someone cancels; 0 = none</span><input name="stay_pct" inputmode="numeric"></label>
+          <label class="wide check"><input type="checkbox" name="test_prices"> Staff test prices: show admins and support
+            daily-billed $1.00 test subscriptions on the license page (for testing in production; turn off after)</label>
           <label class="wide">App's pitch <span class="hint">optional - empty = built-in wording</span><textarea name="pitch" rows="2"></textarea></label>
           <label class="wide">App's offer line <span class="hint">optional; shown while the promo runs</span><textarea name="offer" rows="2"></textarea></label>
           <p class="hint wide">Placeholders for the two texts: {free} {monthly} {annual_month} {annual_total} {promo_month}
@@ -286,7 +288,7 @@
     const f = $('#priceForm'), v = d.values, pr = d.preview;
     for (const k of ['monthly', 'annual', 'promo_price']) f[k].value = Number(v[k]).toFixed(2);
     f.promo_ends.value = v.promo_ends || ''; f.promo_name.value = v.promo_name || '';
-    f.pitch.value = v.pitch || ''; f.offer.value = v.offer || ''; f.stay_pct.value = v.stay_pct;
+    f.pitch.value = v.pitch || ''; f.offer.value = v.offer || ''; f.stay_pct.value = v.stay_pct; f.test_prices.checked = !!v.test_prices;
     {% if role != 'admin' %}f.querySelectorAll('input,textarea').forEach(i => i.disabled = true);{% endif %}
     const tag = $('#priceTag');
     tag.className = 'tag ' + (pr.promo ? 'ok' : 'dim');
@@ -296,6 +298,7 @@
   $('#priceForm').addEventListener('submit', async ev => {
     ev.preventDefault();
     const f = ev.target, body = Object.fromEntries(new FormData(f)), msg = $('#priceMsg');
+    body.test_prices = f.test_prices.checked;
     msg.textContent = 'Saving…';
     try {
       const d = await post('/admin/api/pricing', body);

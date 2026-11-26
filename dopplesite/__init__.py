@@ -236,6 +236,7 @@ def create_app() -> Flask:
             backup.maybe_run()
             mailin.start()       # read the support mailbox in the background (if IMAP_ settings are set)
             from . import square
+            square.maybe_check_promos()   # promo subscriptions get the regular price after their first period
             square.sync_in_background()   # Square's plan matches the prices in .env (after start-up or a price change)
 
     def _form_csrf_ok():

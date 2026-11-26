@@ -305,3 +305,62 @@ class CancelFlowTests(Base):
     def test_reason_is_required(self):
         r = self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': ''})
         self.assertEqual(r.status_code, 400)
+
+
+class PromoSafeguardTests(Base):
+    def test_promo_moves_to_regular_price_before_first_renewal_only(self):
+        import datetime as dt
+        from dopplesite import licenses, users
+        self.sign_in_with_hh({'id': 'hh30', 'name': 'Pat', 'email': 'pat3@example.com', 'email_verified': True})
+        user = dict(users.db().execute("SELECT * FROM users WHERE email='pat3@example.com'").fetchone())
+        con = square.db()
+        con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) VALUES "
+                    "('sandbox', 5988, 'VP', 0, ?, 'ANNUAL:5988x1|ANNUAL:8388'), ('sandbox', 8388, 'VA', 0, ?, 'ANNUAL:8388')",
+                    (square.PLAN_NAME, square.PLAN_NAME))
+        con.commit()
+        due = dt.date.today() + dt.timedelta(days=200)
+        subs = {'P1': {'id': 'P1', 'status': 'ACTIVE', 'plan_variation_id': 'VP', 'customer_id': 'C', 'card_id': 'K',
+                       'location_id': 'L', 'charged_through_date': due.isoformat()}}
+        made = []
+
+        def fake(method, path, body=None):
+            if method == 'GET' and path.startswith('/v2/subscriptions/'):
+                return {'subscription': subs[path.rsplit('/', 1)[1]]}
+            if path.endswith('/cancel'):
+                return {'subscription': subs['P1'], 'actions': [{'id': 'A'}]}
+            if method == 'POST' and path == '/v2/subscriptions':
+                made.append(body)
+                subs['N1'] = {'id': 'N1', 'status': 'PENDING', 'plan_variation_id': body['plan_variation_id']}
+                return {'subscription': subs['N1']}
+            raise AssertionError(path)
+        with mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}), mock.patch.object(square, 'call', fake):
+            lic = square.apply(subs['P1'], user)
+            self.assertEqual(square.promo_safeguard(), 0)                      # 200 days away: not yet
+            subs['P1']['charged_through_date'] = (dt.date.today() + dt.timedelta(days=10)).isoformat()
+            self.assertEqual(square.promo_safeguard(), 1)
+            self.assertEqual((made[0]['plan_variation_id'], made[0]['start_date'], made[0]['card_id']),
+                             ('VA', subs['P1']['charged_through_date'], 'K'))
+            self.assertEqual(licenses.get(lic['id'])['square_subscription_id'], 'N1')
+            self.assertEqual(square.promo_safeguard(), 0)                      # once
+            self.assertTrue(licenses.get(lic['id'])['valid'])
+
+    def test_staff_test_options_only_for_staff_and_when_on(self):
+        with mock.patch.dict(os.environ, {'TEST_PRICES': 'off'}):
+            self.assertEqual(square.test_offers(), {})
+        with mock.patch.dict(os.environ, {'TEST_PRICES': 'on'}):
+            self.assertEqual(square.describe(square.test_offers()['test_promo']), '$1 the first day, then $2/day')
+            self.assertIn('stay_daily', square.stay_offers())
+            with self.assertRaises(square.SquareError):
+                square.checkout({'id': 'u', 'email': 'a@b.c'}, 'https://x/r', option='test_daily', staff=False)
+            self.sign_in_with_hh({'id': 'hh31', 'name': 'Al', 'email': 'al@example.com', 'email_verified': True})
+            self.assertNotIn('Staff only', self.c.get('/license').get_data(as_text=True))
+
+    def test_staff_see_test_subscriptions(self):
+        from dopplesite import users
+        self.sign_in_with_hh({'id': 'hh32', 'name': 'Bo', 'email': 'bo@example.com', 'email_verified': True})
+        users.db().execute("UPDATE users SET role='admin' WHERE email='bo@example.com'")
+        users.db().commit()
+        with mock.patch.dict(os.environ, {'TEST_PRICES': 'on', 'SQUARE_SANDBOX_ACCESS_TOKEN': 't'}):
+            page = self.c.get('/license').get_data(as_text=True)
+        self.assertIn('Staff only', page)
+        self.assertIn('$1 the first day, then $2/day', page)
