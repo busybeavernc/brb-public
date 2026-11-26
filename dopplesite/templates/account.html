@@ -7,6 +7,7 @@
   <p class="note">Signed in as {{ real_name or user.email or user.phone }}{{ ' (' + user.email + ')' if real_name and user.email }}.
     Name, email and sign-in are managed in your <a href="{{ hh_account }}">Happy Hacks account</a>.</p>
   {% if linked %}<p class="msg">✓ {{ linked.name or 'This computer' }} is now linked to your account.</p>{% endif %}
+  {% if notice == 'canceled' %}<p class="msg">Your subscription is cancelled. Your key keeps working until the end of the period you've paid for.</p>{% endif %}
   {% if notice == 'moved' %}<p class="msg">Done: that computer is off your key. The key now works on the next computer you enter it on.</p>{% endif %}
   {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
 
@@ -34,7 +35,9 @@
   {% if keys %}
     {% for k in keys %}<p><code class="key">{{ k.key }}</code> <button class="btn secondary btn-sm" type="button" data-copy="{{ k.key }}">Copy</button>
       {% if k.valid %}<span class="tag ok">active</span>{% else %}<span class="tag bad">ended</span>{% endif %}
-      <span class="note">{% include "_key_dates.html" %} · used on {{ k.devices|length }} of {{ k.max_devices }}</span></p>{% endfor %}
+      <span class="note">{% include "_key_dates.html" %} · used on {{ k.devices|length }} of {{ k.max_devices }}</span>
+      {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
+        · <a class="linkbtn" href="{{ url_for('account_cancel', lid=k.id) }}">Cancel subscription</a>{% endif %}</p>{% endfor %}
     <p class="note">Subscription and billing: <a href="{{ url_for('api.license_page') }}">your license page</a>.</p>
   {% else %}<p class="note">No keys yet. <a href="{{ url_for('api.license_page') }}">Get unlimited LOOP time</a>.</p>{% endif %}
 

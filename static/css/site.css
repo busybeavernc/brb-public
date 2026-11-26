@@ -420,3 +420,15 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .price-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; color: var(--ink); }
 .price-form .wide { grid-column: 1 / -1; }
 .price-form input, .price-form textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--line-hi); border-radius: 8px; }
+
+/* cancelling: reasons and the stay offer */
+.cancel-flow .reasons { border: 0; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.cancel-flow .reasons legend { font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.cancel-flow .reasons label { display: flex; gap: 10px; align-items: center; }
+.cancel-flow textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 9px; border: 1px solid var(--line-hi);
+  border-radius: 10px; margin: 6px 0 14px; }
+.cancel-flow .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.offer-card { border: 2px solid var(--teal); }
+.offer-card h2 { margin-top: 6px; }
+.cancel-flow .decline { margin-top: 14px; }
+.btn.danger { background: var(--danger); border-color: var(--danger); }

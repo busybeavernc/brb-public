@@ -31,6 +31,7 @@
           <label>Promo first year <span class="hint">$ for year one, on annual</span><input name="promo_price" inputmode="decimal"></label>
           <label>Promo ends <span class="hint">last day, Eastern; empty = no promo</span><input name="promo_ends" type="date"></label>
           <label>Promo name<input name="promo_name" maxlength="60"></label>
+          <label>Stay offer <span class="hint">% off the next renewal when someone cancels; 0 = none</span><input name="stay_pct" inputmode="numeric"></label>
           <label class="wide">App's pitch <span class="hint">optional - empty = built-in wording</span><textarea name="pitch" rows="2"></textarea></label>
           <label class="wide">App's offer line <span class="hint">optional; shown while the promo runs</span><textarea name="offer" rows="2"></textarea></label>
           <p class="hint wide">Placeholders for the two texts: {free} {monthly} {annual_month} {annual_total} {promo_month}
@@ -39,6 +40,11 @@
           {% if role == 'admin' %}<div class="wide"><button class="btn btn-sm" type="submit">Save pricing</button>
             <span class="hint" id="priceMsg"></span></div>{% endif %}
         </form>
+      </div>
+      <div class="admin-card" id="cancelcard">
+        <div class="admin-card-head"><h2>Why people cancel</h2><span class="sp"></span><span class="hint" id="cancelSum"></span></div>
+        <div id="cancelCounts" class="chips"></div>
+        <table class="keytable" id="cancelRows"></table>
       </div>
       <div class="admin-card" id="sqcard">
         <div class="admin-card-head">
@@ -280,7 +286,7 @@
     const f = $('#priceForm'), v = d.values, pr = d.preview;
     for (const k of ['monthly', 'annual', 'promo_price']) f[k].value = Number(v[k]).toFixed(2);
     f.promo_ends.value = v.promo_ends || ''; f.promo_name.value = v.promo_name || '';
-    f.pitch.value = v.pitch || ''; f.offer.value = v.offer || '';
+    f.pitch.value = v.pitch || ''; f.offer.value = v.offer || ''; f.stay_pct.value = v.stay_pct;
     {% if role != 'admin' %}f.querySelectorAll('input,textarea').forEach(i => i.disabled = true);{% endif %}
     const tag = $('#priceTag');
     tag.className = 'tag ' + (pr.promo ? 'ok' : 'dim');
@@ -300,6 +306,18 @@
       loadSquare().catch(() => {});
     } catch (e) { msg.textContent = e.message; }
   });
+
+  const REASONS = {price: 'Costs too much', not_using: "Doesn't use it enough", problems: "Didn't work well",
+                   other_tool: 'Using something else', temporary: 'Only needed it for a while', other: 'Something else'};
+  async function loadCancellations() {
+    const d = await api('/admin/api/cancellations');
+    const total = d.counts.reduce((a, c) => a + c.n, 0), kept = d.counts.reduce((a, c) => a + (c.kept || 0), 0);
+    $('#cancelSum').textContent = total ? `${total} started to cancel · ${kept} stayed with the offer` : 'Nobody has cancelled yet';
+    $('#cancelCounts').innerHTML = d.counts.map(c => `<span class="tag dim">${esc(REASONS[c.reason] || c.reason)}: ${c.n}</span>`).join(' ');
+    $('#cancelRows').innerHTML = d.rows.length ? '<thead><tr><th>When</th><th>Who</th><th>Reason</th><th>Comments</th><th>Outcome</th></tr></thead><tbody>' +
+      d.rows.slice(0, 50).map(r => `<tr><td>${esc(when(r.created_at))}</td><td>${esc(r.email)}</td><td>${esc(REASONS[r.reason] || r.reason)}</td>` +
+        `<td>${esc(r.feedback)}</td><td><span class="tag ${r.outcome === 'kept' ? 'ok' : r.outcome === 'cancelled' ? 'bad' : 'dim'}">${esc({kept: 'stayed', cancelled: 'cancelled', offered: 'saw offer, left', started: 'left the form'}[r.outcome] || r.outcome)}</span></td></tr>`).join('') + '</tbody>' : '';
+  }
 
   async function loadSquare() {
     const q = await api('/admin/api/square'), r = q.report;
@@ -349,6 +367,7 @@
   $('#appRefresh').addEventListener('click', () => loadApp(true).catch(fail));
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
   loadPricing().catch(e => { $('#priceNow').textContent = e.message; });
+  loadCancellations().catch(e => { $('#cancelSum').textContent = e.message; });
   loadSquare().catch(e => { $('#sqInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
 
   if (ADMIN) {

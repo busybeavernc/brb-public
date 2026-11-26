@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Cancel your subscription · BRB{% endblock %}
+{% block content %}
+<section class="page wrap narrow cancel-flow">
+  {% if step == 'reason' %}
+    <h1>Before you go</h1>
+    <p class="lede">Sorry to see you go. Would you tell us why? It helps us make BRB better.</p>
+    {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+    <form method="post" class="card">
+      <input type="hidden" name="csrf" value="{{ csrf() }}">
+      <fieldset class="reasons"><legend>Why are you cancelling?</legend>
+        {% for v, label in reasons %}
+        <label><input type="radio" name="reason" value="{{ v }}" required> {{ label }}</label>
+        {% endfor %}
+      </fieldset>
+      <label for="fb"><b>Anything else you'd like to tell us?</b> <span class="note">(optional)</span></label>
+      <textarea id="fb" name="feedback" rows="4" maxlength="4000" placeholder="What would have made BRB worth keeping?">{{ feedback or '' }}</textarea>
+      <p class="row"><button class="btn" type="submit">Continue</button>
+        <a class="linkbtn" href="{{ url_for('account') }}">Never mind, keep my subscription</a></p>
+    </form>
+
+  {% elif step == 'offer' %}
+    <h1>A thank-you before you decide</h1>
+    <div class="card offer-card">
+      <p class="offer-tag"><span class="tag">{{ offer.pct }}% off</span></p>
+      <h2>Stay, and your next {{ offer.unit }} is {{ offer.price }}</h2>
+      <p>Keep your subscription and your next renewal{% if offer.renews_at %} on <b>{{ offer.renews_at|datefmt }}</b>{% endif %}
+        is <b>{{ offer.price }}</b> instead of {{ offer.then }}. After that, it renews at the regular {{ offer.then }}/{{ offer.unit }}.
+        Same key, same computer, nothing to set up. You can still cancel any time.</p>
+      <form method="post" action="{{ url_for('account_cancel_keep', lid=lic.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf() }}">
+        <button class="btn" type="submit">Keep my subscription for {{ offer.price }}</button></form>
+    </div>
+    <form method="post" action="{{ url_for('account_cancel_confirm', lid=lic.id) }}" class="decline">
+      <input type="hidden" name="csrf" value="{{ csrf() }}">
+      <button class="linkbtn" type="submit">No thanks, cancel my subscription</button></form>
+
+  {% elif step == 'confirm' %}
+    <h1>Cancel your subscription?</h1>
+    <p class="lede">Your subscription won't renew. Your key keeps working until the end of the period you've already paid
+      for{% if lic.renews_at %} (<b>{{ lic.renews_at|datefmt }}</b>){% endif %}, then BRB goes back to free LOOP time.</p>
+    <form method="post" action="{{ url_for('account_cancel_confirm', lid=lic.id) }}" class="row">
+      <input type="hidden" name="csrf" value="{{ csrf() }}">
+      <button class="btn danger" type="submit">Cancel my subscription</button>
+      <a class="linkbtn" href="{{ url_for('account') }}">Keep it</a></form>
+
+  {% elif step == 'kept' %}
+    <h1>Thank you for staying!</h1>
+    <p class="lede">Your next renewal{% if lic.renews_at %} on <b>{{ lic.renews_at|datefmt }}</b>{% endif %} is
+      <b>{{ offer.price }}</b>, then the regular {{ offer.then }}/{{ offer.unit }}. We've emailed you the details.</p>
+    <p><a class="btn" href="{{ url_for('account') }}">Back to your account</a></p>
+  {% endif %}
+</section>
+{% endblock %}

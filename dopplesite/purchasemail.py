@@ -60,3 +60,20 @@ def cancelled(lic, user=None):
               f'Questions: {site}/support (or just reply to this email)', '', 'Thanks for using BRB!',
               'The BRB team at Happy Hacks']
     return mailer.send(to, 'Your BRB subscription is cancelled', '\n'.join(lines))
+
+
+def kept(lic, user, offer):
+    """They took the "stay" offer."""
+    to = lic.get('email') or (user or {}).get('email')
+    if not to:
+        return False
+    site = settings.public_url()
+    hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
+    when = f' on {_date(lic["renews_at"])}' if lic.get('renews_at') else ''
+    lines = [hi, '', 'Thank you for staying with BRB!', '',
+             f'Your next renewal{when} is {offer["price"]} ({offer["pct"]}% off). After that, your subscription renews at '
+             f'the regular {offer["then"]}/{offer["unit"]}.', '',
+             'Your key and computer stay exactly as they are - nothing to do.', '',
+             f'Manage your subscription any time: {site}/account',
+             f'Questions: {site}/support (or just reply to this email)', '', 'The BRB team at Happy Hacks']
+    return mailer.send(to, f'Your BRB discount: {offer["price"]} for your next renewal', '\n'.join(lines))

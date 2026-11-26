@@ -346,6 +346,82 @@ def create_app() -> Flask:
             return redirect(url_for('account', e=str(e)), 303)
         return redirect(url_for('account', n='moved'), 303)
 
+    # ---------- cancelling a subscription: why, the "stay" offer, then cancel ----------
+    CANCEL_REASONS = [('price', 'It costs too much'), ('not_using', "I don't use it enough"),
+                      ('problems', 'It didn\'t work well for me'), ('other_tool', "I'm using something else"),
+                      ('temporary', 'I only needed it for a while'), ('other', 'Something else')]
+
+    def _my_sub(lid):
+        if not g.user:
+            return None
+        lic = next((k for k in licenses.for_user(g.user['id'], g.user.get('email')) if k['id'] == lid), None)
+        return lic if lic and lic.get('plan') == 'subscription' else None
+
+    @app.route('/account/cancel/<lid>', methods=['GET', 'POST'])
+    def account_cancel(lid):
+        from . import square
+        if not g.user:
+            return redirect(url_for('hh_start', next=f'/account/cancel/{lid}'), 303)
+        lic = _my_sub(lid)
+        if not lic or not lic.get('valid') or lic.get('expires_at'):
+            return redirect(url_for('account'), 303)
+        if request.method == 'GET':
+            return render_template('cancel.html', step='reason', lic=lic, reasons=CANCEL_REASONS)
+        if not _form_csrf_ok():
+            return redirect(url_for('account_cancel', lid=lid), 303)
+        reason = request.form.get('reason') or ''
+        if reason not in dict(CANCEL_REASONS):
+            return render_template('cancel.html', step='reason', lic=lic, reasons=CANCEL_REASONS,
+                                   error='Please choose a reason.', feedback=request.form.get('feedback', '')), 400
+        fid = square.record_feedback(lic, g.user, reason, (request.form.get('feedback') or '').strip())
+        session['cancel_fid'] = fid
+        offer = square.stay_offer_for(lic)
+        if offer:
+            square.record_feedback(lic, g.user, '', '', outcome='offered', fid=fid)
+        return render_template('cancel.html', step='offer' if offer else 'confirm', lic=lic, offer=offer)
+
+    @app.post('/account/cancel/<lid>/keep')
+    def account_cancel_keep(lid):
+        from . import purchasemail, square
+        lic = _my_sub(lid)
+        if not lic or not _form_csrf_ok():
+            return redirect(url_for('account'), 303)
+        offer = square.stay_offer_for(lic)
+        if not offer:
+            return redirect(url_for('account'), 303)
+        try:
+            lic = square.keep_with_offer(lic, offer)
+        except square.SquareError as e:
+            return render_template('message.html', title="We couldn't apply the offer", body=str(e),
+                                   action=('Back to your account', url_for('account'))), e.status
+        square.record_feedback(lic, g.user, '', '', outcome='kept', fid=session.pop('cancel_fid', None) or
+                               square.record_feedback(lic, g.user, 'other', '(offer accepted)'))
+        audit.log(g.user.get('email') or g.user['id'], 'stay_offer', lid, price=offer['price'])
+        purchasemail.kept(lic, g.user, offer)
+        return render_template('cancel.html', step='kept', lic=lic, offer=offer)
+
+    @app.post('/account/cancel/<lid>/confirm')
+    def account_cancel_confirm(lid):
+        from . import mailer, square
+        lic = _my_sub(lid)
+        if not lic or not _form_csrf_ok():
+            return redirect(url_for('account'), 303)
+        try:
+            lic = square.cancel(lic)
+        except square.SquareError as e:
+            return render_template('message.html', title="Couldn't cancel", body=str(e),
+                                   action=('Back to your account', url_for('account'))), e.status
+        fid = session.pop('cancel_fid', None)
+        if fid:
+            square.record_feedback(lic, g.user, '', '', outcome='cancelled', fid=fid)
+            row = square.db().execute('SELECT reason, feedback FROM cancel_feedback WHERE id=?', (fid,)).fetchone()
+            if row and mailer.staff():
+                mailer.send(mailer.staff(), f'BRB cancellation: {dict(CANCEL_REASONS).get(row["reason"], row["reason"])}',
+                            f'{g.user.get("email")} cancelled ({lic.get("note") or "subscription"}).\n\n'
+                            f'Reason: {dict(CANCEL_REASONS).get(row["reason"], row["reason"])}\n\n{row["feedback"] or "(no comments)"}')
+        audit.log(g.user.get('email') or g.user['id'], 'cancel_subscription', lid)
+        return redirect(url_for('account', n='canceled'), 303)
+
     @app.post('/account/computers/<did>/unlink')
     def account_unlink(did):
         if g.user and _form_csrf_ok() and licenses.unlink_device(did, g.user['id']):

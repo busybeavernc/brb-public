@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS square_catalog (env TEXT NOT NULL, price_cents INTEGE
 CREATE TABLE IF NOT EXISTS square_checkouts (id TEXT PRIMARY KEY, env TEXT NOT NULL, user_id TEXT NOT NULL, email TEXT NOT NULL,
   link_id TEXT, url TEXT, status TEXT NOT NULL DEFAULT 'open', created_at REAL NOT NULL,
   price_cents INTEGER NOT NULL DEFAULT 0, device_id TEXT);
+CREATE TABLE IF NOT EXISTS square_replacements (old_sub_id TEXT PRIMARY KEY, new_sub_id TEXT, license_id TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '', created_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS cancel_feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, license_id TEXT NOT NULL, user_id TEXT,
+  email TEXT NOT NULL DEFAULT '', plan TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '',
+  feedback TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL DEFAULT 'started', created_at REAL NOT NULL, updated_at REAL);
 """
 _ready = set()
 
@@ -177,6 +182,24 @@ def offers():
     return out
 
 
+def retention_pct():
+    """The "stay" offer when someone cancels: this % off their next renewal (RETENTION_PCT, 0 = no offer)."""
+    return max(0, min(90, _cents('RETENTION_PCT', 30)))
+
+
+def stay_offers():
+    """Variations for the "stay" offer: the next billing period at RETENTION_PCT off, then the normal price."""
+    pct = retention_pct()
+    if not pct:
+        return {}
+    out = {}
+    for cad, base, label in (('MONTHLY', monthly_cents(), 'monthly'), ('ANNUAL', annual_cents(), 'annual')):
+        disc = int(round(base * (100 - pct) / 100))
+        out['stay_' + label] = {'label': f'Stay offer, {label} ({pct}% off one renewal)', 'stay': True, 'cadence': cad,
+                                'phases': [(cad, disc, 1), (cad, base, None)], 'first': disc, 'then': base}
+    return out
+
+
 def _spec(phases):
     """A variation's pricing, as text: 'ANNUAL:5988x1|ANNUAL:8388'."""
     return '|'.join(f'{c}:{a}' + (f'x{n}' if n else '') for c, a, n in phases)
@@ -295,7 +318,7 @@ def sync_catalog():
                     have.setdefault(spec, v['id'])
         con = db()
         offered, wanted = [], set()
-        for key, o in offers().items():
+        for key, o in {**offers(), **stay_offers()}.items():
             spec = _spec(o['phases'])
             wanted.add(spec)
             vid = have.get(spec)
@@ -365,7 +388,7 @@ _synced_for = None
 def sync_in_background():
     """Once per set of prices (startup, or after the .env prices change): bring Square's catalog up to date."""
     global _synced_for
-    want = (env(), tuple(sorted(_spec(o['phases']) for o in offers().values())), bool(ready()))
+    want = (env(), tuple(sorted(_spec(o['phases']) for o in {**offers(), **stay_offers()}.values())), bool(ready()))
     if _synced_for == want or not ready() or settings.get('NO_AUTO_BACKUP'):   # (tests: no background work)
         return
     _synced_for = want
@@ -430,7 +453,19 @@ def apply(sub, user=None):
     if not sub.get('id'):
         return None
     con = db()
+    rep = con.execute('SELECT license_id FROM square_replacements WHERE old_sub_id=?', (sub['id'],)).fetchone()
+    if rep:   # an old subscription BRB replaced (the "stay" offer): its cancellation doesn't touch the key
+        return licenses.get(rep['license_id'])
     row = con.execute('SELECT id FROM licenses WHERE square_subscription_id=?', (sub['id'],)).fetchone()
+    if not row:
+        for _ in range(10):   # BRB may be making this very subscription right now: let it record the id first
+            busy = con.execute('SELECT 1 FROM square_replacements WHERE new_sub_id IS NULL AND created_at > ?',
+                               (time.time() - 120,)).fetchone()
+            if not busy:
+                break
+            time.sleep(0.5)
+        row = con.execute('SELECT id FROM licenses WHERE square_subscription_id=?', (sub['id'],)).fetchone()
+        row = row or con.execute('SELECT license_id AS id FROM square_replacements WHERE new_sub_id=?', (sub['id'],)).fetchone()
     expires = _expires_for(sub)
     if row:
         before = licenses.get(row['id'])
@@ -582,6 +617,115 @@ def settle(user):
         out = _sandbox_paid_checkouts(user)
     log.info('settle %s: %d customer(s), %d subscription(s), %d ours', user.get('email'), len(ids), len(subs), len(out))
     return out
+
+
+# ------------------------------------------------------------------ cancelling, and the "stay" offer
+def plan_kind(lic):
+    """'monthly' / 'annual' for a subscription key (None if unknown)."""
+    spec = ''
+    sid = lic.get('square_subscription_id') or ''
+    if sid and not sid.startswith('sandbox-') and ready():
+        try:
+            sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
+            row = db().execute('SELECT spec FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
+            spec = row['spec'] if row else ''
+        except SquareError:
+            spec = ''
+    spec = spec or ('ANNUAL' if '/year' in (lic.get('note') or '') else 'MONTHLY' if '/month' in (lic.get('note') or '') else '')
+    last = spec.split('|')[-1]
+    return 'annual' if last.startswith('ANNUAL') else 'monthly' if last.startswith('MONTHLY') else None
+
+
+def stay_offer_for(lic):
+    """The offer to show someone about to cancel, or None: once per subscription, for an active one that renews."""
+    if not lic or lic.get('plan') != 'subscription' or not lic.get('valid') or lic.get('expires_at') or not retention_pct():
+        return None
+    if db().execute("SELECT 1 FROM cancel_feedback WHERE license_id=? AND outcome='kept'", (lic['id'],)).fetchone():
+        return None
+    kind = plan_kind(lic)
+    o = stay_offers().get(f'stay_{kind}') if kind else None
+    if not o:
+        return None
+    return {'kind': kind, 'pct': retention_pct(), 'price': price_text(o['first']), 'then': price_text(o['then']),
+            'unit': 'month' if kind == 'monthly' else 'year', 'renews_at': lic.get('renews_at'), 'variation': o}
+
+
+def keep_with_offer(lic, offer):
+    """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price.
+    Square can't change the price of a subscription bought through a checkout link (its first order keeps setting the
+    price), so BRB ends the current one when its paid period ends and starts a new one the same day, on the same card,
+    with the offer's pricing. The key, the computer and the dates stay as they are. -> the license"""
+    sid = lic.get('square_subscription_id') or ''
+    if sid.startswith('sandbox-'):   # a sandbox test key: nothing in Square
+        return licenses.update(lic['id'], renews_at=lic.get('renews_at') or time.time() + 30 * 86400,
+                               note=(lic.get('note') or '') + f' · stay offer {offer["price"]}')
+    sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
+    start = sub.get('charged_through_date')
+    if not (sub.get('card_id') and sub.get('customer_id') and start):
+        raise SquareError("We couldn't apply the offer to this subscription automatically. Please contact support and "
+                          "we'll set it up for you.", 409)
+    var_id = _variation_id_for(offer['variation'])
+    con = db()
+    con.execute('INSERT OR REPLACE INTO square_replacements (old_sub_id, new_sub_id, license_id, reason, created_at) '
+                "VALUES (?, NULL, ?, 'stay offer', ?)", (sid, lic['id'], time.time()))
+    con.commit()
+    cancelled = call('POST', f'/v2/subscriptions/{quote(sid)}/cancel', {})
+    try:
+        new = call('POST', '/v2/subscriptions', {
+            'idempotency_key': f'stay-{sid}', 'location_id': sub.get('location_id') or location(),
+            'plan_variation_id': var_id, 'customer_id': sub['customer_id'], 'card_id': sub['card_id'],
+            'start_date': start}).get('subscription') or {}
+        if not new.get('id'):
+            raise SquareError("Square didn't start the new subscription.")
+    except SquareError:
+        for a in (cancelled.get('actions') or []):   # undo: the old subscription goes on as before
+            try:
+                call('DELETE', f'/v2/subscriptions/{quote(sid)}/actions/{quote(a["id"])}')
+            except SquareError:
+                log.exception('stay offer: undoing the cancel of %s', sid)
+        con.execute('DELETE FROM square_replacements WHERE old_sub_id=?', (sid,))
+        con.commit()
+        raise
+    con.execute('UPDATE square_replacements SET new_sub_id=? WHERE old_sub_id=?', (new['id'], sid))
+    con.execute('UPDATE licenses SET square_subscription_id=? WHERE id=?', (new['id'], lic['id']))
+    con.commit()
+    log.info('stay offer: %s -> %s from %s', sid, new['id'], start)
+    return licenses.update(lic['id'], expires_at=None, renews_at=_day_end(start) or lic.get('renews_at'),
+                           square_status=(new.get('status') or 'PENDING').upper(),
+                           note=(lic.get('note') or '') + f' · stay offer {offer["price"]} once')
+
+
+def _variation_id_for(o):
+    spec = _spec(o['phases'])
+    q = 'SELECT variation_id FROM square_catalog WHERE env=? AND spec=? AND plan_name=?'
+    row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
+    if not row:
+        sync_catalog()
+        row = db().execute(q, (env(), spec, PLAN_NAME)).fetchone()
+    if not row:
+        raise SquareError("That offer isn't set up in Square yet. Please try again in a minute.", 409)
+    return row['variation_id']
+
+
+def record_feedback(lic, user, reason, feedback, outcome='started', fid=None):
+    con = db()
+    now = time.time()
+    if fid:
+        con.execute('UPDATE cancel_feedback SET outcome=?, updated_at=? WHERE id=?', (outcome, now, fid))
+        con.commit()
+        return fid
+    cur = con.execute('INSERT INTO cancel_feedback (license_id, user_id, email, plan, reason, feedback, outcome, created_at) '
+                      'VALUES (?,?,?,?,?,?,?,?)', (lic['id'], (user or {}).get('id'), (user or {}).get('email') or '',
+                                                   lic.get('note') or '', reason[:80], feedback[:4000], outcome, now))
+    con.commit()
+    return cur.lastrowid
+
+
+def feedback_list(limit=100):
+    rows = db().execute('SELECT * FROM cancel_feedback ORDER BY created_at DESC LIMIT ?', (limit,)).fetchall()
+    counts = db().execute("SELECT reason, COUNT(*) AS n, SUM(outcome='kept') AS kept FROM cancel_feedback "
+                          'GROUP BY reason ORDER BY n DESC').fetchall()
+    return [dict(r) for r in rows], [dict(r) for r in counts]
 
 
 def settle_if_pending(user):

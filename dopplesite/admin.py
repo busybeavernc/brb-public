@@ -384,6 +384,7 @@ def _pricing_json():
         'promo_name': ('PROMO_NAME', square.promo_name()),
         'pitch': ('PITCH_TEXT', settings.get('PITCH_TEXT', '') or ''),
         'offer': ('OFFER_TEXT', settings.get('OFFER_TEXT', '') or ''),
+        'stay_pct': ('RETENTION_PCT', square.retention_pct()),
     }
     pr = square.pricing()
     return {'values': {k: v for k, (_n, v) in fields.items()},
@@ -432,6 +433,10 @@ def pricing_set():
         new['PROMO_NAME'] = str(d.get('promo_name', '')).strip()[:60]
         new['PITCH_TEXT'] = str(d.get('pitch', '')).strip()[:600]
         new['OFFER_TEXT'] = str(d.get('offer', '')).strip()[:600]
+        sp = str(d.get('stay_pct', '')).strip().rstrip('%')
+        if sp and not (sp.isdigit() and 0 <= int(sp) <= 90):
+            raise ValueError('Stay offer: a whole percent from 0 (no offer) to 90.')
+        new['RETENTION_PCT'] = sp
         m = int(new['MONTHLY_PRICE_CENTS'] or square.monthly_cents())
         a = int(new['ANNUAL_PRICE_CENTS'] or square.annual_cents())
         p = int(new['PROMO_ANNUAL_PRICE_CENTS'] or square.promo_cents())
@@ -451,6 +456,14 @@ def pricing_set():
         except square.SquareError as e:
             out['square_error'] = str(e)
     return jsonify(out)
+
+
+@bp.get('/admin/api/cancellations')
+@login_required
+def cancellations():
+    from . import square
+    rows, counts = square.feedback_list(200)
+    return jsonify(rows=rows, counts=counts)
 
 
 @bp.get('/admin/api/square')

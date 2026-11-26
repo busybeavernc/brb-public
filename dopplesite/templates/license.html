@@ -57,8 +57,7 @@
           {% for d in k.devices %}<br>· {{ d.name or 'A computer' }} ({{ d.platform }}){% endfor %}
         </p>
         {% if k.plan == 'subscription' and k.valid and not k.expires_at %}
-          <form method="post" action="{{ url_for('api.cancel', lid=k.id) }}" data-confirm="Cancel your BRB subscription? It won't renew, and your key keeps working until the end of the period you have paid for.">
-            <input type="hidden" name="csrf" value="{{ csrf() }}"><button class="linkbtn" type="submit">Cancel subscription</button></form>
+          <a class="linkbtn" href="{{ url_for('account_cancel', lid=k.id) }}">Cancel subscription</a>
         {% endif %}
       </div>
       {% endfor %}

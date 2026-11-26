@@ -32,6 +32,9 @@ class SquareSyncTests(Base):
         self.sq = FakeCatalog()
         self.p = mock.patch.object(square, 'call', self.sq)
         self.p.start()
+        self.e = mock.patch.dict(os.environ, {'RETENTION_PCT': '0'})   # (stay offers tested on their own)
+        self.e.start()
+        self.addCleanup(self.e.stop)
 
     def tearDown(self):
         self.p.stop()
@@ -156,7 +159,8 @@ class SettleTests(Base):
             if path == '/v2/catalog/search':
                 return {'objects': []}
             if path == '/v2/catalog/object':
-                return {'catalog_object': {'id': 'X' + str(len(path))}}
+                return {'catalog_object': {'id': 'X' + square._spec([(p['cadence'], p['pricing']['price_money']['amount'], p.get('periods'))
+                                                                   for p in body['object'].get('subscription_plan_variation_data', {}).get('phases', [])])}}
             if path == '/v2/locations':
                 return {'locations': [{'id': 'L1'}]}
             if path == '/v2/online-checkout/payment-links':
@@ -223,3 +227,81 @@ class SettleTests(Base):
         page = self.c.get('/account').get_data(as_text=True)
         self.assertIn('cancelled · works until Jan 5, 2027', page)
         self.assertIn('cancelled · works until Jan 5, 2027', self.c.get('/license').get_data(as_text=True))
+
+
+class CancelFlowTests(Base):
+    def setUp(self):
+        super().setUp()
+        from dopplesite import users
+        self.sign_in_with_hh({'id': 'hh20', 'name': 'Jo Park', 'email': 'jo@example.com', 'email_verified': True})
+        self.user = dict(users.db().execute("SELECT * FROM users WHERE email='jo@example.com'").fetchone())
+        con = square.db()
+        for vid, spec in (('VM', 'MONTHLY:999'), ('VSTAY', 'MONTHLY:699x1|MONTHLY:999'), ('VSTAYA', 'ANNUAL:5872x1|ANNUAL:8388')):
+            con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) "
+                        "VALUES ('sandbox', 0, ?, 0, ?, ?)", (vid, square.PLAN_NAME, spec))
+        con.commit()
+        self.calls = []
+        self.subs = {'S1': {'id': 'S1', 'status': 'ACTIVE', 'plan_variation_id': 'VM', 'customer_id': 'C1', 'card_id': 'K1',
+                            'location_id': 'L1', 'charged_through_date': '2027-01-05'}}
+
+        def fake(method, path, body=None):
+            self.calls.append((method, path, body))
+            if method == 'GET' and path.startswith('/v2/subscriptions/'):
+                return {'subscription': self.subs[path.rsplit('/', 1)[1]]}
+            if path == '/v2/subscriptions/S1/cancel':
+                self.subs['S1'] = {**self.subs['S1'], 'canceled_date': '2027-01-05'}
+                return {'subscription': self.subs['S1'], 'actions': [{'id': 'A1', 'type': 'CANCEL'}]}
+            if method == 'POST' and path == '/v2/subscriptions':
+                return {'subscription': {'id': 'S2', 'status': 'PENDING', 'plan_variation_id': body['plan_variation_id']}}
+            raise AssertionError(path)
+        self.p = mock.patch.object(square, 'call', fake)
+        self.p.start()
+        self.addCleanup(self.p.stop)
+        self.env = mock.patch.dict(os.environ, {'SQUARE_SANDBOX_ACCESS_TOKEN': 't'})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        self.lic = square.apply(self.subs['S1'], self.user)
+        with self.c.session_transaction() as s:
+            self.csrf = s['csrf']
+
+    def test_reason_then_offer_then_keep(self):
+        from dopplesite import licenses, mailer
+        mailer.sent.clear()
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn(f'/account/cancel/{self.lic["id"]}', page)
+        self.assertIn('Why are you cancelling?', self.c.get(f'/account/cancel/{self.lic["id"]}').get_data(as_text=True))
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': 'price', 'feedback': 'pricey'})
+        page = r.get_data(as_text=True)
+        self.assertIn('$6.99', page)                         # 30% off $9.99
+        self.assertIn('regular $9.99/month', page)
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}/keep', data={'csrf': self.csrf})
+        self.assertIn('Thank you for staying', r.get_data(as_text=True))
+        new = [b for m, p, b in self.calls if m == 'POST' and p == '/v2/subscriptions'][0]
+        self.assertEqual((new['plan_variation_id'], new['card_id'], new['start_date']), ('VSTAY', 'K1', '2027-01-05'))
+        lic = licenses.get(self.lic['id'])
+        self.assertEqual(lic['square_subscription_id'], 'S2')
+        self.assertTrue(lic['valid'] and not lic['expires_at'])
+        # Square then reports the old subscription cancelled: the key is untouched
+        square.apply(self.subs['S1'])
+        self.assertFalse(licenses.get(self.lic['id'])['expires_at'])
+        self.assertEqual(len(licenses.all_licenses()), 1)
+        self.assertTrue(any('discount' in m['subject'] for m in mailer.sent))
+        # the offer is once per subscription: next time straight to "cancel?"
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': 'price'})
+        self.assertIn('Cancel your subscription?', r.get_data(as_text=True))
+        fb, counts = square.feedback_list()
+        self.assertEqual(counts[0]['reason'], 'price')
+        self.assertIn('kept', [f['outcome'] for f in fb])
+
+    def test_decline_offer_cancels(self):
+        from dopplesite import licenses
+        self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': 'not_using'})
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}/confirm', data={'csrf': self.csrf})
+        self.assertIn('n=canceled', r.headers['Location'])
+        self.assertTrue(licenses.get(self.lic['id'])['expires_at'])
+        fb, _ = square.feedback_list()
+        self.assertEqual(fb[0]['outcome'], 'cancelled')
+
+    def test_reason_is_required(self):
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': ''})
+        self.assertEqual(r.status_code, 400)
