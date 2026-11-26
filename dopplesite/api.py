@@ -102,6 +102,7 @@ def _linked_device():
 
 @bp.get('/license')
 def license_page():
+    square.settle_if_pending(g.user)
     keys = licenses.for_user(g.user['id'], g.user.get('email')) if g.user else []
     computer = _linked_device()
     if request.args.get('offer') or request.args.get('d'):   # tidy URL (the token is in the session now)

@@ -550,6 +550,23 @@ def settle(user):
     return out
 
 
+def settle_if_pending(user):
+    """On the license and account pages: if this person started a checkout in the last day that hasn't turned into a
+    key yet, look in Square now - so the key shows up wherever they look first (the webhook does it too)."""
+    if not user or not ready():
+        return
+    try:
+        row = db().execute("SELECT 1 FROM square_checkouts WHERE user_id=? AND env=? AND status='open' AND created_at > ?",
+                           (user['id'], env(), time.time() - 86400)).fetchone()
+    except Exception:  # noqa: BLE001
+        return
+    if row:
+        try:
+            settle(user)
+        except SquareError as e:
+            log.info('settle on page view: %s', e)
+
+
 def cancel(lic):
     """Cancel at the end of the period already paid for (month or year). -> the license (with expires_at set)."""
     if not lic.get('square_subscription_id'):

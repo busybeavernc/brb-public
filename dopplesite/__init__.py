@@ -320,6 +320,8 @@ def create_app() -> Flask:
                 return render_template('message.html', title='Sign-in is not set up yet',
                                        body='Accounts are not turned on for this site yet.'), 503
             return redirect(url_for('hh_start', next='/account'), 303)
+        from . import square
+        square.settle_if_pending(g.user)   # a purchase not turned into a key yet: look in Square now
         linked = None
         if session.get('link_device'):
             dev = licenses.linked_device(session.pop('link_device'))
