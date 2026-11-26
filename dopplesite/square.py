@@ -853,8 +853,14 @@ def promo_safeguard(now=None):
             seen.add(lic['id'])
             continue                       # Square will charge the regular price by itself: leave it alone
         try:
-            replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')
+            new_lic, _new = replace_subscription(licenses.get(lic['id']), regular, 'Regular price', 'promo ends')
             moved += 1
+            try:
+                from . import purchasemail
+                purchasemail.moved_to_regular(new_lic, users.get(lic['user_id']) if lic.get('user_id') else None,
+                                              _spec_words(_spec(regular)), _day_end(sub.get('charged_through_date')) - 86399)
+            except Exception:  # noqa: BLE001
+                log.exception('price switch email')
         except SquareError as e:
             log.warning('promo safeguard for key %s: %s', lic['key'][-4:], e)
             from . import mailer

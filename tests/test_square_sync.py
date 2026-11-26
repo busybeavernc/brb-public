@@ -343,7 +343,10 @@ class PromoSafeguardTests(Base):
             self.assertEqual(square.promo_safeguard(), 0)                      # Square will bill $83.88 itself: untouched
             self.assertEqual(made, [])
             template['amount'] = 5988                                          # ...but stuck at the promo price: fixed
+            from dopplesite import mailer
+            mailer.sent.clear()
             self.assertEqual(square.promo_safeguard(), 1)
+            self.assertTrue(any('about the email from Square' in m['subject'] for m in mailer.sent))
             self.assertEqual((made[0]['plan_variation_id'], made[0]['start_date'], made[0]['card_id']),
                              ('VA', subs['P1']['charged_through_date'], 'K'))
             self.assertEqual(licenses.get(lic['id'])['square_subscription_id'], 'N1')

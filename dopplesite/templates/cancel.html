@@ -49,6 +49,8 @@
     <h1>Thank you for staying!</h1>
     <p class="lede">Your next renewal{% if lic.renews_at %} on <b>{{ lic.renews_at|datefmt }}</b>{% endif %} is
       <b>{{ offer.price }}</b>, then the regular {{ offer.then }}/{{ offer.unit }}. We've emailed you the details.</p>
+    <p class="note">You may also get an email from Square saying your subscription was "cancelled" or that a new one was
+      created: that's just Square moving it to a new billing record with the discount. Same key, same card, nothing to do.</p>
     <p><a class="btn" href="{{ url_for('account') }}">Back to your account</a></p>
   {% endif %}
 </section>
