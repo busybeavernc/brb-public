@@ -34,7 +34,7 @@ You may not: copy the Software except as needed to use it; sell, rent, lend or s
 
 ## 4. Subscriptions and payments
 
-BRB Unlimited is a subscription paid through Square, billed monthly or yearly at the price shown when you subscribe (including any introductory price, which applies only for the period stated). It renews automatically at the end of each billing period until you cancel. You can cancel at any time on brb.happyhacks.io/license; your key then keeps working until the end of the period you've paid for. Payments already made are not refunded, except where the law requires it. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
+BRB Unlimited is a subscription paid through Square, billed monthly or yearly at the price shown when you subscribe (including any introductory price, which applies only for the period stated). It renews automatically at the end of each billing period until you cancel. You can cancel at any time on brb.happyhacks.io/license; your key then keeps working until the end of the period you've paid for. **All payments are final: we do not give refunds or partial refunds**, including for any unused part of a billing period, except where the law requires it. Cancelling stops future renewal charges. We may change prices for future billing periods, and will tell you before a change applies to your subscription.
 
 ## 5. Your information
 

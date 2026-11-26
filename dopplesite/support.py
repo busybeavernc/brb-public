@@ -56,6 +56,12 @@ STARTER_REPLIES = [
      "Could you send us BRB's log? In BRB, open Help > Contact support: it fills in your version, and you can attach "
      "brb.log from the folder it opens (it's in %APPDATA%\\BRB on Windows). It contains no video or audio."),
 ]
+REFUND_REPLY = ('Refund request (no refunds)',
+                "Thanks for getting in touch. As stated on our pricing page and in the license agreement, all BRB payments "
+                "are final and we aren't able to give refunds or partial refunds, including for an unused part of a month "
+                "or year. You can cancel any time at brb.happyhacks.io/account so you won't be charged again; your key keeps "
+                "working until the end of the period you've already paid for. If something isn't working, tell us and "
+                "we'll help you get it going.")
 _ready = set()
 
 
@@ -70,6 +76,9 @@ def db():
         con.executescript(SCHEMA)
         if not con.execute('SELECT 1 FROM canned_replies LIMIT 1').fetchone():
             con.executemany('INSERT INTO canned_replies (title, body) VALUES (?,?)', STARTER_REPLIES)
+            con.commit()
+        if not con.execute('SELECT 1 FROM canned_replies WHERE title=?', (REFUND_REPLY[0],)).fetchone():
+            con.execute('INSERT INTO canned_replies (title, body) VALUES (?,?)', REFUND_REPLY)
             con.commit()
         _ready.add(key)
     return con

@@ -40,6 +40,9 @@ def confirmation(lic, user, what='', renews=None, on_computer=None, test=False):
               f'  - Your computers (move the key to a new one): {site}/account',
               f'  - Billing and cancelling: {site}/license',
               f'  - Help: {site}/support (or just reply to this email)', '',
+              'Your subscription renews automatically until you cancel. All payments are final: no refunds or partial',
+              "refunds. Cancel any time on your account page to stop the next renewal; your key keeps working until the",
+              "end of the period you've paid for.", '',
               "Square sends the payment receipt separately.", '', 'Thanks!', 'The BRB team at Happy Hacks']
     subject = 'Your BRB Unlimited license key' + (' (sandbox test)' if test else '')
     return mailer.send(to, subject, '\n'.join(lines))

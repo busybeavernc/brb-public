@@ -435,3 +435,4 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .price-form label.check { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
 .staff-tests { margin-top: 14px; border: 1px dashed var(--amber); }
 .staff-tests form.inline { display: inline-block; margin: 4px 6px 0 0; }
+.plan .terms { color: var(--muted); font-size: .85rem; margin: -8px 0 14px; }
