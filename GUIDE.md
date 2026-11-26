@@ -145,7 +145,7 @@ While the LOOP is on air, BRB listens to your meeting for those names. When some
 - **Face guide**: the loop's eyes, nose and mouth and yours, with a hint to line them up - while you're LIVE and while the LOOP is on air (to come back seamlessly). Not shown in the Mini Bar, where it's too small to read.
 - **Green glow**: when a cut would be seamless, a green glow appears around you - the same signal as at the end of recording a loop - in the full window and the Mini Bar.
 - **Rehearse cut** (**P**, or the button under the cut button): plays the cut in the preview exactly as the meeting would see it - lighting match, watermark and all - then goes back to normal. Nothing changes on air.
-- **Background** switch: turn it off to see just yourself on a plain backdrop in the preview, without the room. It only changes your preview; the meeting still sees your camera (or loop) as usual.
+- **Blur background** switch (on by default): softens the room behind you in the preview so you stand out and it's less distracting. Turn it off to see the room sharp. It only changes your preview; the meeting still sees your camera (or loop) as usual.
 
 ## The HappyHacks Virtual Camera
 
