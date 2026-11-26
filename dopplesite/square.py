@@ -433,7 +433,11 @@ def apply(sub, user=None):
     row = con.execute('SELECT id FROM licenses WHERE square_subscription_id=?', (sub['id'],)).fetchone()
     expires = _expires_for(sub)
     if row:
-        return licenses.update(row['id'], square_status=(sub.get('status') or '').upper(), expires_at=expires)
+        before = licenses.get(row['id'])
+        lic = licenses.update(row['id'], square_status=(sub.get('status') or '').upper(), expires_at=expires)
+        if before and not before.get('expires_at') and expires:       # just cancelled: tell them once
+            _mail_cancelled(lic)
+        return lic
     var_ok = con.execute('SELECT 1 FROM square_catalog WHERE variation_id=?', (sub.get('plan_variation_id'),)).fetchone()
     if not var_ok:
         log.info('Square subscription %s: plan %s is not one of BRB\'s', sub.get('id'), sub.get('plan_variation_id'))
@@ -456,7 +460,33 @@ def apply(sub, user=None):
         licenses.bind_device(lic['id'], ck['device_id'])
     con.execute("UPDATE square_checkouts SET status='done' WHERE user_id=? AND status='open'", (user['id'],))
     con.commit()
+    _mail_confirmation(licenses.get(lic['id']), user, what, renews=_day_end(sub.get('charged_through_date')),
+                       device_id=ck['device_id'] if ck else None)
     return licenses.get(lic['id'])
+
+
+def _device_name(device_id):
+    if not device_id:
+        return None
+    row = licenses.db().execute('SELECT name FROM devices WHERE id=?', (device_id,)).fetchone()
+    return (row['name'] if row and row['name'] else 'your computer')
+
+
+def _mail_confirmation(lic, user, what, renews=None, device_id=None, test=False):
+    try:
+        from . import purchasemail
+        purchasemail.confirmation(lic, user, what, renews=renews, on_computer=_device_name(device_id), test=test)
+    except Exception:  # noqa: BLE001 - mail must never break a purchase
+        log.exception('purchase confirmation email')
+
+
+def _mail_cancelled(lic):
+    try:
+        from . import purchasemail
+        user = users.get(lic['user_id']) if lic.get('user_id') else None
+        purchasemail.cancelled(lic, user)
+    except Exception:  # noqa: BLE001
+        log.exception('cancellation email')
 
 
 def _customer_email(customer_id):
@@ -506,6 +536,7 @@ def _sandbox_paid_checkouts(user):
             licenses.bind_device(lic['id'], r['device_id'])
         con.execute("UPDATE square_checkouts SET status='done' WHERE id=?", (r['id'],))
         con.commit()
+        _mail_confirmation(licenses.get(lic['id']), user, 'Square sandbox test', device_id=r['device_id'], test=True)
         log.info('sandbox checkout %s paid: test key %s', r['link_id'], lic['key'][-4:])
         out.append(licenses.get(lic['id']))
     return out
@@ -572,7 +603,9 @@ def cancel(lic):
     if not lic.get('square_subscription_id'):
         raise SquareError('This key is not a subscription.', 400)
     if lic['square_subscription_id'].startswith('sandbox-'):      # a sandbox test key: nothing in Square to cancel
-        return licenses.update(lic['id'], square_status='CANCELED', expires_at=time.time())
+        out = licenses.update(lic['id'], square_status='CANCELED', expires_at=time.time())
+        _mail_cancelled(out)
+        return out
     sub = call('POST', f'/v2/subscriptions/{quote(lic["square_subscription_id"])}/cancel', {}).get('subscription') or {}
     return apply(sub) or licenses.get(lic['id'])
 

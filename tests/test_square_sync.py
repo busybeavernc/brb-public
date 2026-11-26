@@ -178,3 +178,29 @@ class SettleTests(Base):
             self.assertEqual(lic['square_status'], 'SANDBOX')
             square.cancel(lic)
         self.assertFalse(licenses.get(lic['id'])['valid'])
+
+    def test_confirmation_and_cancellation_emails_once(self):
+        from dopplesite import mailer, users
+        mailer.sent.clear()
+        self.sign_in_with_hh({'id': 'hh8', 'name': 'Robin Lee', 'email': 'robin@example.com', 'email_verified': True})
+        user = users.db().execute("SELECT * FROM users WHERE email='robin@example.com'").fetchone()
+        con = square.db()
+        con.execute("INSERT INTO square_catalog (env, price_cents, variation_id, created_at, plan_name, spec) "
+                    "VALUES ('sandbox', 5988, 'V1', 0, ?, 'ANNUAL:5988x1|ANNUAL:8388')", (square.PLAN_NAME,))
+        con.commit()
+        sub = {'id': 'S1', 'status': 'ACTIVE', 'plan_variation_id': 'V1', 'customer_id': 'C1',
+               'charged_through_date': '2027-11-26'}
+        lic = square.apply(sub, dict(user))
+        square.apply(sub, dict(user))                                         # the webhook again: no second email
+        conf = [m for m in mailer.sent if 'license key' in m['subject']]
+        self.assertEqual(len(conf), 1)
+        body = conf[0]['body']
+        self.assertIn('Hi Robin,', body)
+        self.assertIn(lic['key'], body)
+        self.assertIn('$59.88 the first year, then $83.88/year', body)
+        self.assertIn('Next renewal: November 26, 2027', body)
+        square.apply({**sub, 'canceled_date': '2027-11-26'})
+        square.apply({**sub, 'canceled_date': '2027-11-26'})
+        canc = [m for m in mailer.sent if 'cancelled' in m['subject']]
+        self.assertEqual(len(canc), 1)
+        self.assertIn('keeps working until November 26, 2027', canc[0]['body'])
