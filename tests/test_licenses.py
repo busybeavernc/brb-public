@@ -326,3 +326,27 @@ class SignedReplyTests(LicenseBase):
     def test_free_time_wording(self):
         self.assertEqual([licenses.free_words(s) for s in (1800, 3600, 5400, 7200, 60)],
                          ['30 minutes', '1 hour', '90 minutes', '2 hours', '1 minute'])
+
+
+class WordingTests(LicenseBase):
+    def test_grace_and_prices_come_from_settings(self):
+        st = self.api('status').get_json()
+        self.assertEqual(st['grace_seconds'], 1200)
+        self.assertIn('50% off', st['offer_text'])
+        env = {'GRACE_SECONDS': '600', 'SUBSCRIPTION_PRICE_CENTS': '800', 'EARLY_PRICE_CENTS': '600',
+               'OFFER_TEXT': 'Save {percent_off}%: {early_price} instead of {price}.', 'PITCH_TEXT': 'Try {free} free.'}
+        with mock.patch.dict(os.environ, env):
+            st = self.api('status').get_json()
+        self.assertEqual(st['grace_seconds'], 600)
+        self.assertEqual(st['offer_text'], 'Save 25%: $6 instead of $8.')
+        self.assertEqual(st['pitch'], 'Try 1 hour free.')
+
+    def test_a_typo_in_the_wording_falls_back(self):
+        with mock.patch.dict(os.environ, {'OFFER_TEXT': 'Save {percnt}%'}):
+            self.assertIn('% off', self.api('status').get_json()['offer_text'])
+
+    def test_no_offer_without_a_discount(self):
+        with mock.patch.dict(os.environ, {'EARLY_PRICE_CENTS': '500'}):
+            st = self.api('status').get_json()
+        self.assertFalse(st.get('offer'))
+        self.assertEqual(st['offer_text'], '')

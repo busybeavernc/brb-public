@@ -19,7 +19,7 @@
       <p class="price">{% if offer %}<s class="was">{{ price }}</s> {{ early_price }}{% else %}{{ price }}{% endif %}<small>/month</small></p>
       <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Cancel any time</li></ul>
       {% if offer %}
-        <p class="early"><span class="tag">50% OFF</span> <b>Early-bird: {{ early_price }}/month</b> for as long as you stay subscribed,
+        <p class="early"><span class="tag">{{ percent_off() }}% OFF</span> <b>Early-bird: {{ early_price }}/month</b> for as long as you stay subscribed,
           because {{ offer.name or 'your computer' }} still has free time left.</p>
       {% endif %}
       {% if user %}

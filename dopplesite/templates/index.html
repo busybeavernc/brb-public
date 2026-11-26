@@ -128,13 +128,13 @@
       <h3>Free</h3>
       <p class="price">$0</p>
       <ul><li><b>{{ free_label }} of LOOP time</b> per computer, in total</li><li>The clock only runs while the LOOP is on air</li>
-        <li>A warning and a countdown in the app when 5 minutes are left; then it cuts back to LIVE</li></ul>
+        <li>A warning when 5 minutes are left, and again when it runs out: you won't be cut off mid-sentence, and there's time to get a key before BRB cuts back to LIVE</li></ul>
     </div>
     <div class="plan plan-pro">
       <h3>Unlimited</h3>
       <p class="price">{{ price }}<small>/month</small></p>
       <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Cancel any time</li>
-        <li><b>50% off ({{ early_price }}/month, for as long as you stay subscribed)</b> if you subscribe before your free time runs out:
+        <li><b>{{ percent_off() }}% off ({{ early_price }}/month, for as long as you stay subscribed)</b> if you subscribe before your free time runs out:
           use <b>Get License Key</b> in the app</li></ul>
       <a class="btn" href="{{ url_for('api.license_page') }}">Get a license key</a>
     </div>

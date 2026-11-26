@@ -96,7 +96,8 @@ BRB uses **AI person detection** (Google's MediaPipe selfie segmentation, the ki
 
 ## Free time and license keys
 - **Free:** every computer gets **30 minutes of LOOP time** in total. The clock runs only while the LOOP is on air; the live camera, recording loops and everything else are never limited.
-- **Countdown:** when 5 minutes are left, BRB warns you and shows a countdown (in the window, the mini bar and, for the last 30 seconds, on the preview). At 0:00 it cuts back to LIVE.
+- **Running out:** when 5 minutes are left, BRB tells you (out loud and in a note on top of your meeting) and switches from the Mini Bar to the full window. When the free time runs out while your LOOP is on air, you aren't cut off mid-meeting: the preview gets a pulsing red outline, and you have time to get a license key or cut back to LIVE yourself. In the last minute BRB turns on the face guide and cuts back to LIVE the moment you're in sync, so nobody sees a jump.
+- **No connection:** the LOOP needs the internet to go on air. If the connection drops while it's on air, it stays on until you cut back to LIVE.
 - **Unlimited:** a license key from [brb.happyhacks.io/license](https://brb.happyhacks.io/license), $5/month, cancel any time. Subscribe **before your free time runs out** (use **Get License Key** in the app) and it's **50% off ($2.50/month)** for as long as you stay subscribed.
 - **Applying a key:** click **Get License Key** (or *Settings → License key…*), paste the key, click **Apply**. A key works on one computer; to move it to a new one, contact support.
 - **Internet:** BRB checks your free time or license with brb.happyhacks.io, so the LOOP needs an internet connection.

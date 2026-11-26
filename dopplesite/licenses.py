@@ -96,6 +96,22 @@ def free_seconds():
         return 1800
 
 
+def grace_seconds():
+    """On air when the free time runs out: the app keeps the LOOP on air this long (GRACE_SECONDS, default 20 min)."""
+    try:
+        return max(0, min(4 * 3600, int(float(settings.get('GRACE_SECONDS', 1200)))))
+    except ValueError:
+        return 1200
+
+
+def _words(template, **values):
+    """A .env text with {placeholders}; a typo in it falls back to the built-in words rather than breaking the API."""
+    try:
+        return template.format(**values)
+    except (KeyError, IndexError, ValueError):
+        return None
+
+
 def free_words(seconds=None):
     """1800 -> '30 minutes', 3600 -> '1 hour', 5400 -> '90 minutes', 7200 -> '2 hours'."""
     s = free_seconds() if seconds is None else int(seconds)
@@ -322,7 +338,7 @@ def _license_for_key(device_id, key):
 def status(device, key=None):
     """What this computer may do right now (no time is charged)."""
     lic, problem = _license_for(device['id'], key)
-    out = {'free_total': free_seconds(), 'server_time': time.time()}
+    out = {'free_total': free_seconds(), 'grace_seconds': grace_seconds(), 'server_time': time.time()}
     if lic:
         out.update(plan=lic['plan'], unlimited=True, key=lic['key'], key_problem='',
                    expires_at=lic.get('expires_at'), max_devices=lic['max_devices'], devices=len(lic['devices']))
@@ -336,17 +352,22 @@ def status(device, key=None):
     from . import square
     out['price'], out['early_price'] = square.price_text(), square.price_text(square.early_price_cents())
     # the words the app shows in its license dialog (written here, so prices and offers are never stale in the app)
-    out['pitch'] = (f'Every computer gets {free_words()} of free LOOP time (it only counts while the LOOP is on air). '
-                    f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
+    # PITCH_TEXT / OFFER_TEXT in .env replace these words, with {free}, {price}, {early_price} and {percent_off}
+    pct = round(100 * (1 - square.early_price_cents() / square.price_cents())) if square.price_cents() else 0
+    words = dict(free=free_words(), price=out['price'], early_price=out['early_price'], percent_off=pct)
+    out['pitch'] = _words(settings.get('PITCH_TEXT', ''), **words) or (
+        f'Every computer gets {free_words()} of free LOOP time (it only counts while the LOOP is on air). '
+        f'Unlimited Access: unlimited LOOP time for {out["price"]}/month, cancel any time.')
     out['offer_text'] = ''
     if not lic:
         # The link carries a signed token for this computer: whatever is bought through it is put on this computer,
         # and the app picks it up by itself. While free time is left it also unlocks the early-bird price.
         out['license_url'] += '?d=' + offer_token(device['id'])
-    if not lic and out['free_left'] > 0 and not device.get('discount_used_at'):
+    if not lic and out['free_left'] > 0 and not device.get('discount_used_at') and pct > 0:
         out['offer'] = True
-        out['offer_text'] = (f'Special offer: 50% off. Subscribe while you still have free time and pay '
-                             f'{out["early_price"]}/month instead of {out["price"]}, for as long as you stay subscribed.')
+        out['offer_text'] = _words(settings.get('OFFER_TEXT', ''), **words) or (
+            f'Special offer: {pct}% off. Subscribe while you still have free time and pay '
+            f'{out["early_price"]}/month instead of {out["price"]}, for as long as you stay subscribed.')
     return out
 
 

@@ -80,13 +80,18 @@ def create_app() -> Flask:
         from . import licenses
         return licenses.free_words()
 
+    def percent_off():
+        from . import square
+        full = square.price_cents()
+        return round(100 * (1 - square.early_price_cents() / full)) if full else 0
+
     def download_info():
         """For the Download Free dialog in the header: which downloads exist, and their sizes."""
         return {'available': releases.available(), 'sizes': {p: releases.size_mb(p) for p in releases.PLATFORMS}}
 
     @app.context_processor
     def inject():
-        return {'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
+        return {'percent_off': percent_off, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
                 'free_label_text': free_label, 'csp_nonce': csp_nonce}
 
