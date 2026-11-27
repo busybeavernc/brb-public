@@ -381,6 +381,9 @@
   loadCancellations().catch(e => { $('#cancelSum').textContent = e.message; });
   loadSquare().catch(e => { $('#sqInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
 
+  const ask = m => new Promise(res => { let ok = false; window.brbAsk(m, 'Continue', () => { ok = true; res(true); });
+    const check = setInterval(() => { if (!document.querySelector('.ask-backdrop')) { clearInterval(check); if (!ok) res(false); } }, 200); });
+
   if (ADMIN) {
     async function loadUpd(fetchGit = true) {
       const v = await api('/admin/api/updates' + (fetchGit ? '' : '?fetch=0'));
@@ -414,8 +417,18 @@
     }
     $('#updRefresh').addEventListener('click', () => { $('#updTag').textContent = 'checking…'; loadUpd(true).catch(fail); });
     $('#updShowLog').addEventListener('click', () => watch(0));
+    // Two taps instead of a confirm() box: some phone browsers (in-app browsers) silently block confirm().
+    let armed = 0;
     $('#updRun').addEventListener('click', async () => {
-      if (!confirm('Update the website?\n\nPulls main from GitHub, installs, runs the tests and restarts (a few seconds of downtime).')) return;
+      const b = $('#updRun');
+      if (Date.now() - armed > 6000) {
+        armed = Date.now();
+        b.textContent = 'Tap again to update';
+        setTimeout(() => { if (Date.now() - armed >= 6000) b.textContent = 'Update website'; }, 6100);
+        return;
+      }
+      armed = 0;
+      b.textContent = 'Update website';
       $('#updRun').disabled = true;
       try { await api('/admin/api/updates', 'POST'); $('#updTag').className = 'tag warn'; $('#updTag').textContent = 'updating…'; watch(0); }
       catch (e) { alert(e.message); $('#updRun').disabled = false; }
@@ -525,7 +538,7 @@
           `${v.customer ? ' · customer: ' + custLink(v.customer) : ''}${v.note ? ' · ' + esc(v.note) : ''}</div>`).join('') || '<p class="hint">None.</p>';
       const b = $('#blockAll');
       if (b) b.addEventListener('click', async () => {
-        if (!confirm(`Take the free LOOP time away from ${d.rows.length} computers?`)) return;
+        if (!(await ask(`Take the free LOOP time away from ${d.rows.length} computers?`))) return;
         try { const r = await post('/admin/api/bulk', { action: 'block', devices: d.rows.map(v => v.id) }); alert(`Done: ${r.count} computers.`); runFilter(name); }
         catch (e) { fail(e); }
       });
@@ -578,12 +591,12 @@
     });
     $('#bulkBlock').addEventListener('click', async () => {
       if (!selected.size) return alert('Tick some computers first.');
-      if (!confirm(`Take the free LOOP time away from ${selected.size} computers? A key still works on them.`)) return;
+      if (!(await ask(`Take the free LOOP time away from ${selected.size} computers? A key still works on them.`))) return;
       try { const d = await post('/admin/api/bulk', { action: 'block', devices: [...selected] }); alert(`Done: ${d.count} computers.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
     });
     $('#bulkDel').addEventListener('click', async () => {
       if (!selected.size) return alert('Tick some computers first.');
-      if (!confirm(`Delete ${selected.size} computers? Their free-time records, key assignments and history are removed.`)) return;
+      if (!(await ask(`Delete ${selected.size} computers? Their free-time records, key assignments and history are removed.`))) return;
       try { const d = await post('/admin/api/bulk', { action: 'delete', devices: [...selected] }); alert(`Deleted ${d.count}.`); selected.clear(); loadDevs(); } catch (e) { fail(e); }
     });
   }
@@ -611,12 +624,12 @@
       if (b.dataset.closeresults) { $('#results').hidden = true; $('#gq').value = ''; return; }
       if (b.dataset.filter) { await runFilter(b.dataset.filter); return; }
       if (b.dataset.copy) { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'copied'; return; }
-      if (b.dataset.rm) { const [lid, did] = b.dataset.rm.split('|'); if (!confirm('Remove this computer from the key? The key will then work on the next computer that uses it.')) return; await post(`/admin/api/licenses/${lid}/devices/${did}/remove`); }
-      else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !confirm('Turn this key off? BRB stops accepting it right away.')) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
+      if (b.dataset.rm) { const [lid, did] = b.dataset.rm.split('|'); if (!(await ask('Remove this computer from the key? The key will then work on the next computer that uses it.'))) return; await post(`/admin/api/licenses/${lid}/devices/${did}/remove`); }
+      else if (b.dataset.status) { const [lid, st] = b.dataset.status.split('|'); if (st === 'revoked' && !(await ask('Turn this key off? BRB stops accepting it right away.'))) return; await post(`/admin/api/licenses/${lid}`, { status: st }); }
       else if (b.dataset.devmax) { const [lid, n] = b.dataset.devmax.split('|'); const v = prompt('How many computers may use this key?', n); if (!v) return; await post(`/admin/api/licenses/${lid}`, { max_devices: parseInt(v, 10) }); }
       else if (b.dataset.free) { const v = prompt('Add how many minutes of free LOOP time? (negative takes time away)', '30'); if (!v) return; await post(`/admin/api/devices/${b.dataset.free}/free`, { minutes: parseFloat(v) }); }
-      else if (b.dataset.deldev) { if (!confirm('Delete this computer? Its free-time record, key assignments and history are removed. If it is a real computer, it starts over with a full free allowance next time.')) return; await post(`/admin/api/devices/${b.dataset.deldev}/delete`); }
-      else if (b.dataset.reset) { if (!confirm('Reset this computer to a full free allowance?')) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }
+      else if (b.dataset.deldev) { if (!(await ask('Delete this computer? Its free-time record, key assignments and history are removed. If it is a real computer, it starts over with a full free allowance next time.'))) return; await post(`/admin/api/devices/${b.dataset.deldev}/delete`); }
+      else if (b.dataset.reset) { if (!(await ask('Reset this computer to a full free allowance?'))) return; await post(`/admin/api/devices/${b.dataset.reset}/free`, { reset: true }); }
       else if (b.dataset.givekey) { const note = prompt('Create an unlimited key for this computer. Note (who / why):', ''); if (note === null) return; const d = await post('/admin/api/licenses', { note, device_id: b.dataset.givekey }); alert('New key (already on that computer): ' + d.license.key); }
       else return;
       route();   // refresh whatever is showing

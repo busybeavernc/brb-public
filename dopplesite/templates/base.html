@@ -49,9 +49,30 @@
     var done = function () { var t = b.textContent; b.textContent = "Copied!"; setTimeout(function () { b.textContent = t; }, 1500); };
     if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(done, function () {}); else done();
   });
-  document.addEventListener("submit", function (e) {   // forms that ask first
-    var m = e.target.dataset && e.target.dataset.confirm;
-    if (m && !window.confirm(m)) e.preventDefault();
+  // Forms that ask first: an in-page box (some phone browsers, e.g. inside mail apps, silently block confirm()).
+  window.brbAsk = function (message, okText, onOk) {
+    var d = document.createElement("div");
+    d.className = "ask-backdrop";
+    d.innerHTML = '<div class="ask" role="dialog" aria-modal="true"><p></p><div class="ask-row">' +
+      '<button type="button" class="btn secondary btn-sm" data-no>Cancel</button>' +
+      '<button type="button" class="btn btn-sm" data-yes></button></div></div>';
+    d.querySelector("p").textContent = message;
+    d.querySelector("[data-yes]").textContent = okText || "Continue";
+    function close() { d.remove(); }
+    d.addEventListener("click", function (ev) { if (ev.target === d || ev.target.hasAttribute("data-no")) close(); });
+    d.querySelector("[data-yes]").addEventListener("click", function () { close(); onOk(); });
+    document.body.appendChild(d);
+    d.querySelector("[data-yes]").focus();
+  };
+  document.addEventListener("submit", function (e) {
+    var f = e.target, m = f.dataset && f.dataset.confirm;
+    if (!m || f.dataset.confirmed) return;
+    e.preventDefault();
+    var btn = e.submitter;
+    window.brbAsk(m, btn ? btn.textContent.trim() : "Continue", function () {
+      f.dataset.confirmed = "1";
+      if (f.requestSubmit) f.requestSubmit(btn || undefined); else f.submit();
+    });
   });
   (function () {   // the menu button (phones and narrow windows)
     var bar = document.querySelector(".nav-bar"), btn = bar.querySelector(".menu-btn");

@@ -92,7 +92,9 @@ def status(offset=0):
     code = int(m.group(1)) if m else None
     running = bool(st.get('pid')) and code is None and _alive(st.get('pid'))
     if code is None and st.get('pid') and not running:
-        code = -1   # it stopped without saying how (server restarted, or the command was killed)
+        # the site restarting at the very end can take the update's last line with it: the deploy's own closing
+        # "Done." means it got there
+        code = 0 if re.search(r'\nDone\. Site: ', tail) else -1   # else: stopped without saying how
     clean = re.sub(EXIT_MARK + r' \d+\n?', '', re.sub(r'\x1b\[[0-9;]*m', '', text))
     return {'started': st.get('started'), 'by': st.get('by'), 'running': running, 'exit': code, 'log': clean, 'offset': size}
 

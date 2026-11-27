@@ -454,3 +454,10 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .billing-top { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 6px; }
 .pay-problem { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .pay-problem p { margin: 0; }
+/* in-page "are you sure?" box */
+.ask-backdrop { position: fixed; inset: 0; background: rgba(20, 30, 28, .45); display: flex; align-items: center;
+  justify-content: center; z-index: 1000; padding: 16px; }
+.ask { background: var(--ivory, #faf7f2); border-radius: 14px; padding: 20px 22px; max-width: 440px; width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
+.ask p { margin: 0 0 16px; }
+.ask-row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
