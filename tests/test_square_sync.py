@@ -207,7 +207,11 @@ class SettleTests(Base):
         square.apply({**sub, 'canceled_date': '2027-11-26'})
         canc = [m for m in mailer.sent if 'cancelled' in m['subject']]
         self.assertEqual(len(canc), 1)
-        self.assertIn('keeps working until November 26, 2027', canc[0]['body'])
+        body = canc[0]['body']
+        self.assertIn('stays active until the end of it: November 26, 2027', body)
+        self.assertIn('separate email from Square confirming the cancellation', body)
+        self.assertIn('Thank you for your business', body)
+        self.assertIn('hope to see you again', body)
 
     def test_account_page_shows_each_keys_dates(self):
         from dopplesite import licenses, users

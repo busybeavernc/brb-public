@@ -49,19 +49,28 @@ def confirmation(lic, user, what='', renews=None, on_computer=None, test=False):
 
 
 def cancelled(lic, user=None):
+    """Our own confirmation when a subscription is cancelled (Square sends its own short notice as well)."""
     to = lic.get('email') or (user or {}).get('email')
     if not to:
         return False
     site = settings.public_url()
     end = lic.get('expires_at')
     hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
-    lines = [hi, '', 'Your BRB Unlimited subscription is cancelled, and it will not renew.', '']
+    lines = [hi, '', 'This confirms that your BRB Unlimited subscription has been cancelled. It will not renew, and you '
+             'will not be charged again.', '']
     if end and end > time.time():
-        lines += [f'Your key (ending {lic["key"][-4:]}) keeps working until {_date(end)}. After that, BRB goes back to '
-                  'free LOOP time.', '']
-    lines += [f'Changed your mind? You can subscribe again any time: {site}/license',
-              f'Questions: {site}/support (or just reply to this email)', '', 'Thanks for using BRB!',
-              'The BRB team at Happy Hacks']
+        lines += [f"You've already paid for the current period, so your subscription stays active until the end of it: "
+                  f'{_date(end)}. Until then, your key (ending {lic["key"][-4:]}) keeps working as usual, with unlimited '
+                  'LOOP time. After that, BRB goes back to free LOOP time.', '']
+    else:
+        lines += [f'Your key (ending {lic["key"][-4:]}) has stopped giving unlimited LOOP time; BRB is back to free '
+                  'LOOP time.', '']
+    lines += ['You should also get a separate email from Square confirming the cancellation. That one is from our '
+              "payment processor, so there's nothing more you need to do.", '',
+              'Thank you for your business. We really appreciate you giving BRB a try, and we hope to see you again. '
+              f'You can subscribe again any time: {site}/license', '',
+              f'Questions, or something we could do better? {site}/support (or just reply to this email)', '',
+              'Thanks again!', 'The BRB team at Happy Hacks']
     return mailer.send(to, 'Your BRB subscription is cancelled', '\n'.join(lines))
 
 
