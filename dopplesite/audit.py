@@ -14,6 +14,10 @@ CREATE INDEX IF NOT EXISTS audit_target ON audit (target);
 """
 _ready = set()
 
+# Admin actions big enough that staff get an email every time one happens (see adminlock.alert_action)
+ALERT_ACTIONS = {'set_role', 'update_website', 'export', 'bulk_delete_computers', 'delete_computer', 'pricing',
+                 'create_key', 'change_key', 'totp_set_up', 'totp_removed'}
+
 
 def db():
     con = users.db()
@@ -30,6 +34,9 @@ def log(who, action, target='', **details):
                 (time.time(), str(who)[:120], action, str(target)[:120],
                  json.dumps(details, default=str)[:2000] if details else ''))
     con.commit()
+    if action in ALERT_ACTIONS:
+        from . import adminlock
+        adminlock.alert_action(who, action, target, details)
 
 
 def recent(limit=200, target=None, q=''):

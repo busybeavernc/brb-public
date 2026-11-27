@@ -2,14 +2,16 @@
 {% block title %}Your account · BRB{% endblock %}
 {% block content %}
 <section class="page wrap narrow">
-  <h1>Your account</h1>
+  <h1 id="acct-title">Your account</h1>
   {% set real_name = user.name if user.name and '@' not in user.name else '' %}
   <p class="note">Signed in as {{ real_name or user.email or user.phone }}{{ ' (' + user.email + ')' if real_name and user.email }}.
     Name, email and sign-in are managed in your <a href="{{ hh_account }}">Happy Hacks account</a>.</p>
   {% if linked %}<p class="msg">✓ {{ linked.name or 'This computer' }} is now linked to your account.</p>{% endif %}
   {% if notice == 'canceled' %}<p class="msg">Your subscription is cancelled. Your key keeps working until the end of the period you've paid for.</p>{% endif %}
   {% if notice == 'moved' %}<p class="msg">Done: that computer is off your key. The key now works on the next computer you enter it on.</p>{% endif %}
+  {% if notice == 'admin_locked' and staff_unlock %}<p class="msg">Admin locked itself after 30 minutes without use. Unlock it again to keep going.</p>{% endif %}
   {% if error %}<p class="msg err">{{ error }}</p>{% endif %}
+  {% if staff_unlock %}{% include "_admin_unlock.html" %}{% endif %}
   {% for k in keys if k.payment_failed_at and not k.expires_at %}
   <div class="msg err pay-problem">
     <p><b>Your payment didn't go through.</b>

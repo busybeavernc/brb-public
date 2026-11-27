@@ -23,10 +23,9 @@ class Base(unittest.TestCase):
             'DATA_DIR': self.tmp.name, 'SECRET_KEY': 'test-secret', 'ADMIN_PASSWORD': 'test-pw', 'UPDATES_DIR': self.tmp.name,
             'UPDATE_COMMAND': 'echo deploying; echo done', 'HAPPYHACKS_URL': 'https://hh.test', 'HAPPYHACKS_CLIENT_ID': 'doppleganger',
             'HAPPYHACKS_CLIENT_SECRET': 'shh', 'PUBLIC_URL': 'https://dg.test', 'ADMIN_CONTACTS': 'boss@example.com',
-            'DOWNLOADS_REQUIRE_SIGNIN': '0', 'NO_AUTO_BACKUP': '1', **self.extra_env})
+            'DOWNLOADS_REQUIRE_SIGNIN': '0', 'NO_AUTO_BACKUP': '1', 'ADMIN_RECOVERY': '1', **self.extra_env})
         self.env.start()
         users.reset()
-        admin._failures.clear()
         self.rel = mock.patch.object(releases, '_fetch', return_value=RELEASE)
         self.rel.start()
         releases.reset()
@@ -58,6 +57,22 @@ class Base(unittest.TestCase):
         self.assertEqual(sent['url'], 'https://hh.test/account/token')
         self.assertEqual(sent['body']['client_secret'], ['shh'])
         return r
+
+    def unlock(self, email, at=None):
+        """Set up an authenticator for this (signed-in, staff) account and unlock admin with it."""
+        from dopplesite import adminlock
+        uid = users.db().execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()['id']
+        secret = adminlock.new_secret()
+        users.db().execute('UPDATE users SET totp_secret=?, totp_last_step=0 WHERE id=?', (secret, uid))
+        users.db().commit()
+        code = adminlock.code_at(secret, int((at or time.time()) // 30))
+        with self.c.session_transaction() as s:
+            csrf = s.get('csrf') or ''
+        if not csrf:
+            self.c.get('/account')
+            with self.c.session_transaction() as s:
+                csrf = s['csrf']
+        return self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': code}), secret, code
 
 
 class SiteTests(Base):
@@ -158,21 +173,35 @@ class SiteTests(Base):
 
 class AdminTests(Base):
     def test_requires_sign_in(self):
-        self.assertEqual(self.c.get('/admin').status_code, 302)
-        self.assertEqual(self.c.get('/admin/api/updates').status_code, 401)
-        self.assertEqual(self.c.post('/admin/api/updates').status_code, 401)
+        self.assertEqual(self.c.get('/admin').status_code, 404)
+        self.assertEqual(self.c.get('/admin/api/updates').status_code, 404)
+        self.assertEqual(self.c.post('/admin/api/updates').status_code, 404)
 
     def test_ordinary_user_is_not_admin(self):
         self.sign_in_with_hh({'id': 'hh5', 'name': 'Pat', 'email': 'pat@example.com', 'email_verified': True})
-        self.assertEqual(self.c.get('/admin').status_code, 302)
-        self.assertIn("isn't a BRB admin", self.c.get('/admin/login').get_data(as_text=True))
+        self.assertEqual(self.c.get('/admin').status_code, 404)
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertNotIn('admin-unlock', page)                  # nothing in the page hints at admin
+        with self.c.session_transaction() as s:
+            csrf = s['csrf']
+        self.assertEqual(self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': '123456'}).status_code, 404)
 
     def test_admin_contact_becomes_admin_only_when_confirmed(self):
         self.sign_in_with_hh({'id': 'hh6', 'name': 'Boss', 'email': 'boss@example.com', 'email_verified': False})
-        self.assertEqual(self.c.get('/admin').status_code, 302)
+        self.assertEqual(self.c.get('/admin').status_code, 404)
         self.sign_in_with_hh({'id': 'hh6', 'name': 'Boss', 'email': 'Boss@Example.com', 'email_verified': True})
+        # an admin, but admin stays locked (and out of the menu) until they enter an authenticator code
+        r = self.c.get('/admin')
+        self.assertEqual((r.status_code, '/account' in r.headers['Location']), (302, True))
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('id="admin-unlock"', page)
+        self.assertNotIn('>Admin</a>', page)
+        r, _, _ = self.unlock('boss@example.com')
+        self.assertEqual(r.status_code, 303)
+        self.assertTrue(r.headers['Location'].endswith('/admin'))
         self.assertEqual(self.c.get('/admin').status_code, 200)
-        self.assertIn('Admin', self.c.get('/').get_data(as_text=True))
+        self.assertIn('>Admin</a>', self.c.get('/').get_data(as_text=True))
+
 
     def test_password_lockout(self):
         for _ in range(5):
@@ -272,3 +301,98 @@ class NameShownTests(Base):
         self.assertIn('>Account</a>', page)
         self.assertNotIn('brash@example.com', page)
         self.assertIn('Signed in as busy@example.com.', self.c.get('/account').get_data(as_text=True))
+
+
+class HiddenAdminTests(Base):
+    extra_env = {'ADMIN_RECOVERY': '0', 'SUPPORT_NOTIFY': 'alerts@example.com'}
+
+    def setUp(self):
+        super().setUp()
+        from dopplesite import mailer
+        self.mail = mailer.sent
+        self.mail.clear()
+
+    def boss(self):
+        self.sign_in_with_hh({'id': 'hh6', 'name': 'Boss', 'email': 'boss@example.com', 'email_verified': True})
+
+    def test_totp_matches_rfc_6238(self):
+        from dopplesite import adminlock
+        secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'      # "12345678901234567890"
+        self.assertEqual(adminlock.code_at(secret, 59 // 30), '287082')
+        self.assertEqual(adminlock.code_at(secret, 1111111109 // 30), '081804')
+        self.assertEqual(adminlock.check_code(secret, '287 082', 0, now=59), 1)
+        self.assertIsNone(adminlock.check_code(secret, '287082', 1, now=59))   # already used
+        self.assertIsNone(adminlock.check_code(secret, '000000', 0, now=59))
+
+    def test_password_is_off_without_recovery(self):
+        self.assertEqual(self.c.get('/admin/login').status_code, 404)
+        self.assertEqual(self.c.post('/admin/login', data={'password': 'test-pw'}).status_code, 404)
+        self.assertEqual(self.c.get('/admin').status_code, 404)
+
+    def test_recovery_password_works_only_while_switched_on(self):
+        with mock.patch.dict(os.environ, {'ADMIN_RECOVERY': '1'}):
+            self.assertEqual(self.c.post('/admin/login', data={'password': 'test-pw'}).status_code, 302)
+            self.assertEqual(self.c.get('/admin').status_code, 200)
+        self.assertTrue(any('recovery password was used' in m['subject'] for m in self.mail))
+        self.assertEqual(self.c.get('/admin').status_code, 404)    # switched off again: the session stops working
+
+    def test_unlock_codes_alerts_and_expiry(self):
+        self.boss()
+        r, secret, code = self.unlock('boss@example.com')
+        self.assertEqual(r.status_code, 303)
+        unlocked = [m for m in self.mail if 'Admin was unlocked' in m['subject']][0]
+        self.assertEqual(sorted(unlocked['to']), ['alerts@example.com', 'boss@example.com'])
+        # lock again; the same code can't be used twice
+        with self.c.session_transaction() as s:
+            csrf = s['csrf']
+        self.c.post('/admin/logout', data={'csrf': csrf})
+        self.assertEqual(self.c.get('/admin/api/me').status_code, 401)
+        r = self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': code})
+        self.assertIn("didn't+work", r.headers['Location'])
+        # 30 minutes without use: locked
+        from dopplesite import adminlock
+        uid = users.db().execute("SELECT id FROM users WHERE email='boss@example.com'").fetchone()['id']
+        users.db().execute('UPDATE users SET totp_last_step=0 WHERE id=?', (uid,))
+        users.db().commit()
+        self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': adminlock.code_at(secret, int(time.time() // 30))})
+        self.assertEqual(self.c.get('/admin').status_code, 200)
+        with self.c.session_transaction() as s:
+            s['admin_unlock'] = {**s['admin_unlock'], 'until': time.time() - 1}
+        r = self.c.get('/admin')
+        self.assertIn('n=admin_locked', r.headers['Location'])
+        self.assertIn('locked itself', self.c.get('/account?n=admin_locked').get_data(as_text=True))
+
+    def test_too_many_wrong_codes(self):
+        self.boss()
+        _, secret, _ = self.unlock('boss@example.com')
+        with self.c.session_transaction() as s:
+            s.pop('admin_unlock')
+            csrf = s['csrf']
+        uid = users.db().execute("SELECT id FROM users WHERE email='boss@example.com'").fetchone()['id']
+        users.db().execute('UPDATE users SET totp_last_step=0 WHERE id=?', (uid,))
+        users.db().commit()
+        for _ in range(5):
+            self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': '000000'})
+        self.assertTrue(any('blocked after wrong codes' in m['subject'] for m in self.mail))
+        from dopplesite import adminlock
+        r = self.c.post('/account/admin-unlock', data={'csrf': csrf, 'code': adminlock.code_at(secret, int(time.time() // 30))})
+        self.assertIn('Too+many', r.headers['Location'])
+        self.assertEqual(self.c.get('/admin').status_code, 302)
+
+    def test_no_authenticator_yet_and_server_setup(self):
+        self.boss()
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('python -m dopplesite.users totp boss@example.com', page)
+        with mock.patch('builtins.print'):
+            self.assertEqual(users.main(['totp', 'boss@example.com']), 0)
+            self.assertEqual(users.main(['totp', 'nobody@example.com']), 1)
+        self.assertIn('Authenticator code', self.c.get('/account').get_data(as_text=True))
+        self.assertTrue(any('set up an admin authenticator' in m['subject'] for m in self.mail))
+
+    def test_big_actions_are_emailed(self):
+        self.boss()
+        self.unlock('boss@example.com')
+        with self.c.session_transaction() as s:
+            h = {'X-CSRF-Token': s['csrf']}
+        self.c.post('/admin/api/team', json={'who': 'boss@example.com', 'role': 'admin'}, headers=h)
+        self.assertTrue(any('changed a team role' in m['subject'] for m in self.mail))

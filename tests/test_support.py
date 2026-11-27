@@ -86,6 +86,7 @@ class SupportTests(LicenseBase):
     def test_support_role_can_help_but_not_run_the_site(self):
         self.sign_in_with_hh({'id': 'hh9', 'name': 'Sam Help', 'email': 'sam@example.com', 'email_verified': True})
         users.set_role('sam@example.com', 'support')
+        self.unlock('sam@example.com')
         with self.c.session_transaction() as s:
             h = {'X-CSRF-Token': s['csrf']}
         self.assertEqual(self.c.get('/admin').status_code, 200)

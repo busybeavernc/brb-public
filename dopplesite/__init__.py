@@ -89,12 +89,16 @@ def create_app() -> Flask:
         """For the Download Free dialog in the header: which downloads exist, and their sizes."""
         return {'available': releases.available(), 'sizes': {p: releases.size_mb(p) for p in releases.PLATFORMS}}
 
+    def _admin_open():
+        from . import admin as _admin, adminlock
+        return _admin._password_session() or adminlock.unlocked()
+
     @app.context_processor
     def inject():
         from . import licenses as _lic
         return {'pricing': pricing, 'self_moves': _lic.SELF_MOVES_PER_MONTH, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
-                'free_label_text': free_label, 'csp_nonce': csp_nonce}
+                'free_label_text': free_label, 'csp_nonce': csp_nonce, 'admin_open': _admin_open}
 
     @app.template_filter('first_name')
     def first_name(u):
@@ -319,6 +323,13 @@ def create_app() -> Flask:
         return send_file(p, mimetype=support.ATTACH_TYPES.get(ext, 'application/octet-stream'), as_attachment=True,
                          download_name=stored.split('-', 1)[-1])
 
+    def _staff_unlock():
+        """For admin/support only: what the hidden unlock box needs. Nothing at all for anyone else."""
+        from . import adminlock
+        if not g.user or g.user.get('role') not in ('admin', 'support'):
+            return None
+        return {'keys': adminlock.unlock_keys(), 'open': adminlock.unlocked(), 'has_totp': adminlock.has_totp(g.user)}
+
     @app.get('/account')
     def account():
         """Your keys, your computers (move a key yourself) and your support requests. ?d=<token> from BRB's
@@ -352,7 +363,8 @@ def create_app() -> Flask:
                                moves={k['id']: licenses.self_moves_left(k['id']) for k in keys},
                                tickets=support.search(email=g.user.get('email'), user_id=g.user['id'], limit=50)[0],
                                linked=linked, notice=request.args.get('n'), error=request.args.get('e'),
-                               per_month=licenses.SELF_MOVES_PER_MONTH, hh_account=hhauth.account_url())
+                               per_month=licenses.SELF_MOVES_PER_MONTH, hh_account=hhauth.account_url(),
+                               staff_unlock=_staff_unlock())
 
     @app.post('/account/keys/<lid>/computers/<did>/remove')
     def account_remove_device(lid, did):
@@ -445,6 +457,19 @@ def create_app() -> Flask:
         if g.user and _form_csrf_ok() and licenses.unlink_device(did, g.user['id']):
             audit.log(g.user.get('email') or g.user['id'], 'unlink_computer', did)
         return redirect(url_for('account'), 303)
+
+    @app.post('/account/admin-unlock')
+    def account_admin_unlock():
+        """The hidden code box on /account (staff only; see adminlock.py). Not for anyone else: a plain 404."""
+        from . import adminlock
+        if not g.user or g.user.get('role') not in ('admin', 'support'):
+            abort(404)
+        if not _form_csrf_ok():
+            return redirect(url_for('account', e='This page is out of date. Reload it and try again.'), 303)
+        problem = adminlock.try_unlock(request.form.get('code', ''))
+        if problem:
+            return redirect(url_for('account', e=problem), 303)
+        return redirect(url_for('admin.dashboard'), 303)
 
     @app.route('/healthz')
     def healthz():

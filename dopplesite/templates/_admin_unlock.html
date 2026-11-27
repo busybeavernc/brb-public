@@ -1,0 +1,37 @@
+{# Admin and support only (see adminlock.py). Hidden until the unlock word is typed within 10 seconds of the
+   page loading, or the heading is tapped 5 times quickly. The code is checked on the server. #}
+{% if staff_unlock.open %}
+<p class="msg">Admin is unlocked for this browser. <a href="{{ url_for('admin.dashboard') }}">Open admin</a></p>
+{% else %}
+<form id="admin-unlock" class="card" method="post" action="{{ url_for('account_admin_unlock') }}" hidden>
+  <input type="hidden" name="csrf" value="{{ csrf() }}">
+  {% if staff_unlock.has_totp %}
+  <label class="field">Authenticator code
+    <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+  <button class="btn btn-sm" type="submit">Unlock</button>
+  {% else %}
+  <p class="note">No authenticator is set up for you yet. On the server, run
+    <code>python -m dopplesite.users totp {{ user.email or user.phone }}</code></p>
+  {% endif %}
+</form>
+<script nonce="{{ csp_nonce() }}">
+(function () {
+  var form = document.getElementById('admin-unlock'), word = {{ staff_unlock['keys']|tojson }};
+  if (!form) return;
+  function show() { form.hidden = false; var i = form.querySelector('input[name=code]'); if (i) i.focus(); }
+  var typed = '', until = Date.now() + 10000;
+  function onKey(e) {
+    if (Date.now() > until) { document.removeEventListener('keydown', onKey); return; }
+    if (!e.key || e.key.length !== 1) return;
+    typed = (typed + e.key.toLowerCase()).slice(-word.length);
+    if (typed === word) { document.removeEventListener('keydown', onKey); show(); }
+  }
+  document.addEventListener('keydown', onKey);
+  var taps = [], title = document.getElementById('acct-title');
+  if (title) title.addEventListener('click', function () {
+    var now = Date.now(); taps = taps.filter(function (t) { return now - t < 3000; }); taps.push(now);
+    if (taps.length >= 5) { taps = []; show(); }
+  });
+})();
+</script>
+{% endif %}

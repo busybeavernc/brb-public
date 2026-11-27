@@ -1,9 +1,10 @@
 """/admin: customers, keys, computers, support requests, numbers - and updating the live site from GitHub.
 
-Ways in (same as happyhacks.io):
+Hidden: every /admin address answers 404 until it's unlocked (see adminlock.py for how). Ways in:
   - a BRB admin or support person, signed in with Happy Hacks (ADMIN_CONTACTS, or:
-    python -m dopplesite.users admin|support you@example.com - or Admin > Team)
-  - ADMIN_PASSWORD from .env, kept as a backup (for example if Happy Hacks sign-in is down): full admin
+    python -m dopplesite.users admin|support you@example.com - or Admin > Team), who unlocks admin on /account
+    with a code from their authenticator app
+  - recovery only: ADMIN_PASSWORD, accepted on /admin/login only while ADMIN_RECOVERY=1 is also in .env: full admin
 Support people can help customers (computers, free time, support requests); only admins create or change keys,
 delete computers, export, run bulk actions, manage the team and update the website. Every change is in the audit log.
 """
@@ -15,32 +16,45 @@ from functools import wraps
 
 from flask import Blueprint, Response, abort, g, jsonify, redirect, render_template, request, send_file, session, url_for
 
-from . import audit, customers, hhauth, releases, selfupdate, settings, support, users
+from . import adminlock, audit, customers, hhauth, releases, selfupdate, settings, support, users
 
 bp = Blueprint('admin', __name__)
 
 SESSION_HOURS = 12
-_failures = {}   # ip -> [timestamps]; per worker, enough to slow down password guessing
 
 
 def _password():
     return os.environ.get('ADMIN_PASSWORD', '')
 
 
-def _locked(ip):
-    now = time.time()
-    recent = [t for t in _failures.get(ip, []) if now - t < 900]
-    _failures[ip] = recent
-    return len(recent) >= 5
-
-
 def _password_session():
-    return bool(session.get('admin_pw')) and time.time() - session.get('admin_at', 0) < SESSION_HOURS * 3600
+    """Signed in with the recovery password (only counts while ADMIN_RECOVERY is on)."""
+    return adminlock.recovery_on() and bool(session.get('admin_pw')) and \
+        time.time() - session.get('admin_at', 0) < SESSION_HOURS * 3600
 
 
 def _account_admin():
+    """The signed-in admin or support person, if they've unlocked admin in this session."""
     u = g.get('user')
-    return u if u and u.get('role') in ('admin', 'support') else None
+    return u if u and u.get('role') in ('admin', 'support') and adminlock.unlocked() else None
+
+
+@bp.before_request
+def hidden():
+    """/admin doesn't exist until it's unlocked. A staff member whose unlock ran out is told so; anyone else
+    gets the site's ordinary 404."""
+    if _password_session():
+        return None
+    if adminlock.unlocked():
+        adminlock.touch()
+        return None
+    if request.path == '/admin/login' and adminlock.recovery_on():
+        return None
+    if adminlock.expired_for_staff():
+        if request.path.startswith('/admin/api/'):
+            return jsonify(error='Admin locked itself after 30 minutes. Unlock it again from your account page.'), 401
+        return redirect(url_for('account', n='admin_locked'))
+    abort(404)
 
 
 def signed_in():
@@ -87,17 +101,13 @@ def login_required(view):
 def login():
     if request.method == 'GET' and signed_in():
         return redirect(url_for('admin.dashboard'))
-    u = g.get('user')
-    not_admin = (u['name'] or u['email'] or 'This account') if u and u.get('role') not in ('admin', 'support') else None
     error = None
-    if request.method == 'POST' and not _password():
-        error = 'The admin password is turned off (ADMIN_PASSWORD is empty in .env). Sign in with an admin account.'
-    elif request.method == 'POST':
+    if request.method == 'POST':
         ip = request.remote_addr or '?'
-        if _locked(ip):
+        if adminlock.recovery_failures(ip) >= adminlock.FAILS_ALLOWED:
             error = 'Too many tries. Wait 15 minutes and try again.'
         elif hmac.compare_digest(request.form.get('password', '').encode(), _password().encode()):
-            _failures.pop(ip, None)
+            adminlock.note_recovery(True, ip)
             uid = session.get('uid')
             session.clear()
             session.permanent = True
@@ -106,10 +116,9 @@ def login():
                 session['uid'] = uid
             return redirect(url_for('admin.dashboard'))
         else:
-            _failures.setdefault(ip, []).append(time.time())
+            adminlock.note_recovery(False, ip)
             error = 'That password is not right.'
-    return render_template('admin_login.html', error=error, not_admin=not_admin, password_on=bool(_password()),
-                           sso=hhauth.enabled()), (429 if error and 'Too many' in error else 200)
+    return render_template('admin_login.html', error=error), (429 if error and 'Too many' in error else 200)
 
 
 @bp.post('/admin/logout')
@@ -117,9 +126,8 @@ def logout():
     if hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-'):
         session.pop('admin_pw', None)
         session.pop('admin_at', None)
-        if _account_admin():
-            session.pop('uid', None)
-    return redirect(url_for('admin.login'))
+        adminlock.lock()
+    return redirect(url_for('account'))
 
 
 @bp.get('/admin')
@@ -145,6 +153,7 @@ def update_run():
         pid = selfupdate.start(_who())
     except selfupdate.UpdateError as e:
         return jsonify(error=str(e)), 409
+    audit.log(_who(), 'update_website', 'site', ip=request.remote_addr or '')
     return jsonify(ok=True, pid=pid)
 
 

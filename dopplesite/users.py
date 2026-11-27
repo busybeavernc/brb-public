@@ -5,6 +5,8 @@ Doppleganger and holds what is Doppleganger's own: the admin role and when they 
 
 Admins: emails / mobiles in ADMIN_CONTACTS become admins when they next sign in (confirmed contacts only), or
     python -m dopplesite.users admin you@example.com      (and: support, unadmin, list)
+Admin stays hidden until unlocked with an authenticator code (adminlock.py); set one up on the server:
+    python -m dopplesite.users totp you@example.com       (and: totp-off)
 Roles: admin (everything), support (customers, keys' computers, free time, support requests - not site updates,
 new keys, exports or roles), user.
 """
@@ -43,6 +45,11 @@ def db():
         con.row_factory = sqlite3.Row
         con.execute('PRAGMA journal_mode=WAL')
         con.executescript(SCHEMA)
+        cols = {r[1] for r in con.execute('PRAGMA table_info(users)')}
+        for col, decl in (('totp_secret', "TEXT NOT NULL DEFAULT ''"), ('totp_last_step', 'INTEGER NOT NULL DEFAULT 0')):
+            if col not in cols:   # authenticator for unlocking admin (see adminlock.py)
+                con.execute(f'ALTER TABLE users ADD COLUMN {col} {decl}')
+        con.commit()
         _local.con, _local.path = con, p
     return con
 
@@ -126,6 +133,50 @@ def download_stats(days=30):
     return {'days': days, 'by_platform': by_platform, 'recent': sum(by_platform.values()), 'total': total, 'users': users}
 
 
+def _find(who):
+    w = settings.norm_contact(who)
+    row = db().execute('SELECT * FROM users WHERE id=? OR hh_id=? OR email=? OR phone=?', (who, who, w, w)).fetchone()
+    return dict(row) if row else None
+
+
+def _totp_cli(cmd, who):
+    """Set up (or remove) the authenticator that unlocks admin. Server-only on purpose: see adminlock.py."""
+    from . import adminlock, audit
+    u = _find(who)
+    if not u:
+        print(f'No account matches {who}. Sign in once at {settings.public_url()} first.')
+        return 1
+    con = db()
+    if cmd == 'totp-off':
+        con.execute("UPDATE users SET totp_secret='', totp_last_step=0 WHERE id=?", (u['id'],))
+        con.commit()
+        audit.log('server', 'totp_removed', u['id'])
+        print(f"Authenticator removed for {u['email'] or u['phone'] or u['id']}. They can't unlock admin until it's set up again.")
+        return 0
+    if u['role'] not in ('admin', 'support'):
+        print(f"{who} is not admin or support (role: {u['role']}). Give them a role first.")
+        return 1
+    secret = adminlock.new_secret()
+    con.execute('UPDATE users SET totp_secret=?, totp_last_step=0 WHERE id=?', (secret, u['id']))
+    con.commit()
+    audit.log('server', 'totp_set_up', u['id'])
+    account = u['email'] or u['phone'] or u['id']
+    uri = adminlock.setup_uri(secret, account)
+    print(f'Authenticator set up for {account} (any earlier one stops working).')
+    print('In your authenticator app (Google Authenticator, 1Password, Authy...), add an account with this setup key:')
+    print(f'\n    {" ".join(secret[i:i + 4] for i in range(0, len(secret), 4))}\n')
+    print(f'or open/scan this link:\n    {uri}\n')
+    try:
+        import qrcode
+        q = qrcode.QRCode(border=1)
+        q.add_data(uri)
+        q.print_ascii(invert=True)
+    except ImportError:
+        pass
+    print('Then on /account, type the unlock word (or tap the heading 5 times) and enter the 6-digit code.')
+    return 0
+
+
 def main(argv):
     if len(argv) >= 2 and argv[0] in ('admin', 'support', 'unadmin'):
         n = set_role(argv[1], {'admin': 'admin', 'support': 'support'}.get(argv[0], 'user'))
@@ -133,6 +184,8 @@ def main(argv):
               f'No Doppleganger account matches {argv[1]} yet. Sign in once at {settings.public_url()} first, '
               'or add it to ADMIN_CONTACTS.')
         return 0 if n else 1
+    if len(argv) >= 2 and argv[0] in ('totp', 'totp-off'):
+        return _totp_cli(argv[0], argv[1])
     if argv[:1] == ['list']:
         for r in db().execute('SELECT * FROM users ORDER BY created_at'):
             print(f"{r['id']}  {r['role']:5}  {r['name']}  {r['email'] or ''} {r['phone'] or ''}")

@@ -37,7 +37,9 @@ A small Flask app, set up like happyhacks.io and zipzip:
 **/admin → Update website**, or over SSH: `sudo doppleganger-deploy`. It pulls `main`, reinstalls, runs the tests and restarts; the site is down for a few seconds.
 
 ### Admins
-Emails or mobiles in `ADMIN_CONTACTS` become admins when they next sign in with Happy Hacks (confirmed contacts only). Or run `.venv/bin/python -m dopplesite.users admin you@example.com`. `ADMIN_PASSWORD` in `.env` is a backup way in.
+Emails or mobiles in `ADMIN_CONTACTS` become admins when they next sign in with Happy Hacks (confirmed contacts only). Or run `.venv/bin/python -m dopplesite.users admin you@example.com`.
+
+`/admin` is hidden: it answers 404 until an admin or support person unlocks it. Set up their authenticator on the server with `.venv/bin/python -m dopplesite.users totp you@example.com`, then on `/account` type the unlock word (`ADMIN_UNLOCK_KEYS`, default `unlock`) within 10 seconds of the page loading, or tap the heading 5 times, and enter the 6-digit code. Admin stays open for 30 minutes after the last use (12 hours at most). Unlocks, wrong codes, a new network address, and big admin actions (roles, website updates, exports, deletes, keys, pricing) are emailed to `SUPPORT_NOTIFY`. `ADMIN_PASSWORD` only works while `ADMIN_RECOVERY=1` is also set: switch it on to recover, then off again.
 
 ### Running it locally
 ```
