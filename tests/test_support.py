@@ -114,6 +114,10 @@ class SupportTests(LicenseBase):
         # a key of theirs on computer A: they move it themselves, up to 3 times a month
         lic = licenses.create(email='pat@example.com')
         licenses.bind_device(lic['id'], DEV_A)
+        page = self.c.get('/account').get_data(as_text=True)
+        self.assertIn('…' + lic['key'][-4:], page)     # the computer shows its key, not free time
+        self.assertIn('Move key', page)
+        self.assertNotIn('min left', page)
         with self.c.session_transaction() as s:
             csrf = s['csrf']
         for i in range(licenses.SELF_MOVES_PER_MONTH):

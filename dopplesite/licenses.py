@@ -645,8 +645,12 @@ def user_devices(user_id, email=None):
         d = dict(row)
         d['free_left'] = free_left(d)
         d['linked'] = d.get('user_id') == user_id
-        d['keys'] = [dict(r) for r in con.execute(
-            'SELECT l.id, l.key FROM license_devices ld JOIN licenses l ON l.id = ld.license_id WHERE ld.device_id=?', (did,))]
+        d['keys'] = []
+        for r in con.execute('SELECT l.* FROM license_devices ld JOIN licenses l ON l.id = ld.license_id '
+                             'WHERE ld.device_id=?', (did,)):
+            lic = dict(r)
+            ok, _ = valid(lic)
+            d['keys'].append({'id': lic['id'], 'key': lic['key'], 'valid': ok})
         out.append(d)
     return sorted(out, key=lambda d: -d['last_seen'])
 
