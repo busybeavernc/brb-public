@@ -104,7 +104,13 @@
             <option value="closed">Closed</option><option value="">All</option></select>
           <input id="supQ" type="search" class="q" placeholder="Search requests…">
         </div>
-        <table class="keytable"><thead><tr><th>#</th><th>Request</th><th>Customer</th><th>Status</th><th>Updated</th></tr></thead><tbody id="supRows"></tbody></table>
+        <div class="row bulk" id="supBulk" hidden><span class="hint" id="supSelCount">0 selected</span>
+          <button class="linkbtn" type="button" data-tbulk="closed">mark closed</button>
+          <button class="linkbtn" type="button" data-tbulk="open">mark open</button>
+          <button class="linkbtn" type="button" data-tbulk="waiting">mark waiting on customer</button>
+          <button class="linkbtn" type="button" id="supSelNone">clear</button>
+          <span class="hint" id="supBulkMsg"></span></div>
+        <table class="keytable"><thead><tr><th><input type="checkbox" id="supSelAll" aria-label="Select all requests shown"></th><th>#</th><th>Request</th><th>Customer</th><th>Status</th><th>Updated</th></tr></thead><tbody id="supRows"></tbody></table>
         <p class="hint">Customers write in from brb.happyhacks.io/support (or BRB's Help → Contact support). Replies are emailed to them
           and shown on their private request page; notes stay here.</p>
       </div>
@@ -441,11 +447,50 @@
     const d = await api(`/admin/api/tickets?status=${encodeURIComponent($('#supStatus').value)}&q=${encodeURIComponent($('#supQ').value)}`);
     const c = d.counts || {};
     $('#supCount').textContent = (c.new || 0) + (c.open || 0) || '';
-    $('#supRows').innerHTML = d.tickets.map(t => `<tr><td><a href="#support/${t.id}">#${t.id}</a></td>
+    supShown = d.tickets.map(t => String(t.id));
+    for (const id of [...supSel]) if (!supShown.includes(id)) supSel.delete(id);   // only what's on screen stays ticked
+    $('#supRows').innerHTML = d.tickets.map(t => `<tr><td><input type="checkbox" data-tsel="${t.id}" ${supSel.has(String(t.id)) ? 'checked' : ''} aria-label="Select request #${t.id}"></td><td><a href="#support/${t.id}">#${t.id}</a></td>
       <td><a href="#support/${t.id}">${esc(t.subject)}</a><br><span class="hint">${esc(t.topic_label)}${t.app_version ? ' · BRB ' + esc(t.app_version) : ''}</span></td>
       <td>${custLink(t.email, t.name || t.email)}</td><td>${stTag(t.status)}${t.assignee ? '<br><span class="hint">' + esc(t.assignee) + '</span>' : ''}</td>
-      <td>${esc(when(t.updated_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="hint">No requests here.</td></tr>';
+      <td>${esc(when(t.updated_at))}</td></tr>`).join('') || '<tr><td colspan="6" class="hint">No requests here.</td></tr>';
+    supSelShow();
   }
+  const supSel = new Set();
+  let supShown = [];
+  function supSelShow() {
+    $('#supBulk').hidden = !supSel.size;
+    $('#supSelCount').textContent = `${supSel.size} selected`;
+    const all = $('#supSelAll');
+    all.checked = supShown.length > 0 && supShown.every(id => supSel.has(id));
+    all.indeterminate = supSel.size > 0 && !all.checked;
+  }
+  $('#supRows').addEventListener('change', ev => {
+    const c = ev.target.closest('[data-tsel]'); if (!c) return;
+    c.checked ? supSel.add(c.dataset.tsel) : supSel.delete(c.dataset.tsel);
+    $('#supBulkMsg').textContent = '';
+    supSelShow();
+  });
+  $('#supSelAll').addEventListener('change', ev => {
+    supShown.forEach(id => ev.target.checked ? supSel.add(id) : supSel.delete(id));
+    document.querySelectorAll('#supRows [data-tsel]').forEach(c => { c.checked = ev.target.checked; });
+    $('#supBulkMsg').textContent = '';
+    supSelShow();
+  });
+  $('#supSelNone').addEventListener('click', () => {
+    supSel.clear(); document.querySelectorAll('#supRows [data-tsel]').forEach(c => { c.checked = false; }); supSelShow();
+  });
+  document.querySelectorAll('[data-tbulk]').forEach(b => b.addEventListener('click', async () => {
+    if (!supSel.size) return;
+    try {
+      const r = await post('/admin/api/tickets/bulk', { ids: [...supSel].map(Number), status: b.dataset.tbulk });
+      supSel.clear();
+      await loadTickets();
+      $('#supBulk').hidden = false;
+      $('#supSelCount').textContent = '';
+      $('#supBulkMsg').textContent = `Done: ${r.count} request${r.count === 1 ? '' : 's'} marked ${b.dataset.tbulk === 'waiting' ? 'waiting on customer' : b.dataset.tbulk}.`;
+      setTimeout(() => { if (!supSel.size) $('#supBulk').hidden = true; $('#supBulkMsg').textContent = ''; }, 4000);
+    } catch (e) { fail(e); }
+  }));
   $('#supStatus').addEventListener('change', () => loadTickets().catch(fail));
   $('#supQ').addEventListener('input', debounce(() => loadTickets().catch(fail)));
 

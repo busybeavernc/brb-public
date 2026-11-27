@@ -184,3 +184,18 @@ class SupportTests(LicenseBase):
         self.assertEqual(support.purge_old(), 0)
         self.assertEqual(support.purge_old(now=t['updated_at'] + (support.KEEP_CLOSED_DAYS + 1) * 86400), 1)
         self.assertIsNone(support.get(t['id']))
+
+    def test_bulk_status(self):
+        ids = []
+        for i in range(3):
+            self.send(email=f'p{i}@example.com', body=f'Request number {i}: the camera is black in Zoom.')
+        ids = [t['id'] for t in support.search(limit=10)[0]]
+        h = self.admin()
+        r = self.c.post('/admin/api/tickets/bulk', json={'ids': ids[:2], 'status': 'closed'}, headers=h).get_json()
+        self.assertEqual(r['count'], 2)
+        self.assertEqual(sorted(support.get(i)['status'] for i in ids), ['closed', 'closed', 'new'])
+        self.assertEqual(self.c.post('/admin/api/tickets/bulk', json={'ids': ids, 'status': 'nope'}, headers=h).status_code, 400)
+        self.assertEqual(self.c.post('/admin/api/tickets/bulk', json={'ids': [], 'status': 'closed'}, headers=h).status_code, 400)
+        self.assertEqual(self.c.post('/admin/api/tickets/bulk', json={'ids': ids, 'status': 'closed'}).status_code, 400)  # no CSRF
+        self.assertEqual(audit.recent()[0]['action'], 'support_bulk_status')
+

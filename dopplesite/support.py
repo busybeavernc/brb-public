@@ -239,6 +239,20 @@ def set_status(tid, status, who=''):
     return n
 
 
+def set_status_many(ids, status):
+    """Several requests at once (Admin > Support, the ticked rows). -> how many changed"""
+    if status not in STATUSES:
+        raise SupportError('Unknown status.')
+    ids = sorted({int(i) for i in ids})[:500]
+    if not ids:
+        return 0
+    con = db()
+    n = con.execute('UPDATE tickets SET status=?, updated_at=? WHERE status<>? AND id IN (%s)' % ','.join('?' * len(ids)),  # nosec B608 - placeholders only
+                    (status, time.time(), status, *ids)).rowcount
+    con.commit()
+    return n
+
+
 def assign(tid, who):
     con = db()
     con.execute('UPDATE tickets SET assignee=? WHERE id=?', (_clean(who, 120), tid))

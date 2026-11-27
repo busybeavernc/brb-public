@@ -590,6 +590,25 @@ def ticket_reply(tid):
     return ticket(tid)
 
 
+@bp.post('/admin/api/tickets/bulk')
+@login_required
+def tickets_bulk():
+    """Set the status of the ticked requests in one go (admin and support)."""
+    d = request.get_json(silent=True) or {}
+    try:
+        ids = [int(x) for x in (d.get('ids') or [])]
+    except (TypeError, ValueError):
+        return jsonify(error='Pick some requests first.'), 400
+    if not ids:
+        return jsonify(error='Pick some requests first.'), 400
+    try:
+        n = support.set_status_many(ids, str(d.get('status') or ''))
+    except support.SupportError as e:
+        return jsonify(error=str(e)), 400
+    audit.log(_who(), 'support_bulk_status', f'{n} requests', status=d.get('status'), ids=','.join(map(str, ids[:100])))
+    return jsonify(ok=True, count=n)
+
+
 @bp.post('/admin/api/tickets/<int:tid>/status')
 @login_required
 def ticket_status(tid):
