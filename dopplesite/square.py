@@ -760,13 +760,36 @@ def swap_plan(lic, phases, label, reason):
     return acts[0] if acts else {}
 
 
+def from_checkout(sub):
+    """Was this subscription bought through a checkout link? Then its first order is its billing template, and Square
+    may keep billing that order's price whatever the plan says. One BRB made itself (through the API) has no template:
+    Square bills the plan's own prices, so a plan swap works on it."""
+    return bool(sub.get('order_template_id') or any(ph.get('order_template_id') for ph in (sub.get('phases') or [])))
+
+
 def keep_with_offer(lic, offer):
-    """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price."""
+    """Keep the subscription with the stay offer: the next renewal at the discount, then the normal price.
+    A subscription without a checkout template is swapped onto the offer's plan from its next billing day (Square
+    SwapPlan: nothing is cancelled, so Square sends no "cancelled" email). One bought through a checkout link is
+    replaced (cancelled at the end of its paid period, a new one started that day) until swapping those is proven.
+    Sets offer['how'] to 'swap' or 'replace'."""
     sid = lic.get('square_subscription_id') or ''
     if sid.startswith('sandbox-'):   # a sandbox test key: nothing in Square
+        offer['how'] = 'swap'
         return licenses.update(lic['id'], renews_at=lic.get('renews_at') or time.time() + 30 * 86400,
                                note=(lic.get('note') or '') + f' · stay offer {offer["price"]}')
-    lic, _new = replace_subscription(lic, offer['variation']['phases'], offer['variation']['label'], 'stay offer')
+    phases, label = offer['variation']['phases'], offer['variation']['label']
+    sub = call('GET', f'/v2/subscriptions/{quote(sid)}').get('subscription') or {}
+    if sub and not from_checkout(sub):
+        try:
+            act = swap_plan(lic, phases, label, 'stay offer')
+            offer['how'] = 'swap'
+            log.info('stay offer: key %s swapped from %s', lic['key'][-4:], act.get('effective_date') or '?')
+            return licenses.update(lic['id'], note=(lic.get('note') or '') + f' · stay offer {offer["price"]} once')
+        except SquareError as e:
+            log.warning('stay offer: Square refused the plan swap for key %s (%s) - replacing instead', lic['key'][-4:], e)
+    lic, _new = replace_subscription(lic, phases, label, 'stay offer')
+    offer['how'] = 'replace'
     return licenses.update(lic['id'], note=(lic.get('note') or '') + f' · stay offer {offer["price"]} once')
 
 

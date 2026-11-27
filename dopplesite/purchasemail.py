@@ -85,7 +85,8 @@ def kept(lic, user, offer):
     lines = [hi, '', 'Thank you for staying with BRB!', '',
              f'Your next renewal{when} is {offer["price"]} ({offer["pct"]}% off). After that, your subscription renews at '
              f'the regular {offer["then"]}/{offer["unit"]}.', '',
-             'Your key and computer stay exactly as they are - nothing to do.', '', SQUARE_NOTICE, '',
+             'Your key and computer stay exactly as they are - nothing to do.', '',
+             *([SQUARE_NOTICE, ''] if offer.get('how') != 'swap' else []),
              f'Manage your subscription any time: {site}/account',
              f'Questions: {site}/support (or just reply to this email)', '', 'The BRB team at Happy Hacks']
     return mailer.send(to, f'Your BRB discount: {offer["price"]} for your next renewal', '\n'.join(lines))

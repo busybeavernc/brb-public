@@ -246,7 +246,8 @@ class CancelFlowTests(Base):
         con.commit()
         self.calls = []
         self.subs = {'S1': {'id': 'S1', 'status': 'ACTIVE', 'plan_variation_id': 'VM', 'customer_id': 'C1', 'card_id': 'K1',
-                            'location_id': 'L1', 'charged_through_date': '2027-01-05'}}
+                            'location_id': 'L1', 'charged_through_date': '2027-01-05',
+                            'order_template_id': 'T1'}}            # bought through a checkout link
 
         def fake(method, path, body=None):
             self.calls.append((method, path, body))
@@ -257,6 +258,9 @@ class CancelFlowTests(Base):
                 return {'subscription': self.subs['S1'], 'actions': [{'id': 'A1', 'type': 'CANCEL'}]}
             if method == 'POST' and path == '/v2/subscriptions':
                 return {'subscription': {'id': 'S2', 'status': 'PENDING', 'plan_variation_id': body['plan_variation_id']}}
+            if path.endswith('/swap-plan'):
+                return {'subscription': self.subs['S1'], 'actions': [{'id': 'A2', 'type': 'SWAP_PLAN',
+                                                                     'effective_date': '2027-01-05'}]}
             raise AssertionError(path)
         self.p = mock.patch.object(square, 'call', fake)
         self.p.start()
@@ -296,6 +300,25 @@ class CancelFlowTests(Base):
         fb, counts = square.feedback_list()
         self.assertEqual(counts[0]['reason'], 'price')
         self.assertIn('kept', [f['outcome'] for f in fb])
+
+    def test_keep_swaps_a_subscription_without_a_checkout_template(self):
+        """One BRB made through the API: swap onto the offer's plan - nothing cancelled, so no "cancelled" email."""
+        from dopplesite import licenses, mailer
+        self.subs['S1'].pop('order_template_id')
+        mailer.sent.clear()
+        self.c.post(f'/account/cancel/{self.lic["id"]}', data={'csrf': self.csrf, 'reason': 'price'})
+        r = self.c.post(f'/account/cancel/{self.lic["id"]}/keep', data={'csrf': self.csrf})
+        self.assertIn('Thank you for staying', r.get_data(as_text=True))
+        swaps = [b for m, p, b in self.calls if p.endswith('/swap-plan')]
+        self.assertEqual(swaps, [{'new_plan_variation_id': 'VSTAY'}])
+        self.assertFalse([p for m, p, b in self.calls if p.endswith('/cancel') or (m == 'POST' and p == '/v2/subscriptions')])
+        lic = licenses.get(self.lic['id'])
+        self.assertEqual(lic['square_subscription_id'], 'S1')
+        self.assertTrue(lic['valid'] and not lic['expires_at'])
+        kept = [m for m in mailer.sent if 'discount' in m['subject']][0]
+        self.assertNotIn('cancelled', kept['body'])                     # no Square "cancelled" notice to explain
+        # and the promo check leaves a swapped subscription alone
+        self.assertIn('S1', [r['sub_id'] for r in square.db().execute('SELECT sub_id FROM square_swaps')])
 
     def test_decline_offer_cancels(self):
         from dopplesite import licenses
