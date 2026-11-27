@@ -98,7 +98,8 @@ def _attachment(msg):
 def _is_automatic(msg, sender):
     auto = (msg.get('Auto-Submitted', 'no').lower() != 'no' or msg.get('X-Autoreply') or msg.get('X-Autorespond') or
             msg.get('Precedence', '').lower() in ('bulk', 'junk', 'list', 'auto_reply') or msg.get('List-Id'))
-    ours = sender == email.utils.parseaddr(settings.get('MAIL_FROM') or 'support@happyhacks.io')[1].lower()
+    from . import mailer
+    ours = sender in mailer.our_addresses()
     daemon = re.match(r'^(mailer-daemon|postmaster|no-?reply|bounces?)[@+]', sender)
     return bool(auto or ours or daemon)
 

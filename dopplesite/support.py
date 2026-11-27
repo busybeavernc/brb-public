@@ -165,7 +165,7 @@ def create(email, subject, body, name='', topic='other', user_id=None, app_versi
                     f"{ticket_url(t)}\n\nYou can also just reply to this email.\n\n- BRB Support (Happy Hacks)")
     mailer.send(mailer.staff(), f'[BRB #{tid}] New: {subject}',
                 f"From: {name} <{email}>\nTopic: {TOPICS[topic]}\nBRB {app_version or '?'} {platform}\n\n{body}\n\n"
-                f"Answer it in Admin: {settings.public_url()}/admin#support/{tid}", reply_to=email)
+                f"Answer it in Admin: {settings.public_url()}/admin#support/{tid}", reply_to=email, kind='alert')
     return t
 
 
@@ -206,7 +206,7 @@ def customer_reply(t, body, upload=None):
     con.commit()
     mailer.send(mailer.staff(), f"[BRB #{t['id']}] Reply: {t['subject']}",
                 f"{t['name'] or t['email']} wrote:\n\n{body}\n\n{settings.public_url()}/admin#support/{t['id']}",
-                reply_to=t['email'])
+                reply_to=t['email'], kind='alert')
 
 
 def staff_reply(tid, who, body, note=False, status=None):

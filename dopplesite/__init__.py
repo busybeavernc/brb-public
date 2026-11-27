@@ -448,7 +448,7 @@ def create_app() -> Flask:
             if row and mailer.staff():
                 mailer.send(mailer.staff(), f'BRB cancellation: {dict(CANCEL_REASONS).get(row["reason"], row["reason"])}',
                             f'{g.user.get("email")} cancelled ({lic.get("note") or "subscription"}).\n\n'
-                            f'Reason: {dict(CANCEL_REASONS).get(row["reason"], row["reason"])}\n\n{row["feedback"] or "(no comments)"}')
+                            f'Reason: {dict(CANCEL_REASONS).get(row["reason"], row["reason"])}\n\n{row["feedback"] or "(no comments)"}', kind='alert')
         audit.log(g.user.get('email') or g.user['id'], 'cancel_subscription', lid)
         return redirect(url_for('account', n='canceled'), 303)
 

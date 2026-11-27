@@ -45,7 +45,7 @@ def confirmation(lic, user, what='', renews=None, on_computer=None, test=False):
               "end of the period you've paid for.", '',
               "Square sends the payment receipt separately.", '', 'Thanks!', 'The BRB team at Happy Hacks']
     subject = 'Your BRB Unlimited license key' + (' (sandbox test)' if test else '')
-    return mailer.send(to, subject, '\n'.join(lines))
+    return mailer.send(to, subject, '\n'.join(lines), kind='account')
 
 
 def cancelled(lic, user=None):
@@ -71,7 +71,7 @@ def cancelled(lic, user=None):
               f'You can subscribe again any time: {site}/license', '',
               f'Questions, or something we could do better? {site}/support (or just reply to this email)', '',
               'Thanks again!', 'The BRB team at Happy Hacks']
-    return mailer.send(to, 'Your BRB subscription is cancelled', '\n'.join(lines))
+    return mailer.send(to, 'Your BRB subscription is cancelled', '\n'.join(lines), kind='account')
 
 
 def kept(lic, user, offer):
@@ -89,7 +89,7 @@ def kept(lic, user, offer):
              *([SQUARE_NOTICE, ''] if offer.get('how') != 'swap' else []),
              f'Manage your subscription any time: {site}/account',
              f'Questions: {site}/support (or just reply to this email)', '', 'The BRB team at Happy Hacks']
-    return mailer.send(to, f'Your BRB discount: {offer["price"]} for your next renewal', '\n'.join(lines))
+    return mailer.send(to, f'Your BRB discount: {offer["price"]} for your next renewal', '\n'.join(lines), kind='account')
 
 
 def _pay_lines(amount, url, site):
@@ -109,7 +109,7 @@ def payment_failed(lic, user, amount, url, works_until):
              'pauses until the payment goes through, and switches back on by itself when it does.', '',
              f'Your account: {site}/account', f'Questions: {site}/support (or just reply to this email)', '',
              'The BRB team at Happy Hacks']
-    return mailer.send(to, "BRB: your payment didn't go through", '\n'.join(lines))
+    return mailer.send(to, "BRB: your payment didn't go through", '\n'.join(lines), kind='account')
 
 
 def payment_reminder(lic, user, amount, url, works_until):
@@ -120,7 +120,7 @@ def payment_reminder(lic, user, amount, url, works_until):
     hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
     lines = [hi, '', f'A reminder: your BRB Unlimited renewal of {amount} is still unpaid, and unlimited LOOP time pauses '
              f'on {_date(works_until)}.', ''] + _pay_lines(amount, url, site) + ['The BRB team at Happy Hacks']
-    return mailer.send(to, 'BRB: unlimited LOOP time pauses soon', '\n'.join(lines))
+    return mailer.send(to, 'BRB: unlimited LOOP time pauses soon', '\n'.join(lines), kind='account')
 
 
 def payment_paused(lic, user, amount, url, cancel_on):
@@ -134,7 +134,7 @@ def payment_paused(lic, user, amount, url, cancel_on):
              'It switches back on by itself as soon as the payment goes through.',
              f'If it stays unpaid, your subscription is cancelled on {_date(cancel_on)}.', '',
              'The BRB team at Happy Hacks']
-    return mailer.send(to, 'BRB: unlimited LOOP time is paused', '\n'.join(lines))
+    return mailer.send(to, 'BRB: unlimited LOOP time is paused', '\n'.join(lines), kind='account')
 
 
 def payment_recovered(lic, user):
@@ -144,7 +144,7 @@ def payment_recovered(lic, user):
     hi = f'Hi {_name(user)},' if _name(user) else 'Hi,'
     lines = [hi, '', 'Thanks - your BRB Unlimited payment went through, and unlimited LOOP time is on again.',
              f'Next renewal: {_date(lic["renews_at"])}' if lic.get('renews_at') else '', '', 'The BRB team at Happy Hacks']
-    return mailer.send(to, 'BRB: payment received, all set', '\n'.join(lines))
+    return mailer.send(to, 'BRB: payment received, all set', '\n'.join(lines), kind='account')
 
 
 SQUARE_NOTICE = ('You may also get an email from Square saying your subscription was "cancelled" or that a new one was '
@@ -164,4 +164,4 @@ def moved_to_regular(lic, user, price_words, starts):
              f'the regular {price_words}, as agreed when you subscribed.', '', SQUARE_NOTICE, '',
              f'Manage your subscription any time: {site}/account (cancel there before {_date(starts)} if you don\'t want '
              'to renew).', f'Questions: {site}/support (or just reply to this email)', '', 'The BRB team at Happy Hacks']
-    return mailer.send(to, 'Your BRB subscription continues (about the email from Square)', '\n'.join(lines))
+    return mailer.send(to, 'Your BRB subscription continues (about the email from Square)', '\n'.join(lines), kind='account')

@@ -376,7 +376,7 @@ def metrics():
     path, at = backup.latest()
     from . import mailer, mailin
     return jsonify(metrics=customers.metrics(), backup={'file': os.path.basename(path) if path else '', 'at': at},
-                   mail={'sending': mailer.ready(), 'from': mailer.from_address(), 'notify': mailer.staff(),
+                   mail={'sending': mailer.ready(), 'from': ', '.join(f'{a} ({w})' for a, w in ((mailer.from_address('support'), 'support'), (mailer.from_address('account'), 'accounts & billing'), (mailer.from_address('alert'), 'alerts'))), 'notify': mailer.staff(),
                          'receiving': mailin.ready(), 'last_check': mailin.status['last_check'],
                          'error': mailin.status['last_error']})
 

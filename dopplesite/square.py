@@ -923,7 +923,7 @@ def promo_safeguard(now=None):
                 mailer.send(mailer.staff(), 'BRB: a promo subscription needs a look',
                             f'The promo subscription for {lic.get("email")} (key ending {lic["key"][-4:]}) renews on '
                             f'{sub.get("charged_through_date")}, and BRB could not move it onto the regular price: {e}\n\n'
-                            'Please check it in Square so it renews at the regular price.')
+                            'Please check it in Square so it renews at the regular price.', kind='alert')
     return moved
 
 

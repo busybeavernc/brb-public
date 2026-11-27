@@ -189,7 +189,7 @@ def _alert(u, subject, body):
     to = list(mailer.staff())
     if u and u.get('email') and u['email'] not in to:
         to.append(u['email'])
-    mailer.send(to, f'[BRB] {subject}', body)
+    mailer.send(to, f'[BRB] {subject}', body, kind='alert')
 
 
 _ACTION_WORDS = {
@@ -209,6 +209,6 @@ def alert_action(who, action, target, details):
         for k, v in (details or {}).items():
             lines.append(f'{k}: {v}')
         lines.append('\nFull history: Admin > Audit log.')
-        mailer.send(mailer.staff(), f'[BRB admin] {who} {_ACTION_WORDS.get(action, action)}', '\n'.join(lines))
+        mailer.send(mailer.staff(), f'[BRB admin] {who} {_ACTION_WORDS.get(action, action)}', '\n'.join(lines), kind='alert')
     except Exception:   # an alert must never break the action itself  # nosec B110
         pass

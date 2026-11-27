@@ -199,3 +199,17 @@ class SupportTests(LicenseBase):
         self.assertEqual(self.c.post('/admin/api/tickets/bulk', json={'ids': ids, 'status': 'closed'}).status_code, 400)  # no CSRF
         self.assertEqual(audit.recent()[0]['action'], 'support_bulk_status')
 
+
+    def test_each_kind_of_email_has_its_sender(self):
+        from dopplesite import purchasemail
+        mailer.sent.clear()
+        self.send()
+        customer, staff = mailer.sent[0], mailer.sent[1]
+        self.assertIn('support@happyhacks.io', customer['from'])
+        self.assertIn('no-reply@happyhacks.io', staff['from'])
+        self.assertEqual(staff['reply_to'], 'pat@example.com')
+        purchasemail.cancelled({'email': 'pat@example.com', 'key': 'DG-AAAA-BBBB-CCCC-DDDD', 'expires_at': None})
+        acct = mailer.sent[-1]
+        self.assertIn('accounts@happyhacks.io', acct['from'])
+        self.assertIn('support@happyhacks.io', acct['reply_to'])          # "just reply" reaches support
+        self.assertEqual(mailer.our_addresses(), {'support@happyhacks.io', 'accounts@happyhacks.io', 'no-reply@happyhacks.io'})
