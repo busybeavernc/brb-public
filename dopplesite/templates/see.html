@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}See it in action · BRB{% endblock %}
 {% block content %}
+{% from "_promo.html" import promo with context %}
 <section class="wrap see">
   <div class="see-head">
     <p class="eyebrow">See it in action</p>
@@ -8,6 +9,8 @@
     <p class="lede">Here's BRB on a Windows PC, step by step: record a loop once, step away whenever you need to, and
       come back without anyone noticing a thing.</p>
   </div>
+
+  {{ promo(extra="promo-see") }}
 
   <ol class="see-steps">
     <li class="see-step">

@@ -193,7 +193,7 @@ def create_app() -> Flask:
 
     @app.route('/guide')
     def guide():
-        return render_template('guide.html', guide_html=_md_html('GUIDE.md'), title='Setup guide',
+        return render_template('guide.html', guide_html=_md_html('GUIDE.md'), title='Setup guide', promo_video=True,
                                lede='Everything about installing and using BRB.')
 
     @app.route('/terms')

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% from "_promo.html" import promo with context %}
 <section class="hero wrap">
   <div>
     <p class="eyebrow">Your virtual camera break companion.</p>
@@ -10,25 +11,7 @@
     <p class="by">BY HAPPY HACKS</p>
     <a class="new-pill" href="#badge"><span>New</span> Optional BRB badge for when you step away →</a>
   </div>
-  <div class="scene" aria-label="Live camera, then the recorded loop, then back to live">
-    <div class="cam">
-      <div class="cam-top"><svg class="ic" viewBox="0 0 24 18" aria-hidden="true"><rect y="2" width="16" height="14" rx="3" fill="#244B4B"/><path d="M17.5 7.5l6-4v11l-6-4z" fill="#244B4B"/></svg> Live camera<span class="sp"></span><span class="live"></span></div>
-      <div class="cam-pic"><img src="{{ asset('img/flow/01-live.jpg') }}" alt="Smiling at the camera, live" width="241" height="233" loading="eager"></div>
-      <div class="cam-btns"><span class="on">Live</span><span>Loop</span></div>
-    </div>
-    <span class="arrow" aria-hidden="true">›</span>
-    <div class="cam mid">
-      <div class="cam-top"><svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#244B4B"/><path d="M7 5.5l6 3.5-6 3.5z" fill="#fff"/></svg> Recorded loop</div>
-      <div class="cam-pic"><img src="{{ asset('img/flow/02-loop.jpg') }}" alt="Listening, chin on hand: the recorded loop" width="241" height="233" loading="eager"></div>
-      <div class="cam-btns"><span>Live</span><span class="on">Loop</span></div>
-    </div>
-    <span class="arrow" aria-hidden="true">›</span>
-    <div class="cam">
-      <div class="cam-top"><svg class="ic" viewBox="0 0 24 18" aria-hidden="true"><rect y="2" width="16" height="14" rx="3" fill="#244B4B"/><path d="M17.5 7.5l6-4v11l-6-4z" fill="#244B4B"/></svg> Back to live<span class="sp"></span><span class="live"></span></div>
-      <div class="cam-pic"><img src="{{ asset('img/flow/03-back-to-live.jpg') }}" alt="Waving, back to live" width="241" height="233" loading="eager"></div>
-      <div class="cam-btns"><span class="on">Live</span><span>Loop</span></div>
-    </div>
-  </div>
+  {{ promo(autoplay=True, extra="promo-hero") }}
 </section>
 
 <section class="wrap">
