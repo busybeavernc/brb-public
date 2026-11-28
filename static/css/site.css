@@ -461,3 +461,12 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
   box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
 .ask p { margin: 0 0 16px; }
 .ask-row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* checkout: where the buyer lives (sales tax) */
+.plan .where { display: grid; gap: 8px; margin: 0 0 14px; text-align: left; }
+.plan .where label { display: grid; gap: 4px; font-size: .9rem; }
+.plan .where small { color: var(--muted); }
+.plan .where select, .plan .where input { font: inherit; padding: 8px 10px; border: 1px solid var(--line, #d6d0c4); border-radius: 8px; background: #fff; }
+.plan .where .nc { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.plan .where .nc[hidden] { display: none; }
+.plan .where .nc .note { grid-column: 1 / -1; margin: 0; font-size: .85rem; }

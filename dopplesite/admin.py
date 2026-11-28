@@ -382,7 +382,7 @@ def metrics():
 
 
 def _pricing_json():
-    from . import licenses, square
+    from . import licenses, salestax, square
     saved = settings.saved()
     end = square.promo_ends()
     fields = {
@@ -395,13 +395,17 @@ def _pricing_json():
         'offer': ('OFFER_TEXT', settings.get('OFFER_TEXT', '') or ''),
         'stay_pct': ('RETENTION_PCT', square.retention_pct()),
         'test_prices': ('TEST_PRICES', square.test_prices_on()),
+        'sales_tax': ('SALES_TAX', salestax.enabled()),
+        'nc_rates': ('NC_TAX_RATES', settings.get('NC_TAX_RATES', '') or ''),
     }
     pr = square.pricing()
     return {'values': {k: v for k, (_n, v) in fields.items()},
             'from_admin': {k: n in saved for k, (n, _v) in fields.items()},
             'promo_active': pr['promo'], 'preview': pr,
             'options': {k: square.describe(o) for k, o in square.offers().items()},
-            'free': licenses.free_words()}
+            'free': licenses.free_words(), 'tax_rates_as_of': salestax.RATES_AS_OF,
+            'sales_by_state': [{**r, 'name': salestax.STATE_NAMES.get(r['state'], 'Not asked')}
+                               for r in square.sales_by_state()]}
 
 
 @bp.get('/admin/api/pricing')
@@ -448,6 +452,9 @@ def pricing_set():
             raise ValueError('Stay offer: a whole percent from 0 (no offer) to 90.')
         new['RETENTION_PCT'] = sp
         new['TEST_PRICES'] = 'on' if d.get('test_prices') in (True, 'on', 'true', '1') else 'off'
+        from . import salestax
+        new['SALES_TAX'] = 'on' if d.get('sales_tax') in (True, 'on', 'true', '1') else 'off'
+        new['NC_TAX_RATES'] = salestax.parse_rates(d.get('nc_rates', ''))
         m = int(new['MONTHLY_PRICE_CENTS'] or square.monthly_cents())
         a = int(new['ANNUAL_PRICE_CENTS'] or square.annual_cents())
         p = int(new['PROMO_ANNUAL_PRICE_CENTS'] or square.promo_cents())

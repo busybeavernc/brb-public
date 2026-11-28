@@ -149,12 +149,28 @@ def subscribe():
     try:
         staff = g.user.get('role') in ('admin', 'support')
         option = request.form.get('plan') if request.form.get('plan') in ('monthly', 'test_daily', 'test_promo') else 'annual'
+        from . import salestax
+        try:
+            where = salestax.quote(request.form.get('state'), request.form.get('zip'), request.form.get('county'))
+        except ValueError as e:
+            return render_template('message.html', title='Where are you?', body=str(e),
+                                   action=('Back to checkout', url_for('api.license_page'))), 400
+        session['tax_where'] = {k: where[k] for k in ('state', 'zip', 'county')}   # filled in next time
         url = square.checkout(g.user, settings.public_url() + url_for('api.subscribe_return'), option=option,
-                              device=_linked_device(), staff=staff)
+                              device=_linked_device(), staff=staff, where=where)
     except square.SquareError as e:
         return render_template('message.html', title="Couldn't open checkout", body=str(e),
                                action=('Back to your license', url_for('api.license_page'))), e.status
     return redirect(url, 303)
+
+
+@bp.get('/license/tax-data')
+def tax_data():
+    """NC ZIP -> county and county -> rate, for the checkout form (about 20 KB, cached by the browser for a day)."""
+    from . import salestax
+    resp = jsonify(salestax.page_data())
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    return resp
 
 
 @bp.get('/license/check')

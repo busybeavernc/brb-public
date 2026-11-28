@@ -96,7 +96,11 @@ def create_app() -> Flask:
     @app.context_processor
     def inject():
         from . import licenses as _lic
-        return {'pricing': pricing, 'self_moves': _lic.SELF_MOVES_PER_MONTH, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
+        def tax_form():
+            from . import salestax
+            return {'on': salestax.enabled(), 'states': salestax.STATES, 'counties': sorted(salestax.rates()),
+                    'saved': session.get('tax_where') or {}}
+        return {'tax_form': tax_form, 'pricing': pricing, 'self_moves': _lic.SELF_MOVES_PER_MONTH, 'asset': asset, 'user': g.get('user'), 'sso': hhauth.enabled(), 'csrf': csrf_token,
                 'account_url': hhauth.account_url(), 'platforms': releases.PLATFORMS, 'download_info': download_info,
                 'free_label_text': free_label, 'csp_nonce': csp_nonce, 'admin_open': _admin_open}
 

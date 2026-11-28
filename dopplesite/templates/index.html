@@ -205,6 +205,9 @@
     <details><summary>Can I get a refund?</summary>
       <p>No. All payments are final, and we don't give refunds or partial refunds, including for the unused part of a
         month or year. Try BRB free first, and cancel any time before your next renewal so you aren't charged again.</p></details>
+    {% if tax_form().on %}<details><summary>Do you charge sales tax?</summary>
+      <p>Only if you live in North Carolina, where BRB's maker is based: your county's sales tax rate is added at
+        checkout, and on each renewal. You'll see the exact amount before you pay. Prices shown are before tax.</p></details>{% endif %}
   </div>
 
   <p class="note" style="margin-top:40px">

@@ -22,12 +22,31 @@
     <p class="billed">billed monthly</p>
   </div>
   <ul><li>Unlimited LOOP time</li><li>One computer per key</li><li>Renews automatically; cancel any time</li></ul>
-  <p class="terms">No refunds or partial refunds. Cancel any time to stop the next renewal.</p>
+  <p class="terms">{% if tax_form().on %}Prices before sales tax, which is added for North Carolina buyers. {% endif %}No refunds or partial refunds. Cancel any time to stop the next renewal.</p>
   {% if subscribe %}
     {% if user %}
       {% if square_ready %}
       <form method="post" action="{{ url_for('api.subscribe') }}"><input type="hidden" name="csrf" value="{{ csrf() }}">
         <input type="hidden" name="plan" value="{{ 'monthly' if option == 'monthly' else 'annual' }}" data-plan-input>
+        {% set tf = tax_form() %}
+        <div class="where" data-where>
+          <label>Where do you live? <small>(for sales tax)</small>
+            <select name="state" required data-state>
+              <option value="">Choose…</option>
+              {% for code, name in tf.states %}<option value="{{ code }}"{% if tf.saved.state == code %} selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select></label>
+          {% if tf.on %}
+          <div class="nc" data-nc hidden>
+            <label>ZIP code <input name="zip" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" autocomplete="postal-code"
+                   value="{{ tf.saved.zip or '' }}" data-zip></label>
+            <label>County <select name="county" data-county>
+              <option value="">From your ZIP code</option>
+              {% for c in tf.counties %}<option{% if tf.saved.county == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select></label>
+            <p class="note" data-taxline></p>
+          </div>
+          {% endif %}
+        </div>
         <button class="btn opt opt-annual" type="submit">Subscribe: {{ pr.promo_total if pr.promo else pr.annual_total }} for the year</button>
         <button class="btn opt opt-monthly" type="submit">Subscribe: {{ pr.monthly }}/month</button>
       </form>
@@ -50,4 +69,25 @@ document.querySelectorAll('.billing').forEach(card => {
   card.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => pick(b.dataset.pick)));
   pick(card.dataset.billing);
 });
+{% if subscribe and tax_form().on %}
+(async () => {
+  const box = document.querySelector('[data-where]'); if (!box) return;
+  const st = box.querySelector('[data-state]'), nc = box.querySelector('[data-nc]'), zip = box.querySelector('[data-zip]'),
+        county = box.querySelector('[data-county]'), line = box.querySelector('[data-taxline]');
+  let data = null;
+  const show = async () => {
+    const isNC = st.value === 'NC';
+    nc.hidden = !isNC; zip.required = isNC;
+    if (!isNC) return;
+    if (!data) { try { data = await (await fetch('/license/tax-data')).json(); } catch (e) { data = {zips: {}, rates: {}}; } }
+    const z = zip.value.trim(), fromZip = data.zips[z] || '';
+    const c = county.value || fromZip;
+    county.options[0].textContent = fromZip ? `${fromZip} (from your ZIP code)` : 'From your ZIP code';
+    line.textContent = c && data.rates[c] ? `${c} County: ${data.rates[c]}% sales tax is added at checkout.`
+                     : (z.length === 5 ? "That ZIP code isn't in North Carolina: check it, or choose your county." : '');
+  };
+  [st, zip, county].forEach(el => el.addEventListener('input', show));
+  show();
+})();
+{% endif %}
 </script>

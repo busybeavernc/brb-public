@@ -90,6 +90,13 @@ def db():
               INSERT INTO square_catalog (env, price_cents, variation_id, created_at, spec)
                 SELECT env, price_cents, variation_id, created_at, 'MONTHLY:' || price_cents FROM square_catalog_old;
               DROP TABLE square_catalog_old;""")
+        ck = [r[1] for r in con.execute('PRAGMA table_info(square_checkouts)')]
+        if 'tax_state' not in ck:   # where the buyer said they are, and the sales tax added
+            con.executescript("ALTER TABLE square_checkouts ADD COLUMN tax_state TEXT NOT NULL DEFAULT ''; "
+                              "ALTER TABLE square_checkouts ADD COLUMN tax_zip TEXT NOT NULL DEFAULT ''; "
+                              "ALTER TABLE square_checkouts ADD COLUMN tax_county TEXT NOT NULL DEFAULT ''; "
+                              "ALTER TABLE square_checkouts ADD COLUMN tax_pct TEXT NOT NULL DEFAULT ''; "
+                              "ALTER TABLE square_checkouts ADD COLUMN tax_cents INTEGER NOT NULL DEFAULT 0;")
         _ready.add(key)
     return con
 
@@ -451,30 +458,46 @@ def sync_in_background():
     threading.Thread(target=run, daemon=True, name='square-sync').start()
 
 
-def checkout(user, return_url, option='annual', device=None, staff=False):
+def checkout(user, return_url, option='annual', device=None, staff=False, where=None):
     """A Square checkout page for an option on sale ('annual' - with the promo while it runs - or 'monthly'). The key
-    is put on `device` (the computer whose BRB opened the page) when the purchase goes through. -> url"""
+    is put on `device` (the computer whose BRB opened the page) when the purchase goes through. `where`: salestax.quote()
+    for the buyer; with a rate, the checkout is an order with that tax (Square then bills it on every renewal too,
+    since the first order becomes the subscription's template). -> url"""
     if not user.get('email'):
         raise SquareError('Add an email address to your Happy Hacks account first (Square sends receipts there).', 400)
     o = offers().get(option) or (test_offers().get(option) if staff else None)
     if o is None:
         raise SquareError("That option isn't offered. Please reload the page.", 400)
     cid = 'sq' + uuid.uuid4().hex[:16]
+    where = where or {}
+    rate = where.get('rate') or 0
+    item = f'{PLAN_NAME} - {o["label"]}'
     body = {'idempotency_key': _key(),
-            'quick_pay': {'name': f'{PLAN_NAME} - {o["label"]}', 'price_money': {'amount': o['first'], 'currency': 'USD'},
-                          'location_id': location()},
             'checkout_options': {'redirect_url': f'{return_url}?c={cid}', 'ask_for_shipping_address': False,
                                  'subscription_plan_id': plan_variation(option) if not o.get('test') else
                                  _variation_id_for(o)},
             'pre_populated_data': {'buyer_email': user['email']},
             'payment_note': f'BRB {user["id"]} {cid}'}
+    if rate:
+        body['order'] = {'location_id': location(), 'reference_id': cid,
+                         'line_items': [{'name': item, 'quantity': '1',
+                                         'base_price_money': {'amount': o['first'], 'currency': 'USD'}}],
+                         'taxes': [{'uid': 'sales-tax', 'name': where.get('label') or 'Sales tax',
+                                    'percentage': format(rate.normalize(), 'f') if hasattr(rate, 'normalize') else str(rate),
+                                    'type': 'ADDITIVE', 'scope': 'ORDER'}]}
+    else:
+        body['quick_pay'] = {'name': item, 'price_money': {'amount': o['first'], 'currency': 'USD'},
+                             'location_id': location()}
     link = call('POST', '/v2/online-checkout/payment-links', body).get('payment_link') or {}
     if not link.get('url'):
         raise SquareError("Square didn't return a checkout page.")
     con = db()
-    con.execute('INSERT INTO square_checkouts (id, env, user_id, email, link_id, url, created_at, price_cents, device_id) '
-                'VALUES (?,?,?,?,?,?,?,?,?)', (cid, env(), user['id'], user['email'].lower(), link.get('id'), link['url'][:500],
-                                               time.time(), o['first'], device['id'] if device else None))
+    from . import salestax
+    con.execute('INSERT INTO square_checkouts (id, env, user_id, email, link_id, url, created_at, price_cents, device_id, '
+                'tax_state, tax_zip, tax_county, tax_pct, tax_cents) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (cid, env(), user['id'], user['email'].lower(), link.get('id'), link['url'][:500], time.time(), o['first'],
+                 device['id'] if device else None, where.get('state', ''), where.get('zip', ''), where.get('county', ''),
+                 str(rate or ''), salestax.tax_cents(o['first'], rate) if rate else 0))
     con.commit()
     return link['url']
 
@@ -940,7 +963,8 @@ def _will_bill_too_little(sub, regular_cents):
         except SquareError:
             return True                    # can't tell: fix it, to be safe
         amount = ((order.get('total_money') or {}).get('amount'))
-        if amount is not None and int(amount) < regular_cents:
+        tax = ((order.get('total_tax_money') or {}).get('amount')) or 0   # compare prices before sales tax
+        if amount is not None and int(amount) - int(tax) < regular_cents:
             return True
     return False
 
@@ -1207,3 +1231,12 @@ def handle(event):
         if inv.get('subscription_id') and (kind != 'invoice.updated' or inv.get('status') in UNPAID + ('PAID',)):
             return 'payment ' + check_subscription_payment(inv['subscription_id'])
     return 'ignored'
+
+
+def sales_by_state(days=365):
+    """Completed checkouts (one per person) by the state buyers gave, for watching other states' sales-tax thresholds."""
+    since = time.time() - days * 86400
+    rows = db().execute("SELECT tax_state AS state, COUNT(DISTINCT user_id) AS buyers, SUM(price_cents) AS cents, "
+                        "SUM(tax_cents) AS tax FROM square_checkouts WHERE status='done' AND env='production' "
+                        "AND created_at>=? GROUP BY tax_state ORDER BY cents DESC", (since,)).fetchall()
+    return [dict(r) for r in rows]

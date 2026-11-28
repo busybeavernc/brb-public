@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Changeable in Admin > Overview > Pricing (stored in the database, table site_settings)
 EDITABLE = ('MONTHLY_PRICE_CENTS', 'ANNUAL_PRICE_CENTS', 'PROMO_ANNUAL_PRICE_CENTS', 'PROMO_ENDS', 'PROMO_NAME',
-            'PITCH_TEXT', 'OFFER_TEXT', 'RETENTION_PCT', 'TEST_PRICES')
+            'PITCH_TEXT', 'OFFER_TEXT', 'RETENTION_PCT', 'TEST_PRICES', 'SALES_TAX', 'NC_TAX_RATES')
 _saved = {'at': 0.0, 'values': {}, 'db': None}
 _saved_lock = threading.Lock()
 SAVED_TTL = 5.0   # other web workers see a change within this many seconds

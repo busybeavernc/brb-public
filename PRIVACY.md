@@ -51,7 +51,7 @@ You don't need an account to download or use BRB. If you sign in on the Website 
 
 - **Sign-in** uses your Happy Hacks account. We receive and keep your **name**, **email address**, and **mobile number** if your Happy Hacks account has one, plus when your BRB account was created and when you last signed in.
 - **Emails.** After you first sign in we send a welcome email with setup tips, and a check-in about a week later. Each has an unsubscribe link; unsubscribing doesn't stop emails about your license, payments or support requests.
-- **Subscriptions** are paid through **Square**. You enter your payment details on Square's checkout page; **we never see or store your card details**. We keep your license key, its status and expiry, the Square subscription identifier, the price you subscribed at, and which computer the key is on.
+- **Subscriptions** are paid through **Square**. You enter your payment details on Square's checkout page; **we never see or store your card details**. We keep your license key, its status and expiry, the Square subscription identifier, the price you subscribed at, which computer the key is on, and the state (and, for North Carolina, the ZIP code and county) you give at checkout, which sets the sales tax and is kept for tax records.
 - If you open the Website from the Software's "Get Unlimited Access Now" button, the link carries a signed reference to your computer's scrambled identifier, so a key you buy goes straight onto that computer.
 - If you use **Link this computer to my account** in the Software, we record that your computer (by its scrambled identifier, name, operating system and BRB version) belongs to your account, so you can see and manage it on your account page. You can remove it there at any time.
 
