@@ -11,7 +11,7 @@ import time
 
 from flask import Blueprint, Response, g, jsonify, redirect, render_template, request, session, url_for
 
-from . import hhauth, licenses, settings, signing, square
+from . import growth, hhauth, licenses, settings, signing, square
 
 log = logging.getLogger('dopplesite')
 bp = Blueprint('api', __name__)
@@ -60,7 +60,30 @@ def license_status():
         return jsonify(error='Too many requests. Try again in a minute.', code='slow_down'), 429
     d = request.get_json(silent=True) or {}
     d, dev = _device(create=bool(d.get('key')))   # typing in a key records the computer (it's put on the key)
-    return _signed(licenses.status(dev, d.get('key')), d)
+    out = licenses.status(dev, d.get('key'))
+    _funnel(d, out)
+    return _signed(out, d)
+
+
+def _funnel(d, out, on_air=False):
+    try:
+        growth.note_status(d, out, on_air=on_air)
+    except Exception:  # noqa: BLE001 - counting must never break licensing
+        log.exception('funnel')
+
+
+@bp.post('/api/v1/crash')
+def crash_report():
+    """An opt-in crash report from the app: {device_id, app_version, platform, kind, report}."""
+    if _too_many('crash:' + (request.remote_addr or '?'), limit=20):
+        return jsonify(error='Too many reports.', code='slow_down'), 429
+    if (request.content_length or 0) > growth.MAX_REPORT * 2:
+        return jsonify(error='Report too large.', code='too_large'), 413
+    try:
+        cid = growth.save_crash(request.get_json(silent=True) or {})
+    except ValueError as e:
+        return jsonify(error=str(e), code='bad_report'), 400
+    return jsonify(ok=True, id=cid)
 
 
 @bp.post('/api/v1/license/lease')
@@ -72,7 +95,10 @@ def license_lease():
     d, dev = _device(create=action != 'release')
     if dev.get('new'):   # releasing a lease it never had: nothing to do
         return _signed({**licenses.status(dev, d.get('key')), 'ok': True, 'lease_seconds': 0}, d)
-    return _signed(licenses.lease(dev, d.get('key'), action), d)
+    out = licenses.lease(dev, d.get('key'), action)
+    if action == 'start' and out.get('ok'):
+        _funnel(d, out, on_air=True)
+    return _signed(out, d)
 
 
 # ------------------------------------------------------------------ /license (people)

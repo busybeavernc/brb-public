@@ -133,6 +133,21 @@ def create_app() -> Flask:
                                sizes={p: releases.size_mb(p) for p in releases.PLATFORMS},
                                need_signin=settings.flag('DOWNLOADS_REQUIRE_SIGNIN') and not g.user and hhauth.enabled())
 
+    @app.route('/email/unsubscribe', methods=['GET', 'POST'])
+    def email_unsubscribe():
+        """The link in welcome / check-in emails. GET asks (mail scanners follow links); POST does it (also one-click)."""
+        from . import growth
+        uid, tok = request.values.get('u', ''), request.values.get('t', '')
+        if request.method == 'POST':
+            ok = growth.unsubscribe(uid, tok, on=request.form.get('resub') != '1')
+            if not ok:
+                return render_template('message.html', title='Link not recognised',
+                                       body='This unsubscribe link is not valid. Reply to any BRB email and we will take you off.'), 400
+            if request.form.get('resub') == '1':
+                return render_template('message.html', title="You're back on", body='You will get BRB tips again.')
+            return render_template('unsubscribe.html', done=True, u=uid, t=tok)
+        return render_template('unsubscribe.html', done=False, u=uid, t=tok)
+
     @app.route('/privacy-policy')
     @app.route('/privacy')       # the main address
     def privacy():
@@ -224,6 +239,12 @@ def create_app() -> Flask:
             return render_template('message.html', title="Couldn't sign you in", body=str(e),
                                    action=('Try again', url_for('hh_start'))), e.status
         user = users.sign_in(hh_user)
+        if abs((user.get('last_login_at') or 0) - (user.get('created_at') or 0)) < 2:   # their first sign-in
+            from . import growth
+            try:
+                growth.welcome(user)
+            except Exception:  # noqa: BLE001
+                app.logger.exception('welcome email')
         session.clear()
         session.permanent = True
         session.update(uid=user['id'], csrf=secrets.token_urlsafe(24))
@@ -252,6 +273,8 @@ def create_app() -> Flask:
             from . import square
             square.maybe_check_promos()   # promo subscriptions get the regular price after their first period
             square.sync_in_background()   # Square's plan matches the prices in .env (after start-up or a price change)
+            from . import growth
+            growth.maybe_run()            # 7-day check-in emails
 
     def _form_csrf_ok():
         return hmac.compare_digest(request.form.get('csrf', ''), session.get('csrf', '') or '-')

@@ -43,6 +43,18 @@
             <span class="hint" id="priceMsg"></span></div>{% endif %}
         </form>
       </div>
+      <div class="admin-card" id="funnelcard">
+        <div class="admin-card-head"><h2>Funnel</h2><span class="sp"></span>
+          <select id="funnelDays" aria-label="Period"><option value="7">last 7 days</option><option value="30" selected>last 30 days</option><option value="90">last 90 days</option><option value="365">last year</option></select></div>
+        <div class="stats" id="funnelStats"></div>
+        <p class="hint" id="funnelNote"></p>
+      </div>
+      <div class="admin-card" id="crashcard">
+        <div class="admin-card-head"><h2>Crash reports</h2><span class="sp"></span><span class="hint" id="crashSum"></span></div>
+        <table class="keytable" id="crashRows"></table>
+        <pre id="crashDetail" class="hint" style="display:none;white-space:pre-wrap;max-height:24em;overflow:auto"></pre>
+        <p class="hint">Only from people who turned on <i>Send crash reports</i> in BRB (or said yes after a crash). User names are taken out of file paths.</p>
+      </div>
       <div class="admin-card" id="cancelcard">
         <div class="admin-card-head"><h2>Why people cancel</h2><span class="sp"></span><span class="hint" id="cancelSum"></span></div>
         <div id="cancelCounts" class="chips"></div>
@@ -320,6 +332,44 @@
 
   const REASONS = {price: 'Costs too much', not_using: "Doesn't use it enough", problems: "Didn't work well",
                    other_tool: 'Using something else', temporary: 'Only needed it for a while', other: 'Something else'};
+  async function loadFunnel() {
+    const f = await api('/admin/api/funnel?days=' + $('#funnelDays').value);
+    const pct = (n, of) => of ? ` (${Math.round(100 * n / of)}%)` : '';
+    $('#funnelStats').innerHTML = [
+      [f.site_downloads, 'downloads from the site'], [f.installs, 'new computers opened BRB'],
+      [f.loop, 'recorded a loop' + pct(f.loop, f.installs)], [f.on_air, 'put a loop on air' + pct(f.on_air, f.installs)],
+      [f.ran_out, 'used up free time' + pct(f.ran_out, f.installs)], [f.unlimited, 'went unlimited' + pct(f.unlimited, f.installs)]
+    ].map(([n, l]) => `<div class="stat"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('');
+    $('#funnelNote').textContent = `Computers first seen in the period, and how far each got. All time: ${f.all_time_installs} computers, ` +
+      `${f.site_downloads_total} site downloads` + (f.github_downloads_total != null ? `, ${f.github_downloads_total} GitHub downloads (includes updates)` : '') +
+      '. Counting started with this version of the site; "recorded a loop" needs BRB 1.0.145 or later.';
+  }
+  $('#funnelDays').addEventListener('change', () => loadFunnel().catch(e => { $('#funnelNote').textContent = e.message; }));
+
+  async function loadCrashes() {
+    const d = await api('/admin/api/crashes'), rows = d.rows;
+    const fresh = rows.filter(r => r.status === 'new').length;
+    $('#crashSum').textContent = rows.length ? `${rows.length} kinds of crash${fresh ? ` · ${fresh} new` : ''}` : 'No crash reports yet';
+    $('#crashRows').innerHTML = rows.length ? '<thead><tr><th>Last</th><th>What</th><th>Version</th><th>Times</th><th>Computers</th><th></th></tr></thead><tbody>' +
+      rows.map(r => `<tr><td>${esc(when(r.last_at))}</td><td><a href="#" data-crash="${r.id}">${esc(r.summary || r.kind)}</a></td>` +
+        `<td>${esc(r.app_version)} ${esc(r.platform)}</td><td>${r.count}</td><td>${r.computers}</td>` +
+        `<td><span class="tag ${r.status === 'new' ? 'warn' : r.status === 'fixed' ? 'ok' : 'dim'}">${esc(r.status)}</span>` +
+        (r.status !== 'fixed' ? ` <button class="linkbtn" type="button" data-fixed="${r.id}">Mark fixed</button>` : '') + '</td></tr>').join('') + '</tbody>' : '';
+  }
+  $('#crashRows').addEventListener('click', async ev => {
+    const a = ev.target.closest('[data-crash]'), b = ev.target.closest('[data-fixed]');
+    if (a) {
+      ev.preventDefault();
+      const c = await api('/admin/api/crashes/' + a.dataset.crash), pre = $('#crashDetail');
+      pre.textContent = `${c.kind} · BRB ${c.app_version} · ${c.platform} · first ${when(c.first_at)} · ${c.count} time(s)\n\n${c.report}`;
+      pre.style.display = 'block';
+      loadCrashes().catch(() => {});
+    } else if (b) {
+      await post('/admin/api/crashes/' + b.dataset.fixed, {status: 'fixed'});
+      loadCrashes().catch(() => {});
+    }
+  });
+
   async function loadCancellations() {
     const d = await api('/admin/api/cancellations');
     const total = d.counts.reduce((a, c) => a + c.n, 0), kept = d.counts.reduce((a, c) => a + (c.kept || 0), 0);
@@ -385,6 +435,8 @@
   loadApp().catch(e => { $('#appInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
   loadPricing().catch(e => { $('#priceNow').textContent = e.message; });
   loadCancellations().catch(e => { $('#cancelSum').textContent = e.message; });
+  loadFunnel().catch(e => { $('#funnelNote').textContent = e.message; });
+  loadCrashes().catch(e => { $('#crashSum').textContent = e.message; });
   loadSquare().catch(e => { $('#sqInfo').innerHTML = `<p class="msg err">${esc(e.message)}</p>`; });
 
   const ask = m => new Promise(res => { let ok = false; window.brbAsk(m, 'Continue', () => { ok = true; res(true); });

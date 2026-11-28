@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Email tips · BRB{% endblock %}
+{% block content %}
+<section class="page wrap narrow">
+  {% if done %}
+  <h1>You're unsubscribed</h1>
+  <p class="lede">You won't get BRB tips any more. Emails about your license, payments and support requests still come.</p>
+  <form method="post" action="/email/unsubscribe">
+    <input type="hidden" name="u" value="{{ u }}"><input type="hidden" name="t" value="{{ t }}">
+    <input type="hidden" name="resub" value="1">
+    <button class="btn secondary" type="submit">Oops, keep sending them</button>
+  </form>
+  {% else %}
+  <h1>Stop BRB tips?</h1>
+  <p class="lede">You'll stop getting the welcome and check-in emails. Emails about your license, payments and support
+    requests still come.</p>
+  <form method="post" action="/email/unsubscribe">
+    <input type="hidden" name="u" value="{{ u }}"><input type="hidden" name="t" value="{{ t }}">
+    <button class="btn" type="submit">Unsubscribe</button>
+  </form>
+  {% endif %}
+  <p class="note"><a href="/">Back to BRB</a></p>
+</section>
+{% endblock %}

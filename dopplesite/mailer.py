@@ -45,9 +45,10 @@ def staff():
     return [a.strip() for a in str(settings.get('SUPPORT_NOTIFY', '')).split(',') if '@' in a]
 
 
-def send(to, subject, body, reply_to=None, background=True, kind='support'):
+def send(to, subject, body, reply_to=None, background=True, kind='support', headers=None):
     """Send a plain-text email. Never raises: a mail problem must not break the page that triggered it.
-    kind: 'support' (requests), 'account' (license and billing; replies go to support) or 'alert' (staff)."""
+    kind: 'support' (requests), 'account' (license and billing; replies go to support) or 'alert' (staff).
+    headers: extra headers (e.g. List-Unsubscribe)."""
     to = [t for t in ([to] if isinstance(to, str) else list(to or [])) if t and '@' in t]
     if not to:
         return False
@@ -58,6 +59,8 @@ def send(to, subject, body, reply_to=None, background=True, kind='support'):
     msg['Message-ID'] = make_msgid(domain='brb.happyhacks.io')
     if reply_to or kind == 'account':
         msg['Reply-To'] = reply_to or from_address('support')
+    for k, v in (headers or {}).items():
+        msg[k] = v
     msg.set_content(body)
     if not ready():
         sent.append({'to': to, 'subject': subject, 'body': body, 'from': msg['From'], 'reply_to': msg['Reply-To']})

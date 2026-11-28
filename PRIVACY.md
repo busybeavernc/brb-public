@@ -1,6 +1,6 @@
 # BRB (Be Right Back) Privacy Policy
 
-**Effective November 5, 2026**
+**Effective November 28, 2026**
 
 This Privacy Policy explains what information Busy Beaver Group LLC, doing business as Happy Hacks ("Happy Hacks", "we", "us"), collects when you use BRB (Be Right Back), the desktop app (the "Software"), and the website brb.happyhacks.io (the "Website"), how we use it, and the choices you have.
 
@@ -41,11 +41,16 @@ Our server also sees the **internet (IP) address** the request comes from. We ke
 
 From these requests we keep, for each computer: the scrambled identifier, the computer name, operating system and BRB version, how much free LOOP time it has used, which license key (if any) it uses, when it was first and last seen, and the IP addresses described above. We also keep a record of when the loop was on air (start and end times), which is how free time is counted. We don't receive what you do while the loop is on air, which meetings you join, or who is in them.
 
+The Software also tells us **whether a loop has been recorded on this computer** (yes or no, never the loop itself). With that, we keep a simple record for each scrambled identifier of the operating system and BRB version and of when it was first and last seen, first recorded a loop, first put a loop on air, used up its free time and started using a license. We use it only in totals (for example, "how many new computers recorded a loop this month") to understand where people get stuck.
+
+**Crash reports (optional, off unless you allow it).** If BRB closes unexpectedly, it saves a short technical report on your computer: the error, the lines of BRB's own code where it happened, the BRB version and operating system. It sends the report to us only if you say yes when BRB asks after a crash, or if you turn on *Send crash reports* in Settings. Before sending, user names are removed from file paths. A report contains no video, pictures, audio, meeting details or files of yours, and is sent with the scrambled device identifier so we can tell how many computers a problem affects. We keep reports until the problem is fixed, and for no more than a year.
+
 ## 3. Your account and purchases (only if you sign in or subscribe)
 
 You don't need an account to download or use BRB. If you sign in on the Website or buy a subscription:
 
 - **Sign-in** uses your Happy Hacks account. We receive and keep your **name**, **email address**, and **mobile number** if your Happy Hacks account has one, plus when your BRB account was created and when you last signed in.
+- **Emails.** After you first sign in we send a welcome email with setup tips, and a check-in about a week later. Each has an unsubscribe link; unsubscribing doesn't stop emails about your license, payments or support requests.
 - **Subscriptions** are paid through **Square**. You enter your payment details on Square's checkout page; **we never see or store your card details**. We keep your license key, its status and expiry, the Square subscription identifier, the price you subscribed at, and which computer the key is on.
 - If you open the Website from the Software's "Get Unlimited Access Now" button, the link carries a signed reference to your computer's scrambled identifier, so a key you buy goes straight onto that computer.
 - If you use **Link this computer to my account** in the Software, we record that your computer (by its scrambled identifier, name, operating system and BRB version) belongs to your account, so you can see and manage it on your account page. You can remove it there at any time.

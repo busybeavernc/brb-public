@@ -469,6 +469,45 @@ def pricing_set():
     return jsonify(out)
 
 
+@bp.get('/admin/api/funnel')
+@login_required
+def funnel():
+    from . import growth
+    days = max(1, min(365, int(request.args.get('days', 30) or 30)))
+    return jsonify(growth.funnel(days))
+
+
+@bp.get('/admin/api/crashes')
+@login_required
+def crashes_list():
+    from . import growth
+    return jsonify(rows=growth.crashes())
+
+
+@bp.get('/admin/api/crashes/<int:cid>')
+@login_required
+def crash_get(cid):
+    from . import growth
+    c = growth.crash(cid)
+    if not c:
+        return jsonify(error='Not found'), 404
+    if c['status'] == 'new':
+        growth.set_crash_status(cid, 'seen')
+    return jsonify(c)
+
+
+@bp.post('/admin/api/crashes/<int:cid>')
+@login_required
+def crash_set(cid):
+    from . import growth
+    d = request.get_json(silent=True) or {}
+    try:
+        growth.set_crash_status(cid, str(d.get('status') or ''))
+    except ValueError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(ok=True)
+
+
 @bp.get('/admin/api/cancellations')
 @login_required
 def cancellations():
