@@ -470,3 +470,28 @@ code.hash { font-size: .78rem; background: none; padding: 0; }
 .plan .where .nc { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
 .plan .where .nc[hidden] { display: none; }
 .plan .where .nc .note { grid-column: 1 / -1; margin: 0; font-size: .85rem; }
+
+/* promo video (templates/_promo.html, js/promo.js): 16:9 on wider screens, 9:16 on phones */
+.promo { position: relative; margin: 0; isolation: isolate; aspect-ratio: 16 / 9; }
+.promo.is-tall { aspect-ratio: 9 / 16; width: min(100%, 380px); margin-inline: auto; }
+.promo video { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 18px; background: var(--ivory);
+  box-shadow: 0 14px 40px rgba(36, 75, 75, .18); cursor: pointer; }
+.promo.is-wide video { box-shadow: 0 6px 22px rgba(36, 75, 75, .10); }
+.promo-sound { position: absolute; right: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: .82rem; font-weight: 700; color: #fff; background: rgba(26, 56, 56, .82); border: 0;
+  border-radius: 99px; padding: 7px 13px 7px 10px; cursor: pointer; backdrop-filter: blur(4px); }
+.promo-sound:hover { background: var(--teal-dark); }
+.promo-sound svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; }
+.promo-sound .w { opacity: .35; }
+.promo.has-sound .promo-sound .w { opacity: 1; }
+.promo-play { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border: 0;
+  border-radius: 50%; background: var(--apricot); box-shadow: 0 8px 24px rgba(36, 75, 75, .25); cursor: pointer; }
+.promo-play svg { width: 34px; height: 34px; fill: var(--teal); margin-left: 4px; }
+.promo-play:hover { transform: scale(1.05); }
+.promo.started .promo-play { display: none; }
+.promo:not(.started):not([data-autoplay]) .promo-sound { display: none; }
+.promo-hero::before { content: ""; position: absolute; inset: -26px -40px; border-radius: 48% 52% 46% 54% / 55% 45% 55% 45%;
+  background: var(--apricot-soft); z-index: -1; }
+.promo-see { margin: 26px 0 8px; max-width: 900px; }
+.promo-guide { margin: 0 0 28px; }
+@media (max-width: 860px) { .promo-hero::before { inset: -16px -16px; } }

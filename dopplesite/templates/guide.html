@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ title }} · BRB{% endblock %}
 {% block content %}
+{% from "_promo.html" import promo with context %}
 <section class="page wrap narrow guide">
   <h1>{{ title }}</h1>
   <p class="lede">{{ lede }}{% if not legal %} <a href="/#download">Download BRB here.</a>{% endif %}</p>
+  {% if promo_video %}{{ promo(extra="promo-guide") }}{% endif %}
   {% if not legal %}{% import "_it_request.html" as itr with context %}{{ itr.work_box() }}{% endif %}
   {{ guide_html|safe }}
 </section>

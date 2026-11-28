@@ -1,0 +1,15 @@
+{# The BRB promo video. Phones get the vertical cut, wider screens the 16:9 cut (static/js/promo.js picks).
+   autoplay=True plays it muted while it's on screen; otherwise it waits for a click. #}
+{% macro promo(autoplay=False, extra='') %}
+<figure class="promo {{ extra }}" data-promo{% if autoplay %} data-autoplay{% endif %}
+  data-poster-wide="{{ asset('video/brb-promo-wide.jpg') }}" data-poster-tall="{{ asset('video/brb-promo-tall.jpg') }}"
+  data-wide-webm="{{ asset('video/brb-promo-wide.webm') }}" data-wide-mp4="{{ asset('video/brb-promo-wide.mp4') }}"
+  data-tall-webm="{{ asset('video/brb-promo-tall.webm') }}" data-tall-mp4="{{ asset('video/brb-promo-tall.mp4') }}">
+  <video muted loop playsinline preload="none"
+    aria-label="BRB in 37 seconds: three people step away from a video meeting while BRB plays their loop, then come back live"></video>
+  {% if not autoplay %}<button type="button" class="promo-play" aria-label="Play the video with sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg></button>{% endif %}
+  <button type="button" class="promo-sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="w" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke-width="2" stroke-linecap="round"/></svg><span>Tap for sound</span></button>
+  <noscript><a href="{{ asset('video/brb-promo-wide.mp4') }}">Watch the BRB video</a></noscript>
+</figure>
+<script src="{{ asset('js/promo.js') }}" nonce="{{ csp_nonce() }}" defer></script>
+{% endmacro %}
