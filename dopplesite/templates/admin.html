@@ -342,7 +342,7 @@
     ].map(([n, l]) => `<div class="stat"><b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('');
     $('#funnelNote').textContent = `Computers first seen in the period, and how far each got. All time: ${f.all_time_installs} computers, ` +
       `${f.site_downloads_total} site downloads` + (f.github_downloads_total != null ? `, ${f.github_downloads_total} GitHub downloads (includes updates)` : '') +
-      '. Counting started with this version of the site; "recorded a loop" needs BRB 1.0.145 or later.';
+      '. Counting started with this version of the site; "recorded a loop" needs BRB 1.0.146 or later.';
   }
   $('#funnelDays').addEventListener('change', () => loadFunnel().catch(e => { $('#funnelNote').textContent = e.message; }));
 
